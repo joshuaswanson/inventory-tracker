@@ -72,7 +72,9 @@ struct AddUsageView: View {
                 }
             }
             .navigationTitle("Record Usage")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

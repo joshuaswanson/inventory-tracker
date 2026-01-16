@@ -185,10 +185,14 @@ struct EditVendorView: View {
 
                 Section("Contact Information") {
                     TextField("Phone", text: $phone)
+                        #if os(iOS)
                         .keyboardType(.phonePad)
+                        #endif
                     TextField("Email", text: $email)
+                        #if os(iOS)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
+                        #endif
                     TextField("Address", text: $address)
                 }
 
@@ -198,7 +202,9 @@ struct EditVendorView: View {
                 }
             }
             .navigationTitle("Edit Vendor")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

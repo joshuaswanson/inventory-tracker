@@ -63,7 +63,9 @@ struct AddPurchaseView: View {
                     HStack {
                         Text("$")
                         TextField("Price per unit", text: $pricePerUnit)
+                            #if os(iOS)
                             .keyboardType(.decimalPad)
+                            #endif
                     }
                 }
 
@@ -99,7 +101,9 @@ struct AddPurchaseView: View {
                 }
             }
             .navigationTitle("Add Purchase")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
