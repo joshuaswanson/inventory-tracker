@@ -100,6 +100,7 @@ struct AddPurchaseView: View {
                     }
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Add Purchase")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -123,6 +124,10 @@ struct AddPurchaseView: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 450, minHeight: 500)
+        .padding()
+        #endif
     }
 
     private func addPurchase() {

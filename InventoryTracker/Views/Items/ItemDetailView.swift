@@ -220,6 +220,7 @@ struct EditItemView: View {
                         .frame(minHeight: 100)
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Edit Item")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -245,6 +246,10 @@ struct EditItemView: View {
                 notes = item.notes
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 400, minHeight: 350)
+        .padding()
+        #endif
     }
 
     private func saveChanges() {

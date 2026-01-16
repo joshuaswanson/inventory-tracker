@@ -33,6 +33,7 @@ struct AddItemView: View {
                         .frame(minHeight: 100)
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Add Item")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -51,6 +52,10 @@ struct AddItemView: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 400, minHeight: 350)
+        .padding()
+        #endif
     }
 
     private func addItem() {

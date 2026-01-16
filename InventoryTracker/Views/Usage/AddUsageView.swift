@@ -71,6 +71,7 @@ struct AddUsageView: View {
                     }
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Record Usage")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -94,6 +95,10 @@ struct AddUsageView: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 450, minHeight: 450)
+        .padding()
+        #endif
     }
 
     private func addUsage() {
