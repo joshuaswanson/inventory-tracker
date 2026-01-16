@@ -9,159 +9,50 @@ struct ItemDetailView: View {
     @State private var showingAddPurchase = false
     @State private var showingAddUsage = false
 
+    private var stockPercentage: Double {
+        guard item.reorderLevel > 0 else { return 1.0 }
+        return min(Double(item.currentInventory) / Double(item.reorderLevel * 2), 1.0)
+    }
+
+    private var stockColor: Color {
+        if item.needsReorder { return .orange }
+        if stockPercentage > 0.5 { return .green }
+        return .yellow
+    }
+
     var body: some View {
-        List {
-            Section("Overview") {
-                LabeledContent("Current Inventory") {
-                    HStack {
-                        Text("\(item.currentInventory) \(item.unit.abbreviation)")
-                            .fontWeight(.semibold)
-                        if item.needsReorder {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                        }
-                    }
+        ScrollView {
+            VStack(spacing: 20) {
+                // Hero Card - Inventory Status
+                heroCard
+
+                // Stats Grid
+                statsGrid
+
+                // Pricing Card
+                if item.lowestPricePaid != nil || item.averagePricePaid != nil {
+                    pricingCard
                 }
 
-                LabeledContent("Reorder Level", value: "\(item.reorderLevel) \(item.unit.abbreviation)")
-                LabeledContent("Unit of Measure", value: item.unit.rawValue)
-
+                // Expiration Card (for perishables)
                 if item.isPerishable {
-                    LabeledContent("Type") {
-                        Label("Perishable", systemImage: "leaf")
-                            .foregroundStyle(.green)
-                    }
+                    expirationCard
+                }
+
+                // Recent Activity
+                HStack(spacing: 16) {
+                    recentPurchasesCard
+                    recentUsageCard
+                }
+
+                // Notes
+                if !item.notes.isEmpty {
+                    notesCard
                 }
             }
-
-            Section("Pricing") {
-                if let lowest = item.lowestPricePaid {
-                    LabeledContent("Lowest Price Paid") {
-                        Text(lowest, format: .currency(code: "USD"))
-                            .foregroundStyle(.green)
-                            .fontWeight(.semibold)
-                    }
-
-                    if let purchase = item.lowestPricePurchase, let vendor = purchase.vendor {
-                        LabeledContent("Best Price Vendor", value: vendor.name)
-                    }
-                }
-
-                if let average = item.averagePricePaid {
-                    LabeledContent("Average Price", value: average, format: .currency(code: "USD"))
-                }
-            }
-
-            Section("Usage Analytics") {
-                LabeledContent("Daily Usage Rate") {
-                    Text(String(format: "%.1f %@/day", item.usageRatePerDay, item.unit.abbreviation))
-                }
-
-                if let daysLeft = item.estimatedDaysUntilReorder {
-                    LabeledContent("Days Until Reorder") {
-                        Text("\(daysLeft) days")
-                            .foregroundStyle(daysLeft <= 7 ? .orange : .primary)
-                    }
-                }
-
-                LabeledContent("Total Usage Records", value: "\(item.usageRecords.count)")
-            }
-
-            if item.isPerishable {
-                Section("Expiration Tracking") {
-                    if let nextExpiring = item.nextExpiringPurchase {
-                        if let days = nextExpiring.daysUntilExpiration {
-                            LabeledContent("Next Expiring") {
-                                Text("\(days) days")
-                                    .foregroundStyle(expirationColor(days: days))
-                            }
-                        }
-
-                        if let expDate = nextExpiring.expirationDate {
-                            LabeledContent("Expiration Date") {
-                                Text(expDate, style: .date)
-                            }
-                        }
-                    }
-
-                    let expiringItems = item.expiringWithin30Days
-                    if !expiringItems.isEmpty {
-                        LabeledContent("Expiring Within 30 Days") {
-                            Text("\(expiringItems.count) batch(es)")
-                                .foregroundStyle(.orange)
-                        }
-                    }
-                }
-            }
-
-            Section("Recent Purchases") {
-                if item.purchases.isEmpty {
-                    Text("No purchases yet")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(item.purchases.sorted { $0.date > $1.date }.prefix(5), id: \.id) { purchase in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(purchase.date, style: .date)
-                                    .font(.subheadline)
-                                Spacer()
-                                Text(purchase.pricePerUnit, format: .currency(code: "USD"))
-                                    .fontWeight(.medium)
-                            }
-                            HStack {
-                                Text("\(purchase.quantity) \(item.unit.abbreviation)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                if let vendor = purchase.vendor {
-                                    Text("from \(vendor.name)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-
-                Button(action: { showingAddPurchase = true }) {
-                    Label("Add Purchase", systemImage: "plus.circle")
-                }
-            }
-
-            Section("Recent Usage") {
-                if item.usageRecords.isEmpty {
-                    Text("No usage recorded yet")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(item.usageRecords.sorted { $0.date > $1.date }.prefix(5), id: \.id) { usage in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(usage.date, style: .date)
-                                    .font(.subheadline)
-                                if usage.isEstimate {
-                                    Text("Estimated")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            Text("-\(usage.quantity) \(item.unit.abbreviation)")
-                                .foregroundStyle(.red)
-                        }
-                    }
-                }
-
-                Button(action: { showingAddUsage = true }) {
-                    Label("Record Usage", systemImage: "minus.circle")
-                }
-            }
-
-            if !item.notes.isEmpty {
-                Section("Notes") {
-                    Text(item.notes)
-                }
-            }
+            .padding()
         }
+        .background(Color.primary.opacity(0.03))
         .navigationTitle(item.name)
         .toolbar {
             Button("Edit") {
@@ -179,11 +70,383 @@ struct ItemDetailView: View {
         }
     }
 
+    // MARK: - Hero Card
+    private var heroCard: some View {
+        VStack(spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Current Stock")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        if item.isPerishable {
+                            Image(systemName: "leaf.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        }
+                    }
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("\(item.currentInventory)")
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                        Text(item.unit.abbreviation)
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                stockIndicator
+            }
+
+            // Progress bar
+            VStack(alignment: .leading, spacing: 6) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.primary.opacity(0.1))
+                            .frame(height: 8)
+
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(stockColor.gradient)
+                            .frame(width: geometry.size.width * stockPercentage, height: 8)
+                    }
+                }
+                .frame(height: 8)
+
+                HStack {
+                    Text("Reorder at \(item.reorderLevel) \(item.unit.abbreviation)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if let days = item.estimatedDaysUntilReorder {
+                        Text(days <= 0 ? "Reorder now" : "\(days) days until reorder")
+                            .font(.caption)
+                            .foregroundStyle(days <= 7 ? .orange : .secondary)
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var stockIndicator: some View {
+        VStack(spacing: 4) {
+            ZStack {
+                Circle()
+                    .fill(stockColor.opacity(0.15))
+                    .frame(width: 60, height: 60)
+                Image(systemName: item.needsReorder ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(stockColor)
+            }
+            Text(item.needsReorder ? "Low Stock" : "In Stock")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(stockColor)
+        }
+    }
+
+    // MARK: - Stats Grid
+    private var statsGrid: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible()),
+            GridItem(.flexible()),
+            GridItem(.flexible())
+        ], spacing: 12) {
+            StatCard(
+                title: "Daily Usage",
+                value: String(format: "%.1f", item.usageRatePerDay),
+                unit: item.unit.abbreviation + "/day",
+                icon: "chart.line.downtrend.xyaxis",
+                color: .blue
+            )
+
+            StatCard(
+                title: "Purchases",
+                value: "\(item.purchases.count)",
+                unit: "total",
+                icon: "cart.fill",
+                color: .purple
+            )
+
+            StatCard(
+                title: "Usage Records",
+                value: "\(item.usageRecords.count)",
+                unit: "total",
+                icon: "list.bullet.clipboard",
+                color: .indigo
+            )
+        }
+    }
+
+    // MARK: - Pricing Card
+    private var pricingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Pricing", systemImage: "dollarsign.circle.fill")
+                .font(.headline)
+                .foregroundStyle(.green)
+
+            HStack(spacing: 20) {
+                if let lowest = item.lowestPricePaid {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Best Price")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(lowest, format: .currency(code: "USD"))
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.green)
+                        if let purchase = item.lowestPricePurchase, let vendor = purchase.vendor {
+                            Text(vendor.name)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if let average = item.averagePricePaid {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Average")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(average, format: .currency(code: "USD"))
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
+                }
+
+                Spacer()
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - Expiration Card
+    private var expirationCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Expiration", systemImage: "clock.fill")
+                .font(.headline)
+                .foregroundStyle(.orange)
+
+            if let nextExpiring = item.nextExpiringPurchase {
+                HStack {
+                    if let days = nextExpiring.daysUntilExpiration {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Next Expiring")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("\(days) days")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(expirationColor(days: days))
+                        }
+                    }
+
+                    Spacer()
+
+                    if let expDate = nextExpiring.expirationDate {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("Date")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(expDate, style: .date)
+                                .font(.subheadline)
+                        }
+                    }
+                }
+
+                let expiringItems = item.expiringWithin30Days
+                if !expiringItems.isEmpty {
+                    Divider()
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("\(expiringItems.count) batch(es) expiring within 30 days")
+                            .font(.subheadline)
+                    }
+                }
+            } else {
+                Text("No expiring items")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - Recent Purchases Card
+    private var recentPurchasesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Recent Purchases", systemImage: "cart.fill")
+                    .font(.headline)
+                    .foregroundStyle(.purple)
+                Spacer()
+                Button(action: { showingAddPurchase = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.purple)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if item.purchases.isEmpty {
+                Text("No purchases yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(item.purchases.sorted { $0.date > $1.date }.prefix(3), id: \.id) { purchase in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(purchase.date, style: .date)
+                                    .font(.subheadline)
+                                if let vendor = purchase.vendor {
+                                    Text(vendor.name)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(purchase.pricePerUnit, format: .currency(code: "USD"))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("\(purchase.quantity) \(item.unit.abbreviation)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        if purchase.id != item.purchases.sorted(by: { $0.date > $1.date }).prefix(3).last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - Recent Usage Card
+    private var recentUsageCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Recent Usage", systemImage: "chart.line.downtrend.xyaxis")
+                    .font(.headline)
+                    .foregroundStyle(.blue)
+                Spacer()
+                Button(action: { showingAddUsage = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if item.usageRecords.isEmpty {
+                Text("No usage recorded")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(item.usageRecords.sorted { $0.date > $1.date }.prefix(3), id: \.id) { usage in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(usage.date, style: .date)
+                                    .font(.subheadline)
+                                if usage.isEstimate {
+                                    Text("Estimated")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Text("-\(usage.quantity) \(item.unit.abbreviation)")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.red)
+                        }
+                        .padding(.vertical, 4)
+                        if usage.id != item.usageRecords.sorted(by: { $0.date > $1.date }).prefix(3).last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - Notes Card
+    private var notesCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Notes", systemImage: "note.text")
+                .font(.headline)
+            Text(item.notes)
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
     private func expirationColor(days: Int) -> Color {
         if days < 0 { return .red }
         if days <= 7 { return .orange }
         if days <= 30 { return .yellow }
         return .green
+    }
+}
+
+// MARK: - Stat Card Component
+struct StatCard: View {
+    let title: String
+    let value: String
+    let unit: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(color)
+
+            Text(value)
+                .font(.title2)
+                .fontWeight(.bold)
+
+            Text(unit)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
