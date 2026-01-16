@@ -72,7 +72,7 @@ struct AddUsageView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Record Usage")
+                        .navigationTitle("Record Usage")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
