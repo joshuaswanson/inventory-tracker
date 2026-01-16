@@ -31,6 +31,7 @@ struct AddItemView: View {
                 Section("Notes (Optional)") {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
+                        .scrollContentBackground(.hidden)
                 }
             }
             .formStyle(.grouped)

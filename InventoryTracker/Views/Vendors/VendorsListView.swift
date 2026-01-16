@@ -199,6 +199,7 @@ struct EditVendorView: View {
                 Section("Notes") {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
+                        .scrollContentBackground(.hidden)
                 }
             }
             .formStyle(.grouped)
