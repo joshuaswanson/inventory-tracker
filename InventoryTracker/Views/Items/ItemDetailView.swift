@@ -222,7 +222,7 @@ struct EditItemView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Edit Item")
+                        .navigationTitle("Edit Item")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

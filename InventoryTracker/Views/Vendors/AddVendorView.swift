@@ -40,7 +40,7 @@ struct AddVendorView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Add Vendor")
+                        .navigationTitle("Add Vendor")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

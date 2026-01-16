@@ -35,7 +35,7 @@ struct AddItemView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Add Item")
+                        .navigationTitle("Add Item")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

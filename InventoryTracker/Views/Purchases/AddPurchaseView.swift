@@ -101,7 +101,7 @@ struct AddPurchaseView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Add Purchase")
+                        .navigationTitle("Add Purchase")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

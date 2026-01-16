@@ -203,7 +203,7 @@ struct EditVendorView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Edit Vendor")
+                        .navigationTitle("Edit Vendor")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
