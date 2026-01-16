@@ -35,15 +35,16 @@ struct DashboardView: View {
                     PriceAnalyticsView(items: items)
                 }
                 .padding()
+                .frame(maxWidth: .infinity)
             }
+            .frame(minWidth: 300, minHeight: 400)
             .navigationTitle("Dashboard")
         }
     }
 
     private var summaryCards: some View {
         LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible())
+            GridItem(.adaptive(minimum: 150, maximum: 300), spacing: 16)
         ], spacing: 16) {
             SummaryCard(
                 title: "Total Items",
@@ -104,9 +105,8 @@ struct SummaryCard: View {
             }
         }
         .padding()
-        .background(Color.white.opacity(0.9))
+        .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }
 

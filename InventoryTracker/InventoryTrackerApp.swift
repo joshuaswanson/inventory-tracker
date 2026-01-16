@@ -24,5 +24,8 @@ struct InventoryTrackerApp: App {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
+        #if os(macOS)
+        .defaultSize(width: 900, height: 600)
+        #endif
     }
 }
