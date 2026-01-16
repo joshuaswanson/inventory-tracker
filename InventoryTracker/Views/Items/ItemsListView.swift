@@ -9,7 +9,6 @@ struct ItemsListView: View {
     @State private var searchText = ""
     @State private var showingOnlyLowStock = false
     @State private var selectedItem: Item?
-    @State private var navigationPath = NavigationPath()
 
     var filteredItems: [Item] {
         var result = items
@@ -26,93 +25,79 @@ struct ItemsListView: View {
     }
 
     var body: some View {
-        #if os(macOS)
-        NavigationSplitView {
-            List(selection: $selectedItem) {
+        HSplitView {
+            // Left: Item list
+            VStack(spacing: 0) {
+                // Search and filter bar
+                HStack {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField("Search items", text: $searchText)
+                            .textFieldStyle(.plain)
+                    }
+                    .padding(8)
+                    .background(Color.primary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    Toggle(isOn: $showingOnlyLowStock) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 12))
+                    }
+                    .toggleStyle(.button)
+                    .controlSize(.small)
+                    .help("Show low stock only")
+
+                    Button(action: { showingAddItem = true }) {
+                        Image(systemName: "plus")
+                    }
+                    .help("Add item")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+
+                Divider()
+
                 if filteredItems.isEmpty {
                     ContentUnavailableView {
                         Label("No Items", systemImage: "shippingbox")
                     } description: {
                         Text("Add items to start tracking your inventory.")
                     }
+                    .frame(maxHeight: .infinity)
                 } else {
-                    ForEach(filteredItems) { item in
-                        ItemRowView(item: item)
-                            .tag(item)
+                    List(selection: $selectedItem) {
+                        ForEach(filteredItems) { item in
+                            ItemRowView(item: item)
+                                .tag(item)
+                                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                                .listRowSeparator(.visible)
+                        }
+                        .onDelete(perform: deleteItems)
                     }
-                    .onDelete(perform: deleteItems)
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle("Items")
-            .searchable(text: $searchText, prompt: "Search items")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddItem = true }) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+            .frame(minWidth: 280, idealWidth: 320, maxWidth: 400)
+            .background(Color.primary.opacity(0.02))
 
-                ToolbarItem(placement: .secondaryAction) {
-                    Toggle(isOn: $showingOnlyLowStock) {
-                        Label("Low Stock Only", systemImage: "exclamationmark.triangle")
-                    }
-                }
-            }
-        } detail: {
+            // Right: Detail view
             if let item = selectedItem {
                 ItemDetailView(item: item)
+                    .frame(minWidth: 400)
             } else {
                 ContentUnavailableView {
                     Label("No Item Selected", systemImage: "shippingbox")
                 } description: {
                     Text("Select an item from the list to view details.")
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .sheet(isPresented: $showingAddItem) {
             AddItemView()
         }
-        #else
-        NavigationStack(path: $navigationPath) {
-            List {
-                if filteredItems.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Items", systemImage: "shippingbox")
-                    } description: {
-                        Text("Add items to start tracking your inventory.")
-                    }
-                } else {
-                    ForEach(filteredItems) { item in
-                        NavigationLink(value: item) {
-                            ItemRowView(item: item)
-                        }
-                    }
-                    .onDelete(perform: deleteItems)
-                }
-            }
-            .navigationTitle("Items")
-            .navigationDestination(for: Item.self) { item in
-                ItemDetailView(item: item)
-            }
-            .searchable(text: $searchText, prompt: "Search items")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddItem = true }) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-
-                ToolbarItem(placement: .secondaryAction) {
-                    Toggle(isOn: $showingOnlyLowStock) {
-                        Label("Low Stock Only", systemImage: "exclamationmark.triangle")
-                    }
-                }
-            }
-            .sheet(isPresented: $showingAddItem) {
-                AddItemView()
-            }
-        }
-        #endif
     }
 
     private func deleteItems(at offsets: IndexSet) {
