@@ -38,6 +38,7 @@ struct AddVendorView: View {
                         .frame(minHeight: 100)
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Add Vendor")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -56,6 +57,10 @@ struct AddVendorView: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 400, minHeight: 400)
+        .padding()
+        #endif
     }
 
     private func addVendor() {
