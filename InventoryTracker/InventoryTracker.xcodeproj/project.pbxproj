@@ -1,0 +1,476 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000001001 /* InventoryTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000 /* InventoryTrackerApp.swift */; };
+		A1000002001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000 /* ContentView.swift */; };
+		A1000003001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000003000 /* Assets.xcassets */; };
+		A1000004001 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000004000 /* Item.swift */; };
+		A1000005001 /* Vendor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000005000 /* Vendor.swift */; };
+		A1000006001 /* Purchase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000006000 /* Purchase.swift */; };
+		A1000007001 /* Usage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000007000 /* Usage.swift */; };
+		A1000008001 /* ItemsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000008000 /* ItemsListView.swift */; };
+		A1000009001 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000009000 /* ItemDetailView.swift */; };
+		A1000010001 /* AddItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000 /* AddItemView.swift */; };
+		A1000011001 /* VendorsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000 /* VendorsListView.swift */; };
+		A1000012001 /* AddVendorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012000 /* AddVendorView.swift */; };
+		A1000013001 /* PurchasesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000013000 /* PurchasesListView.swift */; };
+		A1000014001 /* AddPurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000014000 /* AddPurchaseView.swift */; };
+		A1000015001 /* UsageListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000 /* UsageListView.swift */; };
+		A1000016001 /* AddUsageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000016000 /* AddUsageView.swift */; };
+		A1000017001 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000017000 /* DashboardView.swift */; };
+		A1000018001 /* ReorderAlertsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000018000 /* ReorderAlertsView.swift */; };
+		A1000019001 /* PriceAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000019000 /* PriceAnalyticsView.swift */; };
+		A1000020001 /* ExpirationTrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020000 /* ExpirationTrackingView.swift */; };
+		A1000021001 /* InventoryCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000021000 /* InventoryCalculator.swift */; };
+		A1000022001 /* UnitOfMeasure.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000022000 /* UnitOfMeasure.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1000000000 /* InventoryTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = InventoryTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000001000 /* InventoryTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryTrackerApp.swift; sourceTree = "<group>"; };
+		A1000002000 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A1000003000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1000004000 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
+		A1000005000 /* Vendor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vendor.swift; sourceTree = "<group>"; };
+		A1000006000 /* Purchase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Purchase.swift; sourceTree = "<group>"; };
+		A1000007000 /* Usage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Usage.swift; sourceTree = "<group>"; };
+		A1000008000 /* ItemsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemsListView.swift; sourceTree = "<group>"; };
+		A1000009000 /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
+		A1000010000 /* AddItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddItemView.swift; sourceTree = "<group>"; };
+		A1000011000 /* VendorsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorsListView.swift; sourceTree = "<group>"; };
+		A1000012000 /* AddVendorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddVendorView.swift; sourceTree = "<group>"; };
+		A1000013000 /* PurchasesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchasesListView.swift; sourceTree = "<group>"; };
+		A1000014000 /* AddPurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPurchaseView.swift; sourceTree = "<group>"; };
+		A1000015000 /* UsageListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageListView.swift; sourceTree = "<group>"; };
+		A1000016000 /* AddUsageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddUsageView.swift; sourceTree = "<group>"; };
+		A1000017000 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		A1000018000 /* ReorderAlertsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReorderAlertsView.swift; sourceTree = "<group>"; };
+		A1000019000 /* PriceAnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAnalyticsView.swift; sourceTree = "<group>"; };
+		A1000020000 /* ExpirationTrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpirationTrackingView.swift; sourceTree = "<group>"; };
+		A1000021000 /* InventoryCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryCalculator.swift; sourceTree = "<group>"; };
+		A1000022000 /* UnitOfMeasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitOfMeasure.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1000000004 = {
+			isa = PBXGroup;
+			children = (
+				A1000000005 /* InventoryTracker */,
+				A1000000006 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A1000000005 /* InventoryTracker */ = {
+			isa = PBXGroup;
+			children = (
+				A1000001000 /* InventoryTrackerApp.swift */,
+				A1000002000 /* ContentView.swift */,
+				A1000003000 /* Assets.xcassets */,
+				A1000000007 /* Models */,
+				A1000000008 /* Views */,
+				A1000000013 /* Utilities */,
+			);
+			path = InventoryTracker;
+			sourceTree = "<group>";
+		};
+		A1000000006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000 /* InventoryTracker.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A1000000007 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A1000004000 /* Item.swift */,
+				A1000005000 /* Vendor.swift */,
+				A1000006000 /* Purchase.swift */,
+				A1000007000 /* Usage.swift */,
+				A1000022000 /* UnitOfMeasure.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A1000000008 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000009 /* Items */,
+				A1000000010 /* Vendors */,
+				A1000000011 /* Purchases */,
+				A1000000012 /* Usage */,
+				A1000000014 /* Dashboard */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A1000000009 /* Items */ = {
+			isa = PBXGroup;
+			children = (
+				A1000008000 /* ItemsListView.swift */,
+				A1000009000 /* ItemDetailView.swift */,
+				A1000010000 /* AddItemView.swift */,
+			);
+			path = Items;
+			sourceTree = "<group>";
+		};
+		A1000000010 /* Vendors */ = {
+			isa = PBXGroup;
+			children = (
+				A1000011000 /* VendorsListView.swift */,
+				A1000012000 /* AddVendorView.swift */,
+			);
+			path = Vendors;
+			sourceTree = "<group>";
+		};
+		A1000000011 /* Purchases */ = {
+			isa = PBXGroup;
+			children = (
+				A1000013000 /* PurchasesListView.swift */,
+				A1000014000 /* AddPurchaseView.swift */,
+			);
+			path = Purchases;
+			sourceTree = "<group>";
+		};
+		A1000000012 /* Usage */ = {
+			isa = PBXGroup;
+			children = (
+				A1000015000 /* UsageListView.swift */,
+				A1000016000 /* AddUsageView.swift */,
+			);
+			path = Usage;
+			sourceTree = "<group>";
+		};
+		A1000000013 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				A1000021000 /* InventoryCalculator.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		A1000000014 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				A1000017000 /* DashboardView.swift */,
+				A1000018000 /* ReorderAlertsView.swift */,
+				A1000019000 /* PriceAnalyticsView.swift */,
+				A1000020000 /* ExpirationTrackingView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1000000001 /* InventoryTracker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1000000015 /* Build configuration list for PBXNativeTarget "InventoryTracker" */;
+			buildPhases = (
+				A1000000002 /* Sources */,
+				A1000000003 /* Frameworks */,
+				A1000000018 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = InventoryTracker;
+			productName = InventoryTracker;
+			productReference = A1000000000 /* InventoryTracker.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1000000019 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A1000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A1000000020 /* Build configuration list for PBXProject "InventoryTracker" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A1000000004;
+			productRefGroup = A1000000006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1000000001 /* InventoryTracker */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1000000018 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000003001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000001001 /* InventoryTrackerApp.swift in Sources */,
+				A1000002001 /* ContentView.swift in Sources */,
+				A1000004001 /* Item.swift in Sources */,
+				A1000005001 /* Vendor.swift in Sources */,
+				A1000006001 /* Purchase.swift in Sources */,
+				A1000007001 /* Usage.swift in Sources */,
+				A1000008001 /* ItemsListView.swift in Sources */,
+				A1000009001 /* ItemDetailView.swift in Sources */,
+				A1000010001 /* AddItemView.swift in Sources */,
+				A1000011001 /* VendorsListView.swift in Sources */,
+				A1000012001 /* AddVendorView.swift in Sources */,
+				A1000013001 /* PurchasesListView.swift in Sources */,
+				A1000014001 /* AddPurchaseView.swift in Sources */,
+				A1000015001 /* UsageListView.swift in Sources */,
+				A1000016001 /* AddUsageView.swift in Sources */,
+				A1000017001 /* DashboardView.swift in Sources */,
+				A1000018001 /* ReorderAlertsView.swift in Sources */,
+				A1000019001 /* PriceAnalyticsView.swift in Sources */,
+				A1000020001 /* ExpirationTrackingView.swift in Sources */,
+				A1000021001 /* InventoryCalculator.swift in Sources */,
+				A1000022001 /* UnitOfMeasure.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1000000016 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swansondds.InventoryTracker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A1000000017 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swansondds.InventoryTracker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A1000000021 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A1000000022 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1000000015 /* Build configuration list for PBXNativeTarget "InventoryTracker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000000016 /* Debug */,
+				A1000000017 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1000000020 /* Build configuration list for PBXProject "InventoryTracker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000000021 /* Debug */,
+				A1000000022 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A1000000019 /* Project object */;
+}
