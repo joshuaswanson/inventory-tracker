@@ -22,10 +22,14 @@ struct AddVendorView: View {
 
                 Section("Contact Information (Optional)") {
                     TextField("Phone", text: $phone)
+                        #if os(iOS)
                         .keyboardType(.phonePad)
+                        #endif
                     TextField("Email", text: $email)
+                        #if os(iOS)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
+                        #endif
                     TextField("Address", text: $address)
                 }
 
@@ -35,7 +39,9 @@ struct AddVendorView: View {
                 }
             }
             .navigationTitle("Add Vendor")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

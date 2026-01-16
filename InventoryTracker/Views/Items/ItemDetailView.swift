@@ -221,7 +221,9 @@ struct EditItemView: View {
                 }
             }
             .navigationTitle("Edit Item")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
