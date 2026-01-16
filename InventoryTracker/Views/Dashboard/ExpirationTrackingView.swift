@@ -95,7 +95,6 @@ struct ExpirationRow: View {
 }
 
 #Preview {
-    let item = Item(name: "Sample Perishable", isPerishable: true)
-    return ExpirationTrackingView(expiringItems: [])
+    ExpirationTrackingView(expiringItems: [])
         .padding()
 }
