@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct ItemDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -46,9 +47,7 @@ struct ItemDetailView: View {
                 }
 
                 // Notes
-                if !item.notes.isEmpty {
-                    notesCard
-                }
+                notesCard
             }
             .padding()
         }
@@ -74,6 +73,14 @@ struct ItemDetailView: View {
     private var heroCard: some View {
         VStack(spacing: 16) {
             HStack {
+                if let imageData = item.imageData, let nsImage = NSImage(data: imageData) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 80, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Current Stock")
@@ -395,9 +402,10 @@ struct ItemDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Notes", systemImage: "note.text")
                 .font(.headline)
-            Text(item.notes)
+            TextEditor(text: $item.notes)
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 60)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -456,10 +464,53 @@ struct EditItemView: View {
     @State private var reorderLevel: Int = 10
     @State private var isPerishable: Bool = false
     @State private var notes: String = ""
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var imageData: Data?
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Image") {
+                    HStack {
+                        if let imageData, let nsImage = NSImage(data: imageData) {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 80, height: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.2))
+                                .frame(width: 80, height: 80)
+                                .overlay {
+                                    Image(systemName: "photo")
+                                        .font(.title)
+                                        .foregroundStyle(.secondary)
+                                }
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 8) {
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                Label("Select Photo", systemImage: "photo.on.rectangle")
+                            }
+                            .buttonStyle(.bordered)
+
+                            if imageData != nil {
+                                Button(role: .destructive) {
+                                    imageData = nil
+                                    selectedPhoto = nil
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section("Item Details") {
                     TextField("Item Name", text: $name)
 
@@ -478,6 +529,13 @@ struct EditItemView: View {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
                         .scrollContentBackground(.hidden)
+                }
+            }
+            .onChange(of: selectedPhoto) { _, newValue in
+                Task {
+                    if let data = try? await newValue?.loadTransferable(type: Data.self) {
+                        imageData = data
+                    }
                 }
             }
             .formStyle(.grouped)
@@ -504,6 +562,7 @@ struct EditItemView: View {
                 reorderLevel = item.reorderLevel
                 isPerishable = item.isPerishable
                 notes = item.notes
+                imageData = item.imageData
             }
         }
         #if os(macOS)
@@ -518,6 +577,7 @@ struct EditItemView: View {
         item.reorderLevel = reorderLevel
         item.isPerishable = isPerishable
         item.notes = notes
+        item.imageData = imageData
         dismiss()
     }
 }

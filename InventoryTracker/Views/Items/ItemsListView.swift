@@ -1,8 +1,16 @@
 import SwiftUI
 import SwiftData
 
+enum ItemSortOption: String, CaseIterable {
+    case manual = "Manual"
+    case alphabetical = "Alphabetical"
+    case inventoryLevel = "Inventory Level"
+    case reorderStatus = "Reorder Status"
+}
+
 struct ItemsListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openWindow) private var openWindow
     @Query(sort: \Item.sortOrder) private var items: [Item]
 
     @State private var showingAddItem = false
@@ -10,6 +18,7 @@ struct ItemsListView: View {
     @State private var showingOnlyLowStock = false
     @State private var selectedItem: Item?
     @State private var itemToEdit: Item?
+    @State private var sortOption: ItemSortOption = .manual
 
     var filteredItems: [Item] {
         var result = items
@@ -22,11 +31,28 @@ struct ItemsListView: View {
             result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
 
+        // Apply sorting
+        switch sortOption {
+        case .manual:
+            result.sort { $0.sortOrder < $1.sortOrder }
+        case .alphabetical:
+            result.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .inventoryLevel:
+            result.sort { $0.currentInventory < $1.currentInventory }
+        case .reorderStatus:
+            result.sort { ($0.needsReorder ? 0 : 1) < ($1.needsReorder ? 0 : 1) }
+        }
+
+        // Pinned items always come first
+        result.sort { ($0.isPinned ? 0 : 1) < ($1.isPinned ? 0 : 1) }
+
         return result
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 0) {
                 // Left: Item list
                 VStack(spacing: 0) {
                 if filteredItems.isEmpty {
@@ -48,7 +74,27 @@ struct ItemsListView: View {
                                         Image(systemName: "trash")
                                     }
                                 }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        item.isPinned.toggle()
+                                    } label: {
+                                        Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
+                                    }
+                                    .tint(.yellow)
+                                }
                                 .contextMenu {
+                                    Button {
+                                        openWindow(value: item.id)
+                                    } label: {
+                                        Label("Open in New Window", systemImage: "macwindow.badge.plus")
+                                    }
+
+                                    Button {
+                                        item.isPinned.toggle()
+                                    } label: {
+                                        Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+                                    }
+
                                     Button {
                                         selectedItem = item
                                         itemToEdit = item
@@ -80,6 +126,19 @@ struct ItemsListView: View {
                     .help("Show low stock only")
                 }
 
+                ToolbarItem(placement: .automatic) {
+                    Menu {
+                        Picker("Sort By", selection: $sortOption) {
+                            ForEach(ItemSortOption.allCases, id: \.self) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
+                    }
+                    .help("Sort items")
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showingAddItem = true }) {
                         Label("Add Item", systemImage: "plus")
@@ -103,6 +162,7 @@ struct ItemsListView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .sheet(isPresented: $showingAddItem) {
             AddItemView()
@@ -121,6 +181,7 @@ struct ItemsListView: View {
     }
 
     private func moveItems(from source: IndexSet, to destination: Int) {
+        guard sortOption == .manual else { return }
         var reorderedItems = filteredItems
         reorderedItems.move(fromOffsets: source, toOffset: destination)
         for (index, item) in reorderedItems.enumerated() {
@@ -133,7 +194,15 @@ struct ItemRowView: View {
     let item: Item
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            if let imageData = item.imageData, let nsImage = NSImage(data: imageData) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(item.name)
@@ -152,6 +221,12 @@ struct ItemRowView: View {
             }
 
             Spacer()
+
+            if item.isPinned {
+                Image(systemName: "pin.fill")
+                    .foregroundStyle(.yellow)
+                    .font(.subheadline)
+            }
 
             if item.needsReorder {
                 Image(systemName: "exclamationmark.triangle.fill")
