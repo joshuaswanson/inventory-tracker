@@ -3,6 +3,7 @@ import SwiftData
 
 struct VendorsListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openWindow) private var openWindow
     @Query(sort: \Vendor.name) private var vendors: [Vendor]
 
     @State private var showingAddVendor = false
@@ -11,16 +12,23 @@ struct VendorsListView: View {
     @State private var vendorToEdit: Vendor?
 
     var filteredVendors: [Vendor] {
+        var result: [Vendor]
         if searchText.isEmpty {
-            return vendors
+            result = Array(vendors)
+        } else {
+            result = vendors.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
-        return vendors.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        // Pinned vendors always come first
+        result.sort { ($0.isPinned ? 0 : 1) < ($1.isPinned ? 0 : 1) }
+        return result
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Left: Vendor list
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 0) {
+                // Left: Vendor list
+                VStack(spacing: 0) {
                 if filteredVendors.isEmpty {
                     ContentUnavailableView {
                         Label("No Vendors", systemImage: "building.2")
@@ -40,7 +48,27 @@ struct VendorsListView: View {
                                         Image(systemName: "trash")
                                     }
                                 }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        vendor.isPinned.toggle()
+                                    } label: {
+                                        Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
+                                    }
+                                    .tint(.yellow)
+                                }
                                 .contextMenu {
+                                    Button {
+                                        openWindow(value: vendor.id)
+                                    } label: {
+                                        Label("Open in New Window", systemImage: "macwindow.badge.plus")
+                                    }
+
+                                    Button {
+                                        vendor.isPinned.toggle()
+                                    } label: {
+                                        Label(vendor.isPinned ? "Unpin" : "Pin", systemImage: vendor.isPinned ? "pin.slash" : "pin")
+                                    }
+
                                     Button {
                                         selectedVendor = vendor
                                         vendorToEdit = vendor
@@ -86,6 +114,7 @@ struct VendorsListView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .sheet(isPresented: $showingAddVendor) {
             AddVendorView()
@@ -112,6 +141,12 @@ struct VendorRowView: View {
             }
 
             Spacer()
+
+            if vendor.isPinned {
+                Image(systemName: "pin.fill")
+                    .foregroundStyle(.yellow)
+                    .font(.subheadline)
+            }
 
             if vendor.totalSpent > 0 {
                 Text(vendor.totalSpent, format: .currency(code: "USD"))
@@ -149,9 +184,7 @@ struct VendorDetailView: View {
                 purchaseHistoryCard
 
                 // Notes Card
-                if !vendor.notes.isEmpty {
-                    notesCard
-                }
+                notesCard
             }
             .padding()
         }
@@ -337,9 +370,10 @@ struct VendorDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Notes", systemImage: "note.text")
                 .font(.headline)
-            Text(vendor.notes)
+            TextEditor(text: $vendor.notes)
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 60)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
