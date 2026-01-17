@@ -10,6 +10,7 @@ final class Item {
     var isPerishable: Bool
     var notes: String
     var createdAt: Date
+    var sortOrder: Int = 0
 
     @Relationship(deleteRule: .cascade, inverse: \Purchase.item)
     var purchases: [Purchase] = []
@@ -22,7 +23,8 @@ final class Item {
         unitOfMeasure: UnitOfMeasure = .each,
         reorderLevel: Int = 10,
         isPerishable: Bool = false,
-        notes: String = ""
+        notes: String = "",
+        sortOrder: Int = 0
     ) {
         self.id = UUID()
         self.name = name
@@ -31,6 +33,7 @@ final class Item {
         self.isPerishable = isPerishable
         self.notes = notes
         self.createdAt = Date()
+        self.sortOrder = sortOrder
     }
 
     var unit: UnitOfMeasure {

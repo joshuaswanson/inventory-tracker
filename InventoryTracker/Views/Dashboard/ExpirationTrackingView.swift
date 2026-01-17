@@ -54,13 +54,13 @@ struct ExpirationRow: View {
                 HStack {
                     if let expDate = purchase.expirationDate {
                         Text("Expires: \(expDate, style: .date)")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
 
                     if !purchase.lotNumber.isEmpty {
                         Text("Lot: \(purchase.lotNumber)")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -70,12 +70,12 @@ struct ExpirationRow: View {
 
             VStack(alignment: .trailing, spacing: 4) {
                 Text("\(purchase.remainingQuantity) \(item.unit.abbreviation) left")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
 
                 if daysLeft <= 0 {
                     Text("EXPIRED")
-                        .font(.caption)
+                        .font(.footnote)
                         .fontWeight(.bold)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8)
@@ -84,7 +84,7 @@ struct ExpirationRow: View {
                         .clipShape(Capsule())
                 } else {
                     Text("\(daysLeft) days")
-                        .font(.caption)
+                        .font(.footnote)
                         .fontWeight(.semibold)
                         .foregroundStyle(expirationColor)
                 }

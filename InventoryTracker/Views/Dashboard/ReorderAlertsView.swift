@@ -43,7 +43,7 @@ struct ReorderAlertRow: View {
                     Text("Current: \(item.currentInventory) \(item.unit.abbreviation)")
                     Text("Reorder at: \(item.reorderLevel)")
                 }
-                .font(.caption)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
             }
 
@@ -53,7 +53,7 @@ struct ReorderAlertRow: View {
                 if let days = item.estimatedDaysUntilReorder {
                     if days <= 0 {
                         Text("Order Now")
-                            .font(.caption)
+                            .font(.footnote)
                             .fontWeight(.semibold)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8)
@@ -62,7 +62,7 @@ struct ReorderAlertRow: View {
                             .clipShape(Capsule())
                     } else {
                         Text("\(days) days left")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(days <= 7 ? .orange : .secondary)
                     }
                 }
@@ -70,7 +70,7 @@ struct ReorderAlertRow: View {
                 if let lowestPrice = item.lowestPricePaid,
                    let vendor = item.lowestPricePurchase?.vendor {
                     Text("Best: \(lowestPrice, format: .currency(code: "USD")) @ \(vendor.name)")
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.green)
                 }
             }

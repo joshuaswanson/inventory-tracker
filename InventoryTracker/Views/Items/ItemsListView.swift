@@ -3,12 +3,13 @@ import SwiftData
 
 struct ItemsListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Item.name) private var items: [Item]
+    @Query(sort: \Item.sortOrder) private var items: [Item]
 
     @State private var showingAddItem = false
     @State private var searchText = ""
     @State private var showingOnlyLowStock = false
     @State private var selectedItem: Item?
+    @State private var itemToEdit: Item?
 
     var filteredItems: [Item] {
         var result = items
@@ -25,39 +26,9 @@ struct ItemsListView: View {
     }
 
     var body: some View {
-        HSplitView {
-            // Left: Item list
-            VStack(spacing: 0) {
-                // Search and filter bar
-                HStack {
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
-                        TextField("Search items", text: $searchText)
-                            .textFieldStyle(.plain)
-                    }
-                    .padding(8)
-                    .background(Color.primary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                    Toggle(isOn: $showingOnlyLowStock) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 12))
-                    }
-                    .toggleStyle(.button)
-                    .controlSize(.small)
-                    .help("Show low stock only")
-
-                    Button(action: { showingAddItem = true }) {
-                        Image(systemName: "plus")
-                    }
-                    .help("Add item")
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-
-                Divider()
-
+        HStack(spacing: 0) {
+                // Left: Item list
+                VStack(spacing: 0) {
                 if filteredItems.isEmpty {
                     ContentUnavailableView {
                         Label("No Items", systemImage: "shippingbox")
@@ -70,40 +41,90 @@ struct ItemsListView: View {
                         ForEach(filteredItems) { item in
                             ItemRowView(item: item)
                                 .tag(item)
-                                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                                .listRowSeparator(.visible)
-                        }
-                        .onDelete(perform: deleteItems)
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                }
-            }
-            .frame(minWidth: 280, idealWidth: 320, maxWidth: 400)
-            .background(Color.primary.opacity(0.02))
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        modelContext.delete(item)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                }
+                                .contextMenu {
+                                    Button {
+                                        selectedItem = item
+                                        itemToEdit = item
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
 
-            // Right: Detail view
-            if let item = selectedItem {
-                ItemDetailView(item: item)
-                    .frame(minWidth: 400)
-            } else {
-                ContentUnavailableView {
-                    Label("No Item Selected", systemImage: "shippingbox")
-                } description: {
-                    Text("Select an item from the list to view details.")
+                                    Divider()
+
+                                    Button(role: .destructive) {
+                                        modelContext.delete(item)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                        }
+                        .onMove(perform: moveItems)
+                    }
+                    .listStyle(.inset(alternatesRowBackgrounds: false))
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(width: 300)
+            .searchable(text: $searchText, placement: .sidebar, prompt: "Search items")
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Toggle(isOn: $showingOnlyLowStock) {
+                        Label("Low Stock", systemImage: "exclamationmark.triangle")
+                    }
+                    .help("Show low stock only")
+                }
+
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { showingAddItem = true }) {
+                        Label("Add Item", systemImage: "plus")
+                    }
+                    .help("Add item")
+                }
+            }
+
+            Divider()
+
+            // Right: Detail view - always present to prevent snapping
+            Group {
+                if let item = selectedItem {
+                    ItemDetailView(item: item)
+                } else {
+                    ContentUnavailableView {
+                        Label("No Item Selected", systemImage: "shippingbox")
+                    } description: {
+                        Text("Select an item from the list to view details.")
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .sheet(isPresented: $showingAddItem) {
             AddItemView()
         }
+        .sheet(item: $itemToEdit) { item in
+            EditItemView(item: item)
+        }
+        .navigationTitle("Items")
     }
 
     private func deleteItems(at offsets: IndexSet) {
         for index in offsets {
             let item = filteredItems[index]
             modelContext.delete(item)
+        }
+    }
+
+    private func moveItems(from source: IndexSet, to destination: Int) {
+        var reorderedItems = filteredItems
+        reorderedItems.move(fromOffsets: source, toOffset: destination)
+        for (index, item) in reorderedItems.enumerated() {
+            item.sortOrder = index
         }
     }
 }
@@ -119,9 +140,9 @@ struct ItemRowView: View {
                         .font(.headline)
 
                     if item.isPerishable {
-                        Image(systemName: "leaf")
+                        Image(systemName: "leaf.fill")
                             .foregroundStyle(.green)
-                            .font(.caption)
+                            .font(.subheadline)
                     }
                 }
 
@@ -137,7 +158,9 @@ struct ItemRowView: View {
                     .foregroundStyle(.orange)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .padding(.leading, 12)
+        .padding(.trailing, 4)
     }
 }
 

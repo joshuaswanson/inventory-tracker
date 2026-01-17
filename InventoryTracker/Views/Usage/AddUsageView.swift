@@ -33,6 +33,7 @@ struct AddUsageView: View {
                                 Text(item.name).tag(item as Item?)
                             }
                         }
+                        .pickerStyle(.menu)
                     }
                 }
 

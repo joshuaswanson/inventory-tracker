@@ -19,18 +19,21 @@ struct UsageListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            Group {
                 if filteredUsage.isEmpty {
                     ContentUnavailableView {
                         Label("No Usage Records", systemImage: "chart.line.downtrend.xyaxis")
                     } description: {
                         Text("Record usage to track consumption rates and forecast reorders.")
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ForEach(filteredUsage) { usage in
-                        UsageRowView(usage: usage)
+                    List {
+                        ForEach(filteredUsage) { usage in
+                            UsageRowView(usage: usage)
+                        }
+                        .onDelete(perform: deleteUsage)
                     }
-                    .onDelete(perform: deleteUsage)
                 }
             }
             .navigationTitle("Usage")
@@ -73,7 +76,7 @@ struct UsageRowView: View {
 
                         if usage.isEstimate {
                             Label("Estimate", systemImage: "sparkle")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(.blue)
                         }
                     }

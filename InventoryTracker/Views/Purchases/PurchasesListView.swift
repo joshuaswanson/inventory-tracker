@@ -28,18 +28,21 @@ struct PurchasesListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            Group {
                 if filteredPurchases.isEmpty {
                     ContentUnavailableView {
                         Label("No Purchases", systemImage: "cart")
                     } description: {
                         Text("Record purchases to track inventory and pricing.")
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ForEach(filteredPurchases) { purchase in
-                        PurchaseRowView(purchase: purchase)
+                    List {
+                        ForEach(filteredPurchases) { purchase in
+                            PurchaseRowView(purchase: purchase)
+                        }
+                        .onDelete(perform: deletePurchases)
                     }
-                    .onDelete(perform: deletePurchases)
                 }
             }
             .navigationTitle("Purchases")
@@ -108,11 +111,11 @@ struct PurchaseRowView: View {
 
             if purchase.isExpired {
                 Label("Expired", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.red)
             } else if let days = purchase.daysUntilExpiration, days <= 30 {
                 Label("Expires in \(days) days", systemImage: "clock")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(days <= 7 ? .orange : .yellow)
             }
         }

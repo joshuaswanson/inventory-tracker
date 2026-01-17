@@ -27,9 +27,23 @@ struct ContentView: View {
     var body: some View {
         #if os(macOS)
         NavigationSplitView {
-            List(AppTab.allCases, selection: $selectedTab) { tab in
-                Label(tab.rawValue, systemImage: tab.icon)
-                    .tag(tab)
+            List(selection: $selectedTab) {
+                Label(AppTab.dashboard.rawValue, systemImage: AppTab.dashboard.icon)
+                    .tag(AppTab.dashboard)
+
+                Section("Inventory") {
+                    Label(AppTab.items.rawValue, systemImage: AppTab.items.icon)
+                        .tag(AppTab.items)
+                    Label(AppTab.vendors.rawValue, systemImage: AppTab.vendors.icon)
+                        .tag(AppTab.vendors)
+                }
+
+                Section("Activity") {
+                    Label(AppTab.purchases.rawValue, systemImage: AppTab.purchases.icon)
+                        .tag(AppTab.purchases)
+                    Label(AppTab.usage.rawValue, systemImage: AppTab.usage.icon)
+                        .tag(AppTab.usage)
+                }
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
         } detail: {
