@@ -124,17 +124,18 @@ struct UsageListView: View {
                     noResultsView
                 } else {
                     ScrollView {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 20) {
                             // Summary Header
                             summaryHeader
+                                .frame(maxWidth: 700)
                                 .padding(.horizontal)
-                                .padding(.top, 12)
+                                .padding(.top, 16)
 
                             // Grouped List
-                            LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
+                            LazyVStack(spacing: 20, pinnedViews: .sectionHeaders) {
                                 ForEach(groupedUsage, id: \.0) { section, sectionUsage in
                                     Section {
-                                        VStack(spacing: 8) {
+                                        VStack(spacing: 10) {
                                             ForEach(sectionUsage) { usage in
                                                 UsageCardView(usage: usage)
                                                     .contextMenu {
@@ -154,14 +155,16 @@ struct UsageListView: View {
                                                     }
                                             }
                                         }
+                                        .frame(maxWidth: .infinity)
                                         .padding(.horizontal)
                                     } header: {
                                         sectionHeader(section)
                                     }
                                 }
                             }
-                            .padding(.bottom, 16)
+                            .padding(.bottom, 20)
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .background(Color.primary.opacity(0.03))
                 }
@@ -312,21 +315,21 @@ struct UsageSummaryStatView: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 4) {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.subheadline)
+                    .font(.title3)
                     .foregroundStyle(color)
                 Text(value)
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.title3, design: .rounded))
                     .fontWeight(.bold)
             }
             Text(title)
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
@@ -337,40 +340,42 @@ struct UsageCardView: View {
     let usage: Usage
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             // Left accent bar - blue for actual, teal for estimate
-            RoundedRectangle(cornerRadius: 2)
+            RoundedRectangle(cornerRadius: 3)
                 .fill((usage.isEstimate ? Color.teal : Color.blue).gradient)
-                .frame(width: 4)
+                .frame(width: 5)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 // Top row: Item name and quantity
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         if let item = usage.item {
-                            HStack(spacing: 6) {
+                            HStack(spacing: 8) {
                                 Text(item.name)
-                                    .font(.headline)
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
                                     .lineLimit(1)
 
                                 if item.isPerishable {
                                     Image(systemName: "leaf.fill")
-                                        .font(.caption)
+                                        .font(.subheadline)
                                         .foregroundStyle(.green)
                                 }
                             }
 
                             // Current inventory hint
-                            HStack(spacing: 4) {
+                            HStack(spacing: 5) {
                                 Image(systemName: "shippingbox")
-                                    .font(.caption2)
+                                    .font(.caption)
                                 Text("\(item.currentInventory) \(item.unit.abbreviation) remaining")
                             }
-                            .font(.subheadline)
+                            .font(.body)
                             .foregroundStyle(item.needsReorder ? .orange : .secondary)
                         } else {
                             Text("Unknown Item")
-                                .font(.headline)
+                                .font(.title3)
+                                .fontWeight(.semibold)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -378,15 +383,15 @@ struct UsageCardView: View {
                     Spacer()
 
                     // Quantity badge
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 3) {
                         if let item = usage.item {
                             Text("-\(usage.quantity)")
-                                .font(.system(.title2, design: .rounded))
+                                .font(.system(.title, design: .rounded))
                                 .fontWeight(.bold)
                                 .foregroundStyle(.red)
 
                             Text(item.unit.abbreviation)
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -398,47 +403,48 @@ struct UsageCardView: View {
                 // Bottom row: Date and estimate indicator
                 HStack {
                     // Date
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "calendar")
-                            .font(.caption)
+                            .font(.subheadline)
                         Text(usage.date, style: .date)
                     }
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
 
                     Spacer()
 
                     // Estimate/Actual badge
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: usage.isEstimate ? "sparkle" : "checkmark.circle.fill")
                         Text(usage.isEstimate ? "Estimate" : "Actual")
                     }
-                    .font(.footnote)
+                    .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(usage.isEstimate ? .teal : .blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                     .background((usage.isEstimate ? Color.teal : Color.blue).opacity(0.1))
                     .clipShape(Capsule())
                 }
 
                 // Notes if present
                 if !usage.notes.isEmpty {
-                    HStack(alignment: .top, spacing: 4) {
+                    HStack(alignment: .top, spacing: 5) {
                         Image(systemName: "note.text")
-                            .font(.caption2)
+                            .font(.caption)
                         Text(usage.notes)
                             .lineLimit(2)
                     }
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
         }
-        .padding(12)
+        .padding(16)
+        .frame(maxWidth: 700)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 

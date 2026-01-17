@@ -127,17 +127,18 @@ struct PurchasesListView: View {
                     noResultsView
                 } else {
                     ScrollView {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 20) {
                             // Summary Header
                             summaryHeader
+                                .frame(maxWidth: 700)
                                 .padding(.horizontal)
-                                .padding(.top, 12)
+                                .padding(.top, 16)
 
                             // Grouped List
-                            LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
+                            LazyVStack(spacing: 20, pinnedViews: .sectionHeaders) {
                                 ForEach(groupedPurchases, id: \.0) { section, sectionPurchases in
                                     Section {
-                                        VStack(spacing: 8) {
+                                        VStack(spacing: 10) {
                                             ForEach(sectionPurchases) { purchase in
                                                 PurchaseCardView(purchase: purchase)
                                                     .contextMenu {
@@ -157,14 +158,16 @@ struct PurchasesListView: View {
                                                     }
                                             }
                                         }
+                                        .frame(maxWidth: .infinity)
                                         .padding(.horizontal)
                                     } header: {
                                         sectionHeader(section)
                                     }
                                 }
                             }
-                            .padding(.bottom, 16)
+                            .padding(.bottom, 20)
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .background(Color.primary.opacity(0.03))
                 }
@@ -324,21 +327,21 @@ struct SummaryStatView: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 4) {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.subheadline)
+                    .font(.title3)
                     .foregroundStyle(color)
                 Text(value)
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.title3, design: .rounded))
                     .fontWeight(.bold)
             }
             Text(title)
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
@@ -359,57 +362,59 @@ struct PurchaseCardView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             // Left accent bar for expiration status
             if purchase.expirationDate != nil {
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 3)
                     .fill(expirationColor.gradient)
-                    .frame(width: 4)
+                    .frame(width: 5)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 // Top row: Item name and price
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         if let item = purchase.item {
-                            HStack(spacing: 6) {
+                            HStack(spacing: 8) {
                                 Text(item.name)
-                                    .font(.headline)
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
                                     .lineLimit(1)
 
                                 if item.isPerishable {
                                     Image(systemName: "leaf.fill")
-                                        .font(.caption)
+                                        .font(.subheadline)
                                         .foregroundStyle(.green)
                                 }
                             }
                         } else {
                             Text("Unknown Item")
-                                .font(.headline)
+                                .font(.title3)
+                                .fontWeight(.semibold)
                                 .foregroundStyle(.secondary)
                         }
 
                         if let vendor = purchase.vendor {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 5) {
                                 Image(systemName: "building.2")
-                                    .font(.caption2)
+                                    .font(.caption)
                                 Text(vendor.name)
                             }
-                            .font(.subheadline)
+                            .font(.body)
                             .foregroundStyle(.secondary)
                         }
                     }
 
                     Spacer()
 
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 3) {
                         Text(purchase.pricePerUnit, format: .currency(code: "USD"))
-                            .font(.system(.headline, design: .rounded))
+                            .font(.system(.title3, design: .rounded))
                             .fontWeight(.bold)
                             .foregroundStyle(.green)
 
                         Text("per unit")
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -420,24 +425,24 @@ struct PurchaseCardView: View {
                 // Bottom row: Date, quantity, and expiration
                 HStack {
                     // Date
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "calendar")
-                            .font(.caption)
+                            .font(.subheadline)
                         Text(purchase.date, style: .date)
                     }
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
 
                     Spacer()
 
                     // Quantity
                     if let item = purchase.item {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 5) {
                             Image(systemName: "shippingbox")
-                                .font(.caption)
+                                .font(.subheadline)
                             Text("\(purchase.quantity) \(item.unit.abbreviation)")
                         }
-                        .font(.subheadline)
+                        .font(.body)
                         .foregroundStyle(.secondary)
                     }
 
@@ -445,54 +450,55 @@ struct PurchaseCardView: View {
 
                     // Total cost
                     Text(purchase.totalCost, format: .currency(code: "USD"))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .font(.body)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.primary)
                 }
 
                 // Expiration status if applicable
                 if purchase.isExpired {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "exclamationmark.triangle.fill")
                         Text("Expired")
                     }
-                    .font(.footnote)
+                    .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.red)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                     .background(Color.red.opacity(0.1))
                     .clipShape(Capsule())
                 } else if let days = purchase.daysUntilExpiration, days <= 30 {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "clock")
                         Text(days == 0 ? "Expires today" : days == 1 ? "Expires tomorrow" : "Expires in \(days) days")
                     }
-                    .font(.footnote)
+                    .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(days <= 7 ? .orange : .yellow)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                     .background((days <= 7 ? Color.orange : Color.yellow).opacity(0.1))
                     .clipShape(Capsule())
                 }
 
                 // Lot number if present
                 if !purchase.lotNumber.isEmpty {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "number")
-                            .font(.caption2)
+                            .font(.caption)
                         Text("Lot: \(purchase.lotNumber)")
                     }
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
         }
-        .padding(12)
+        .padding(16)
+        .frame(maxWidth: 700)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 
