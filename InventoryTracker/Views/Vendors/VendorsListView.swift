@@ -16,6 +16,7 @@ struct VendorsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
     @Query(filter: #Predicate<Vendor> { !$0.isDeleted }, sort: \Vendor.sortOrder) private var vendors: [Vendor]
+    @Query(filter: #Predicate<Item> { !$0.isDeleted }) private var items: [Item]
 
     @State private var showingAddVendor = false
     @State private var searchText = ""
@@ -51,6 +52,17 @@ struct VendorsListView: View {
 
     var unpinnedVendors: [Vendor] {
         filteredVendors.filter { !$0.isPinned }
+    }
+
+    // Check if vendor offers the best price on any item
+    func hasBestPriceOnAnyItem(_ vendor: Vendor) -> Bool {
+        for item in items {
+            if let bestPurchase = item.lowestPricePurchase,
+               bestPurchase.vendor?.id == vendor.id {
+                return true
+            }
+        }
+        return false
     }
 
     var body: some View {
@@ -211,7 +223,7 @@ struct VendorsListView: View {
 
     @ViewBuilder
     private func vendorRow(for vendor: Vendor) -> some View {
-        VendorRowView(vendor: vendor)
+        VendorRowView(vendor: vendor, hasBestPrice: hasBestPriceOnAnyItem(vendor))
             .tag(vendor)
             .onDoubleClick {
                 openWindow(value: VendorWindowID(id: vendor.id))
@@ -314,6 +326,7 @@ struct VendorsListView: View {
 
 struct VendorRowView: View {
     let vendor: Vendor
+    var hasBestPrice: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -326,8 +339,16 @@ struct VendorRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(vendor.name)
-                    .font(.headline)
+                HStack(spacing: 6) {
+                    Text(vendor.name)
+                        .font(.headline)
+
+                    if hasBestPrice {
+                        Image(systemName: "star.fill")
+                            .font(.caption)
+                            .foregroundStyle(.yellow)
+                    }
+                }
 
                 Text("\(vendor.totalPurchases) purchases")
                     .font(.subheadline)
