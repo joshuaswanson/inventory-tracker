@@ -19,15 +19,24 @@ struct AddPurchaseView: View {
     @State private var hasExpiration = false
     @State private var expirationDate = Calendar.current.date(byAdding: .month, value: 6, to: Date()) ?? Date()
     @State private var notes = ""
+    @State private var showValidationErrors = false
 
     var isFormValid: Bool {
         selectedItem != nil && !pricePerUnit.isEmpty && Double(pricePerUnit) != nil && quantity > 0
     }
 
+    var isItemMissing: Bool {
+        showValidationErrors && selectedItem == nil
+    }
+
+    var isPriceMissing: Bool {
+        showValidationErrors && (pricePerUnit.isEmpty || Double(pricePerUnit) == nil)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Item") {
+                Section {
                     if items.isEmpty {
                         Text("No items available. Add an item first.")
                             .foregroundStyle(.secondary)
@@ -39,6 +48,18 @@ struct AddPurchaseView: View {
                             }
                         }
                         .pickerStyle(.menu)
+
+                        if isItemMissing {
+                            Text("Please select an item")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Item")
+                        Text("*")
+                            .foregroundStyle(.red)
                     }
                 }
 
@@ -57,17 +78,38 @@ struct AddPurchaseView: View {
                     }
                 }
 
-                Section("Purchase Details") {
+                Section {
                     DatePicker("Purchase Date", selection: $purchaseDate, displayedComponents: .date)
 
                     Stepper("Quantity: \(quantity)", value: $quantity, in: 1...10000)
 
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("$")
+                            TextField("Price per unit", text: $pricePerUnit)
+                                #if os(iOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                        }
+                        .padding(8)
+                        .background(isPriceMissing ? Color.red.opacity(0.1) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(isPriceMissing ? Color.red : Color.clear, lineWidth: 1)
+                        )
+
+                        if isPriceMissing {
+                            Text("Please enter a valid price")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                } header: {
                     HStack {
-                        Text("$")
-                        TextField("Price per unit", text: $pricePerUnit)
-                            #if os(iOS)
-                            .keyboardType(.decimalPad)
-                            #endif
+                        Text("Purchase Details")
+                        Text("*")
+                            .foregroundStyle(.red)
                     }
                 }
 
@@ -115,9 +157,14 @@ struct AddPurchaseView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        addPurchase()
+                        if isFormValid {
+                            addPurchase()
+                        } else {
+                            withAnimation {
+                                showValidationErrors = true
+                            }
+                        }
                     }
-                    .disabled(!isFormValid)
                 }
             }
             .onAppear {

@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @Query private var items: [Item]
+    @Query private var vendors: [Vendor]
     @State private var selectedTab: AppTab = .dashboard
 
     enum AppTab: String, CaseIterable, Identifiable {
@@ -34,10 +36,22 @@ struct ContentView: View {
                     .tag(AppTab.dashboard)
 
                 Section("Inventory") {
-                    Label(AppTab.items.rawValue, systemImage: AppTab.items.icon)
-                        .tag(AppTab.items)
-                    Label(AppTab.vendors.rawValue, systemImage: AppTab.vendors.icon)
-                        .tag(AppTab.vendors)
+                    HStack {
+                        Label(AppTab.items.rawValue, systemImage: AppTab.items.icon)
+                        Spacer()
+                        Text("\(items.count)")
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                    }
+                    .tag(AppTab.items)
+                    HStack {
+                        Label(AppTab.vendors.rawValue, systemImage: AppTab.vendors.icon)
+                        Spacer()
+                        Text("\(vendors.count)")
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                    }
+                    .tag(AppTab.vendors)
                 }
 
                 Section("Activity") {
@@ -78,7 +92,7 @@ struct ContentView: View {
     private func selectedView(for tab: AppTab) -> some View {
         switch tab {
         case .dashboard:
-            DashboardView()
+            DashboardView(selectedTab: $selectedTab)
         case .items:
             ItemsListView()
         case .purchases:

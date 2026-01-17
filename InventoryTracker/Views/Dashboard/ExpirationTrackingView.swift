@@ -8,11 +8,12 @@ struct ExpirationTrackingView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Expiring Soon", systemImage: "clock.fill")
-                    .font(.headline)
+                    .font(.title2)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.red)
                 Spacer()
                 Text("\(expiringItems.count) item(s)")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
             }
 
@@ -48,19 +49,19 @@ struct ExpirationRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.medium)
 
                 HStack {
                     if let expDate = purchase.expirationDate {
                         Text("Expires: \(expDate, style: .date)")
-                            .font(.footnote)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
 
                     if !purchase.lotNumber.isEmpty {
                         Text("Lot: \(purchase.lotNumber)")
-                            .font(.footnote)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -70,27 +71,27 @@ struct ExpirationRow: View {
 
             VStack(alignment: .trailing, spacing: 4) {
                 Text("\(purchase.remainingQuantity) \(item.unit.abbreviation) left")
-                    .font(.footnote)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
 
                 if daysLeft <= 0 {
                     Text("EXPIRED")
-                        .font(.footnote)
+                        .font(.subheadline)
                         .fontWeight(.bold)
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
                         .background(.red)
                         .clipShape(Capsule())
                 } else {
                     Text("\(daysLeft) days")
-                        .font(.footnote)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(expirationColor)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 

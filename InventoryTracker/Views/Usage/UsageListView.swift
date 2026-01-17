@@ -20,7 +20,8 @@ struct UsageListView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                Divider()
                 if filteredUsage.isEmpty {
                     ContentUnavailableView {
                         Label("No Usage Records", systemImage: "chart.line.downtrend.xyaxis")
@@ -28,6 +29,14 @@ struct UsageListView: View {
                         Text("Record usage to track consumption rates and forecast reorders.")
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingAddUsage = true
+                        } label: {
+                            Label("Record Usage", systemImage: "plus")
+                        }
+                    }
                 } else {
                     List {
                         ForEach(filteredUsage) { usage in
@@ -54,6 +63,13 @@ struct UsageListView: View {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
+                        }
+                    }
+                    .contextMenu {
+                        Button {
+                            showingAddUsage = true
+                        } label: {
+                            Label("Record Usage", systemImage: "plus")
                         }
                     }
                 }

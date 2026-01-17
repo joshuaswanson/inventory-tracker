@@ -30,17 +30,20 @@ enum WidgetSize: String, Codable, CaseIterable {
 }
 
 enum DashboardItem: String, CaseIterable, Identifiable, Codable {
-    case totalItems = "Total Items"
+    case items = "Items"
     case lowStock = "Low Stock"
     case expiringSoon = "Expiring Soon"
     case inventoryValue = "Inventory Value"
     case priceAnalytics = "Price Analytics"
+    case vendors = "Vendors"
+    case purchases = "Recent Purchases"
+    case usage = "Recent Usage"
 
     var id: String { rawValue }
 
     var defaultSize: WidgetSize {
         switch self {
-        case .totalItems, .lowStock, .expiringSoon, .inventoryValue:
+        case .items, .lowStock, .expiringSoon, .inventoryValue, .vendors, .purchases, .usage:
             return .small
         case .priceAnalytics:
             return .medium
@@ -49,21 +52,27 @@ enum DashboardItem: String, CaseIterable, Identifiable, Codable {
 
     var icon: String {
         switch self {
-        case .totalItems: return "shippingbox.fill"
+        case .items: return "shippingbox.fill"
         case .lowStock: return "exclamationmark.triangle.fill"
         case .expiringSoon: return "clock.fill"
         case .inventoryValue: return "dollarsign.circle.fill"
         case .priceAnalytics: return "dollarsign.circle.fill"
+        case .vendors: return "building.2.fill"
+        case .purchases: return "cart.fill"
+        case .usage: return "arrow.down.circle.fill"
         }
     }
 
     var color: Color {
         switch self {
-        case .totalItems: return .blue
+        case .items: return .blue
         case .lowStock: return .orange
         case .expiringSoon: return .red
         case .inventoryValue: return .green
         case .priceAnalytics: return .green
+        case .vendors: return .purple
+        case .purchases: return .cyan
+        case .usage: return .pink
         }
     }
 }
@@ -77,9 +86,12 @@ struct GridCell: Equatable {
 }
 
 struct DashboardView: View {
+    @Binding var selectedTab: ContentView.AppTab
+    @Environment(\.openWindow) private var openWindow
     @Query private var items: [Item]
     @Query private var purchases: [Purchase]
     @Query private var vendors: [Vendor]
+    @Query private var usages: [Usage]
 
     @AppStorage("dashboardItemOrder") private var itemOrderData: Data = Data()
     @AppStorage("dashboardWidgetSizes") private var widgetSizesData: Data = Data()
@@ -91,7 +103,7 @@ struct DashboardView: View {
 
     private let columns = 4
     private let spacing: CGFloat = 18
-    private let cellSize: CGFloat = 158
+    private let cellSize: CGFloat = 165
 
     var itemsNeedingReorder: [Item] {
         items.filter { $0.needsReorder }
@@ -179,6 +191,7 @@ struct DashboardView: View {
 
                 ZStack(alignment: .topLeading) {
                     ForEach(layout.cells, id: \.item.id) { cell in
+                        let widgetSize = sizeFor(cell.item)
                         let x = CGFloat(cell.col) * (cellSize + spacing)
                         let y = CGFloat(cell.row) * (cellSize + spacing)
                         let width = CGFloat(cell.colSpan) * cellSize + CGFloat(cell.colSpan - 1) * spacing
@@ -203,12 +216,31 @@ struct DashboardView: View {
         }
     }
 
+    private func targetTab(for item: DashboardItem) -> ContentView.AppTab? {
+        switch item {
+        case .items, .lowStock, .expiringSoon, .inventoryValue, .priceAnalytics:
+            return .items
+        case .vendors:
+            return .vendors
+        case .purchases:
+            return .purchases
+        case .usage:
+            return .usage
+        }
+    }
+
     @ViewBuilder
     private func draggableCard(for item: DashboardItem, size: CGSize) -> some View {
         let currentSize = sizeFor(item)
 
         cardView(for: item, size: currentSize)
             .id(item.id)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if currentSize == .small, let tab = targetTab(for: item) {
+                    selectedTab = tab
+                }
+            }
             .contextMenu {
                 Section("Size") {
                     ForEach(WidgetSize.allCases, id: \.self) { widgetSize in
@@ -218,13 +250,7 @@ struct DashboardView: View {
                                 saveSettings()
                             }
                         } label: {
-                            HStack {
-                                Text(widgetSize.rawValue)
-                                if currentSize == widgetSize {
-                                    Spacer()
-                                    Image(systemName: "checkmark")
-                                }
-                            }
+                            Label(widgetSize.rawValue, systemImage: currentSize == widgetSize ? "checkmark" : "")
                         }
                     }
                 }
@@ -261,15 +287,16 @@ struct DashboardView: View {
     @ViewBuilder
     private func cardView(for item: DashboardItem, size: WidgetSize, isPreview: Bool = false) -> some View {
         switch item {
-        case .totalItems:
+        case .items:
             WidgetCard(
-                title: "Total Items",
+                title: "Items",
                 value: items.count,
                 icon: item.icon,
                 color: item.color,
                 size: size,
-                items: items.map { ($0.name, "\($0.currentInventory) \($0.unit.abbreviation)") },
-                isPreview: isPreview
+                items: items.map { WidgetItem(name: $0.name, detail: "\($0.currentInventory) \($0.unit.abbreviation)", id: $0.id, showPill: false) },
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
             )
         case .lowStock:
             WidgetCard(
@@ -278,8 +305,9 @@ struct DashboardView: View {
                 icon: item.icon,
                 color: itemsNeedingReorder.isEmpty ? .green : item.color,
                 size: size,
-                items: itemsNeedingReorder.map { ($0.name, "\($0.currentInventory)/\($0.reorderLevel)") },
-                isPreview: isPreview
+                items: itemsNeedingReorder.map { WidgetItem(name: $0.name, detail: "\($0.currentInventory)/\($0.reorderLevel)", id: $0.id) },
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
             )
         case .expiringSoon:
             WidgetCard(
@@ -288,8 +316,9 @@ struct DashboardView: View {
                 icon: item.icon,
                 color: expiringItems.isEmpty ? .green : item.color,
                 size: size,
-                items: expiringItems.map { ($0.item.name, "\($0.daysLeft) days") },
-                isPreview: isPreview
+                items: expiringItems.map { WidgetItem(name: $0.item.name, detail: "\($0.daysLeft) days", id: $0.item.id) },
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
             )
         case .inventoryValue:
             WidgetCard(
@@ -301,9 +330,10 @@ struct DashboardView: View {
                 items: items.compactMap { item in
                     guard let avgPrice = item.averagePricePaid else { return nil }
                     let value = Double(item.currentInventory) * avgPrice
-                    return (item.name, value.formatted(.currency(code: "USD")))
+                    return WidgetItem(name: item.name, detail: value.formatted(.currency(code: "USD")), id: item.id)
                 },
-                isPreview: isPreview
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
             )
         case .priceAnalytics:
             let itemsWithPricing = items.filter { $0.lowestPricePaid != nil }
@@ -315,9 +345,51 @@ struct DashboardView: View {
                 size: size,
                 items: itemsWithPricing.compactMap { item in
                     guard let price = item.lowestPricePaid else { return nil }
-                    return (item.name, price.formatted(.currency(code: "USD")))
+                    return WidgetItem(name: item.name, detail: price.formatted(.currency(code: "USD")), id: item.id)
                 },
-                isPreview: isPreview
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+            )
+        case .vendors:
+            WidgetCard(
+                title: "Vendors",
+                value: vendors.count,
+                icon: item.icon,
+                color: item.color,
+                size: size,
+                items: vendors.map { WidgetItem(name: $0.name, detail: $0.phone ?? "", id: $0.id) },
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: VendorWindowID(id: id)) }
+            )
+        case .purchases:
+            WidgetCard(
+                title: "Recent Purchases",
+                value: purchases.count,
+                icon: item.icon,
+                color: item.color,
+                size: size,
+                items: purchases.prefix(10).map { purchase in
+                    let itemName = purchase.item?.name ?? "Unknown"
+                    let detail = purchase.totalCost.formatted(.currency(code: "USD"))
+                    return WidgetItem(name: itemName, detail: detail, id: purchase.item?.id)
+                },
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+            )
+        case .usage:
+            WidgetCard(
+                title: "Recent Usage",
+                value: usages.count,
+                icon: item.icon,
+                color: item.color,
+                size: size,
+                items: usages.prefix(10).map { usage in
+                    let itemName = usage.item?.name ?? "Unknown"
+                    let detail = "\(usage.quantity) used"
+                    return WidgetItem(name: itemName, detail: detail, id: usage.item?.id)
+                },
+                isPreview: isPreview,
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
             )
         }
     }
@@ -392,6 +464,20 @@ struct DashboardItemDropDelegate: DropDelegate {
     }
 }
 
+struct WidgetItem: Identifiable {
+    let id: UUID?
+    let name: String
+    let detail: String
+    let showPill: Bool
+
+    init(name: String, detail: String, id: UUID? = nil, showPill: Bool = true) {
+        self.id = id
+        self.name = name
+        self.detail = detail
+        self.showPill = showPill
+    }
+}
+
 // Unified widget card that adapts to size
 struct WidgetCard: View {
     let title: String
@@ -399,8 +485,9 @@ struct WidgetCard: View {
     let icon: String
     let color: Color
     let size: WidgetSize
-    let items: [(name: String, detail: String)]
+    let items: [WidgetItem]
     var isPreview: Bool = false
+    var onItemTap: ((UUID) -> Void)? = nil
 
     private var displayValue: String {
         if let intVal = value as? Int {
@@ -420,7 +507,7 @@ struct WidgetCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: size == .small ? 8 : 10) {
+        VStack(alignment: .leading, spacing: size == .small ? 8 : 14) {
             // Header
             HStack {
                 Image(systemName: icon)
@@ -442,6 +529,7 @@ struct WidgetCard: View {
                         .foregroundStyle(color)
                 }
             }
+            .padding(.horizontal, size == .small ? 0 : 4)
 
             if size == .small {
                 Spacer()
@@ -452,7 +540,7 @@ struct WidgetCard: View {
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
                         Text(title)
-                            .font(.subheadline)
+                            .font(.title3)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -474,22 +562,7 @@ struct WidgetCard: View {
                                 Divider()
                                     .padding(.horizontal, 4)
                             }
-                            HStack(spacing: 8) {
-                                Text(item.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .lineLimit(1)
-                                Spacer()
-                                Text(item.detail)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(color)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(color.opacity(0.15))
-                                    .clipShape(Capsule())
-                            }
-                            .padding(.vertical, 6)
+                            itemRow(item: item)
                         }
                     }
                 } else {
@@ -500,22 +573,7 @@ struct WidgetCard: View {
                                 Divider()
                                     .padding(.horizontal, 4)
                             }
-                            HStack(spacing: 8) {
-                                Text(item.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .lineLimit(1)
-                                Spacer()
-                                Text(item.detail)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(color)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(color.opacity(0.15))
-                                    .clipShape(Capsule())
-                            }
-                            .padding(.vertical, 6)
+                            itemRow(item: item)
                         }
                         if items.count > maxItems {
                             Divider()
@@ -530,7 +588,6 @@ struct WidgetCard: View {
 
                     if isPreview {
                         listContent
-                        Spacer(minLength: 0)
                     } else {
                         ScrollView {
                             listContent
@@ -539,15 +596,52 @@ struct WidgetCard: View {
                 }
             }
         }
-        .padding(size == .small ? 12 : 14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+        .padding(.bottom, size == .small ? 14 : 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
     }
+
+    @ViewBuilder
+    private func itemRow(item: WidgetItem) -> some View {
+        let rowContent = HStack(spacing: 8) {
+            Text(item.name)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .lineLimit(1)
+            Spacer()
+            if !item.detail.isEmpty {
+                Text(item.detail)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(item.showPill ? color : .secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(item.showPill ? color.opacity(0.15) : .clear)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+
+        if let id = item.id, let onItemTap = onItemTap {
+            Button {
+                onItemTap(id)
+            } label: {
+                rowContent
+            }
+            .buttonStyle(.plain)
+        } else {
+            rowContent
+        }
+    }
 }
 
 #Preview {
-    DashboardView()
+    @Previewable @State var selectedTab: ContentView.AppTab = .dashboard
+    DashboardView(selectedTab: $selectedTab)
         .modelContainer(for: [Item.self, Vendor.self, Purchase.self, Usage.self], inMemory: true)
 }

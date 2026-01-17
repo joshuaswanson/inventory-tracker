@@ -13,6 +13,7 @@ struct AddItemView: View {
     @State private var notes = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var imageData: Data?
+    @FocusState private var focusedField: Bool
 
     var body: some View {
         NavigationStack {
@@ -60,6 +61,7 @@ struct AddItemView: View {
 
                 Section("Item Details") {
                     TextField("Item Name", text: $name)
+                        .focused($focusedField)
 
                     Picker("Unit of Measure", selection: $selectedUnit) {
                         ForEach(UnitOfMeasure.allCases) { unit in
@@ -74,8 +76,10 @@ struct AddItemView: View {
 
                 Section("Notes (Optional)") {
                     TextEditor(text: $notes)
+                        .font(.body)
                         .frame(minHeight: 100)
                         .scrollContentBackground(.hidden)
+                        .focused($focusedField)
                 }
             }
             .onChange(of: selectedPhoto) { _, newValue in
@@ -107,6 +111,9 @@ struct AddItemView: View {
         #if os(macOS)
         .frame(minWidth: 400, minHeight: 350)
         .padding()
+        .onTapGesture {
+            focusedField = false
+        }
         #endif
     }
 

@@ -36,12 +36,27 @@ struct PurchasesListView: View {
                         Text("Record purchases to track inventory and pricing.")
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingAddPurchase = true
+                        } label: {
+                            Label("Add Purchase", systemImage: "plus")
+                        }
+                    }
                 } else {
                     List {
                         ForEach(filteredPurchases) { purchase in
                             PurchaseRowView(purchase: purchase)
                         }
                         .onDelete(perform: deletePurchases)
+                    }
+                    .contextMenu {
+                        Button {
+                            showingAddPurchase = true
+                        } label: {
+                            Label("Add Purchase", systemImage: "plus")
+                        }
                     }
                 }
             }
