@@ -87,6 +87,7 @@ struct DashboardView: View {
     @State private var itemOrder: [DashboardItem] = DashboardItem.allCases
     @State private var widgetSizes: [DashboardItem: WidgetSize] = [:]
     @State private var draggingItem: DashboardItem?
+    @State private var droppingItem: DashboardItem?
 
     private let columns = 4
     private let spacing: CGFloat = 18
@@ -239,25 +240,26 @@ struct DashboardView: View {
                     Label("Remove Widget", systemImage: "trash")
                 }
             }
-            .opacity(draggingItem == item ? 0.4 : 1.0)
+            .opacity(draggingItem == item ? 0.4 : (droppingItem == item ? 0 : 1.0))
             .onDrag {
                 draggingItem = item
                 return NSItemProvider(object: item.rawValue as NSString)
             } preview: {
-                cardView(for: item, size: currentSize)
+                cardView(for: item, size: currentSize, isPreview: true)
                     .frame(width: size.width, height: size.height)
-                    .drawingGroup()
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .onDrop(of: [.text], delegate: DashboardItemDropDelegate(
                 item: item,
                 items: $itemOrder,
                 draggingItem: $draggingItem,
+                droppingItem: $droppingItem,
                 onReorder: saveSettings
             ))
     }
 
     @ViewBuilder
-    private func cardView(for item: DashboardItem, size: WidgetSize) -> some View {
+    private func cardView(for item: DashboardItem, size: WidgetSize, isPreview: Bool = false) -> some View {
         switch item {
         case .totalItems:
             WidgetCard(
@@ -266,7 +268,8 @@ struct DashboardView: View {
                 icon: item.icon,
                 color: item.color,
                 size: size,
-                items: items.map { ($0.name, "\($0.currentInventory) \($0.unit.abbreviation)") }
+                items: items.map { ($0.name, "\($0.currentInventory) \($0.unit.abbreviation)") },
+                isPreview: isPreview
             )
         case .lowStock:
             WidgetCard(
@@ -275,7 +278,8 @@ struct DashboardView: View {
                 icon: item.icon,
                 color: itemsNeedingReorder.isEmpty ? .green : item.color,
                 size: size,
-                items: itemsNeedingReorder.map { ($0.name, "\($0.currentInventory)/\($0.reorderLevel)") }
+                items: itemsNeedingReorder.map { ($0.name, "\($0.currentInventory)/\($0.reorderLevel)") },
+                isPreview: isPreview
             )
         case .expiringSoon:
             WidgetCard(
@@ -284,7 +288,8 @@ struct DashboardView: View {
                 icon: item.icon,
                 color: expiringItems.isEmpty ? .green : item.color,
                 size: size,
-                items: expiringItems.map { ($0.item.name, "\($0.daysLeft) days") }
+                items: expiringItems.map { ($0.item.name, "\($0.daysLeft) days") },
+                isPreview: isPreview
             )
         case .inventoryValue:
             WidgetCard(
@@ -297,7 +302,8 @@ struct DashboardView: View {
                     guard let avgPrice = item.averagePricePaid else { return nil }
                     let value = Double(item.currentInventory) * avgPrice
                     return (item.name, value.formatted(.currency(code: "USD")))
-                }
+                },
+                isPreview: isPreview
             )
         case .priceAnalytics:
             let itemsWithPricing = items.filter { $0.lowestPricePaid != nil }
@@ -310,7 +316,8 @@ struct DashboardView: View {
                 items: itemsWithPricing.compactMap { item in
                     guard let price = item.lowestPricePaid else { return nil }
                     return (item.name, price.formatted(.currency(code: "USD")))
-                }
+                },
+                isPreview: isPreview
             )
         }
     }
@@ -354,11 +361,18 @@ struct DashboardItemDropDelegate: DropDelegate {
     let item: DashboardItem
     @Binding var items: [DashboardItem]
     @Binding var draggingItem: DashboardItem?
+    @Binding var droppingItem: DashboardItem?
     let onReorder: () -> Void
 
     func performDrop(info: DropInfo) -> Bool {
+        droppingItem = draggingItem
         draggingItem = nil
         onReorder()
+
+        // Show the widget after the drag preview animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            droppingItem = nil
+        }
         return true
     }
 
@@ -386,6 +400,7 @@ struct WidgetCard: View {
     let color: Color
     let size: WidgetSize
     let items: [(name: String, detail: String)]
+    var isPreview: Bool = false
 
     private var displayValue: String {
         if let intVal = value as? Int {
@@ -478,40 +493,47 @@ struct WidgetCard: View {
                         }
                     }
                 } else {
-                    // Large: scrollable list
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(items.prefix(maxItems).enumerated()), id: \.element.name) { index, item in
-                                if index > 0 {
-                                    Divider()
-                                        .padding(.horizontal, 4)
-                                }
-                                HStack(spacing: 8) {
-                                    Text(item.name)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Text(item.detail)
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(color)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(color.opacity(0.15))
-                                        .clipShape(Capsule())
-                                }
-                                .padding(.vertical, 6)
-                            }
-                            if items.count > maxItems {
+                    // Large: scrollable list (use VStack for preview since ScrollView doesn't render)
+                    let listContent = VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(items.prefix(maxItems).enumerated()), id: \.element.name) { index, item in
+                            if index > 0 {
                                 Divider()
                                     .padding(.horizontal, 4)
-                                Text("+\(items.count - maxItems) more")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding(.vertical, 6)
                             }
+                            HStack(spacing: 8) {
+                                Text(item.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(item.detail)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(color)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(color.opacity(0.15))
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.vertical, 6)
+                        }
+                        if items.count > maxItems {
+                            Divider()
+                                .padding(.horizontal, 4)
+                            Text("+\(items.count - maxItems) more")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 6)
+                        }
+                    }
+
+                    if isPreview {
+                        listContent
+                        Spacer(minLength: 0)
+                    } else {
+                        ScrollView {
+                            listContent
                         }
                     }
                 }
