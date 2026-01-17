@@ -89,9 +89,9 @@ struct DashboardView: View {
     @Binding var selectedTab: ContentView.AppTab
     @Environment(\.openWindow) private var openWindow
     @Query private var items: [Item]
-    @Query private var purchases: [Purchase]
+    @Query(sort: \Purchase.date, order: .reverse) private var purchases: [Purchase]
     @Query private var vendors: [Vendor]
-    @Query private var usages: [Usage]
+    @Query(sort: \Usage.date, order: .reverse) private var usages: [Usage]
 
     @AppStorage("dashboardItemOrder") private var itemOrderData: Data = Data()
     @AppStorage("dashboardWidgetSizes") private var widgetSizesData: Data = Data()
@@ -295,7 +295,8 @@ struct DashboardView: View {
                 size: size,
                 items: items.map { WidgetItem(name: $0.name, detail: "\($0.currentInventory) \($0.unit.abbreviation)", id: $0.id, showPill: false) },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) },
+                onMoreTap: { selectedTab = .items }
             )
         case .lowStock:
             WidgetCard(
@@ -306,7 +307,8 @@ struct DashboardView: View {
                 size: size,
                 items: itemsNeedingReorder.map { WidgetItem(name: $0.name, detail: "\($0.currentInventory)/\($0.reorderLevel)", id: $0.id) },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) },
+                onMoreTap: { selectedTab = .items }
             )
         case .expiringSoon:
             WidgetCard(
@@ -317,7 +319,8 @@ struct DashboardView: View {
                 size: size,
                 items: expiringItems.map { WidgetItem(name: $0.item.name, detail: "\($0.daysLeft) days", id: $0.item.id) },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) },
+                onMoreTap: { selectedTab = .items }
             )
         case .inventoryValue:
             WidgetCard(
@@ -332,7 +335,8 @@ struct DashboardView: View {
                     return WidgetItem(name: item.name, detail: value.formatted(.currency(code: "USD")), id: item.id)
                 },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) },
+                onMoreTap: { selectedTab = .items }
             )
         case .priceAnalytics:
             let itemsWithPricing = items.filter { $0.lowestPricePaid != nil }
@@ -347,7 +351,8 @@ struct DashboardView: View {
                     return WidgetItem(name: item.name, detail: price.formatted(.currency(code: "USD")), id: item.id)
                 },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) },
+                onMoreTap: { selectedTab = .items }
             )
         case .vendors:
             WidgetCard(
@@ -358,7 +363,8 @@ struct DashboardView: View {
                 size: size,
                 items: vendors.map { WidgetItem(name: $0.name, detail: $0.phone ?? "", id: $0.id) },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: VendorWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: VendorWindowID(id: id)) },
+                onMoreTap: { selectedTab = .vendors }
             )
         case .purchases:
             WidgetCard(
@@ -369,11 +375,12 @@ struct DashboardView: View {
                 size: size,
                 items: purchases.prefix(10).map { purchase in
                     let itemName = purchase.item?.name ?? "Unknown"
-                    let detail = purchase.totalCost.formatted(.currency(code: "USD"))
+                    let detail = "\(purchase.date.formatted(date: .abbreviated, time: .omitted)) · \(purchase.totalCost.formatted(.currency(code: "USD")))"
                     return WidgetItem(name: itemName, detail: detail, id: purchase.item?.id)
                 },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) },
+                onMoreTap: { selectedTab = .purchases }
             )
         case .usage:
             WidgetCard(
@@ -384,11 +391,12 @@ struct DashboardView: View {
                 size: size,
                 items: usages.prefix(10).map { usage in
                     let itemName = usage.item?.name ?? "Unknown"
-                    let detail = "\(usage.quantity) used"
+                    let detail = "\(usage.date.formatted(date: .abbreviated, time: .omitted)) · \(usage.quantity) used"
                     return WidgetItem(name: itemName, detail: detail, id: usage.item?.id)
                 },
                 isPreview: isPreview,
-                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) }
+                onItemTap: { id in openWindow(value: ItemWindowID(id: id)) },
+                onMoreTap: { selectedTab = .usage }
             )
         }
     }
@@ -487,6 +495,7 @@ struct WidgetCard: View {
     let items: [WidgetItem]
     var isPreview: Bool = false
     var onItemTap: ((UUID) -> Void)? = nil
+    var onMoreTap: (() -> Void)? = nil
 
     private var displayValue: String {
         if let intVal = value as? Int {
@@ -566,11 +575,7 @@ struct WidgetCard: View {
                         if items.count > maxItems {
                             Divider()
                                 .padding(.horizontal, 4)
-                            Text("+\(items.count - maxItems) more")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 6)
+                            moreButton(count: items.count - maxItems)
                         }
                     }
                 } else {
@@ -586,11 +591,7 @@ struct WidgetCard: View {
                         if items.count > maxItems {
                             Divider()
                                 .padding(.horizontal, 4)
-                            Text("+\(items.count - maxItems) more")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 6)
+                            moreButton(count: items.count - maxItems)
                         }
                     }
                 }
@@ -636,6 +637,29 @@ struct WidgetCard: View {
             .buttonStyle(.plain)
         } else {
             rowContent
+        }
+    }
+
+    @ViewBuilder
+    private func moreButton(count: Int) -> some View {
+        if let onMoreTap = onMoreTap {
+            Button {
+                onMoreTap()
+            } label: {
+                Text("+\(count) more")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(color)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+        } else {
+            Text("+\(count) more")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 10)
         }
     }
 }
