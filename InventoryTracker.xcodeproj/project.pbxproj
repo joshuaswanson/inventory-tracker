@@ -34,6 +34,7 @@
 		A1000025001 /* RecentlyDeletedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000 /* RecentlyDeletedView.swift */; };
 		A1000026001 /* PhoneFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026000 /* PhoneFormatter.swift */; };
 		A1000027001 /* DoubleClickHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000 /* DoubleClickHandler.swift */; };
+		A1000028001 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000028000 /* DuplicatesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +66,7 @@
 		A1000025000 /* RecentlyDeletedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentlyDeletedView.swift; sourceTree = "<group>"; };
 		A1000026000 /* PhoneFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneFormatter.swift; sourceTree = "<group>"; };
 		A1000027000 /* DoubleClickHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoubleClickHandler.swift; sourceTree = "<group>"; };
+		A1000028000 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +129,7 @@
 				A1000000011 /* Purchases */,
 				A1000000012 /* Usage */,
 				A1000000014 /* Dashboard */,
+				A1000028000 /* DuplicatesView.swift */,
 				A1000025000 /* RecentlyDeletedView.swift */,
 			);
 			path = Views;
@@ -287,6 +290,7 @@
 				A1000025001 /* RecentlyDeletedView.swift in Sources */,
 				A1000026001 /* PhoneFormatter.swift in Sources */,
 				A1000027001 /* DoubleClickHandler.swift in Sources */,
+				A1000028001 /* DuplicatesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
