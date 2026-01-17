@@ -17,7 +17,7 @@ struct UsageListView: View {
     @State private var usageToEdit: Usage?
     @State private var sortOption: UsageSortOption = .dateNewest
     @State private var showEstimatesOnly = false
-    @FocusState private var focusedUsageId: UUID?
+    @State private var contextMenuUsageId: UUID?
 
     var filteredUsage: [Usage] {
         var result = usageRecords
@@ -147,11 +147,15 @@ struct UsageListView: View {
                                     Section {
                                         VStack(spacing: 10) {
                                             ForEach(sectionUsage) { usage in
-                                                UsageCardView(usage: usage, isHighlighted: focusedUsageId == usage.id)
-                                                    .focusable()
-                                                    .focused($focusedUsageId, equals: usage.id)
+                                                UsageCardView(usage: usage, isHighlighted: contextMenuUsageId == usage.id)
+                                                    .onRightClick {
+                                                        contextMenuUsageId = usage.id
+                                                    } onDismiss: {
+                                                        contextMenuUsageId = nil
+                                                    }
                                                     .contextMenu {
                                                         Button {
+                                                            contextMenuUsageId = nil
                                                             usageToEdit = usage
                                                         } label: {
                                                             Label("Edit", systemImage: "pencil")
@@ -160,6 +164,7 @@ struct UsageListView: View {
                                                         Divider()
 
                                                         Button(role: .destructive) {
+                                                            contextMenuUsageId = nil
                                                             modelContext.delete(usage)
                                                         } label: {
                                                             Label("Delete", systemImage: "trash")
@@ -465,7 +470,6 @@ struct UsageCardView: View {
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(accentColor.opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
         )
-        .animation(.easeInOut(duration: 0.15), value: isHighlighted)
     }
 }
 

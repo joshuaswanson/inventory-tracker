@@ -1,5 +1,79 @@
 import SwiftUI
 import SwiftData
+import AppKit
+
+// MARK: - Right Click Detection
+struct RightClickModifier: ViewModifier {
+    let onRightClick: () -> Void
+    let onDismiss: () -> Void
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            RightClickListeningView(onRightClick: onRightClick, onDismiss: onDismiss)
+        }
+    }
+}
+
+struct RightClickListeningView: NSViewRepresentable {
+    let onRightClick: () -> Void
+    let onDismiss: () -> Void
+
+    func makeNSView(context: Context) -> RightClickNSView {
+        RightClickNSView(onRightClick: onRightClick, onDismiss: onDismiss)
+    }
+
+    func updateNSView(_ nsView: RightClickNSView, context: Context) {
+        nsView.onRightClick = onRightClick
+        nsView.onDismiss = onDismiss
+    }
+}
+
+class RightClickNSView: NSView {
+    var onRightClick: () -> Void
+    var onDismiss: () -> Void
+    var observer: NSObjectProtocol?
+
+    init(onRightClick: @escaping () -> Void, onDismiss: @escaping () -> Void) {
+        self.onRightClick = onRightClick
+        self.onDismiss = onDismiss
+        super.init(frame: .zero)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        onRightClick()
+
+        // Listen for menu closing notification
+        observer = NotificationCenter.default.addObserver(
+            forName: NSMenu.didEndTrackingNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.onDismiss()
+            if let observer = self?.observer {
+                NotificationCenter.default.removeObserver(observer)
+                self?.observer = nil
+            }
+        }
+
+        super.rightMouseDown(with: event)
+    }
+
+    deinit {
+        if let observer = observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+}
+
+extension View {
+    func onRightClick(perform action: @escaping () -> Void, onDismiss: @escaping () -> Void = {}) -> some View {
+        modifier(RightClickModifier(onRightClick: action, onDismiss: onDismiss))
+    }
+}
 
 enum PurchaseSortOption: String, CaseIterable {
     case dateNewest = "Newest First"
@@ -19,7 +93,7 @@ struct PurchasesListView: View {
     @State private var sortOption: PurchaseSortOption = .dateNewest
     @State private var showExpiringSoonOnly = false
     @State private var purchaseToEdit: Purchase?
-    @FocusState private var focusedPurchaseId: UUID?
+    @State private var contextMenuPurchaseId: UUID?
 
     var filteredPurchases: [Purchase] {
         var result = purchases
@@ -150,11 +224,15 @@ struct PurchasesListView: View {
                                     Section {
                                         VStack(spacing: 10) {
                                             ForEach(sectionPurchases) { purchase in
-                                                PurchaseCardView(purchase: purchase, isHighlighted: focusedPurchaseId == purchase.id)
-                                                    .focusable()
-                                                    .focused($focusedPurchaseId, equals: purchase.id)
+                                                PurchaseCardView(purchase: purchase, isHighlighted: contextMenuPurchaseId == purchase.id)
+                                                    .onRightClick {
+                                                        contextMenuPurchaseId = purchase.id
+                                                    } onDismiss: {
+                                                        contextMenuPurchaseId = nil
+                                                    }
                                                     .contextMenu {
                                                         Button {
+                                                            contextMenuPurchaseId = nil
                                                             purchaseToEdit = purchase
                                                         } label: {
                                                             Label("Edit", systemImage: "pencil")
@@ -163,6 +241,7 @@ struct PurchasesListView: View {
                                                         Divider()
 
                                                         Button(role: .destructive) {
+                                                            contextMenuPurchaseId = nil
                                                             modelContext.delete(purchase)
                                                         } label: {
                                                             Label("Delete", systemImage: "trash")
@@ -373,13 +452,6 @@ struct PurchaseCardView: View {
         }
     }
 
-    private var highlightColor: Color {
-        if purchase.expirationDate != nil {
-            return expirationColor
-        }
-        return .accentColor
-    }
-
     var body: some View {
         HStack(spacing: 14) {
             // Left accent bar for expiration status
@@ -516,14 +588,13 @@ struct PurchaseCardView: View {
         }
         .padding(16)
         .frame(maxWidth: 700)
-        .background(isHighlighted ? highlightColor.opacity(0.1) : Color.clear)
+        .background(isHighlighted ? (purchase.expirationDate != nil ? expirationColor : Color.accentColor).opacity(0.1) : Color.clear)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(highlightColor.opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
+                .strokeBorder((purchase.expirationDate != nil ? expirationColor : Color.accentColor).opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
         )
-        .animation(.easeInOut(duration: 0.15), value: isHighlighted)
     }
 }
 
