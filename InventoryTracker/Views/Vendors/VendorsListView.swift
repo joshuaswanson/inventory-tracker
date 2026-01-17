@@ -104,20 +104,33 @@ struct VendorsListView: View {
     private func vendorRow(for vendor: Vendor) -> some View {
         VendorRowView(vendor: vendor)
             .tag(vendor)
-            .swipeActions(edge: .trailing) {
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     modelContext.delete(vendor)
                 } label: {
                     Image(systemName: "trash")
                 }
-            }
-            .swipeActions(edge: .leading) {
+
                 Button {
                     vendor.isPinned.toggle()
                 } label: {
                     Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
                 }
                 .tint(.yellow)
+            }
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button {
+                    vendor.isPinned.toggle()
+                } label: {
+                    Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
+                }
+                .tint(.yellow)
+
+                Button(role: .destructive) {
+                    modelContext.delete(vendor)
+                } label: {
+                    Image(systemName: "trash")
+                }
             }
             .contextMenu {
                 Button {
