@@ -12,15 +12,19 @@ struct VendorsListView: View {
     @State private var vendorToEdit: Vendor?
 
     var filteredVendors: [Vendor] {
-        var result: [Vendor]
         if searchText.isEmpty {
-            result = Array(vendors)
+            return Array(vendors)
         } else {
-            result = vendors.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            return vendors.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
-        // Pinned vendors always come first
-        result.sort { ($0.isPinned ? 0 : 1) < ($1.isPinned ? 0 : 1) }
-        return result
+    }
+
+    var pinnedVendors: [Vendor] {
+        filteredVendors.filter { $0.isPinned }
+    }
+
+    var unpinnedVendors: [Vendor] {
+        filteredVendors.filter { !$0.isPinned }
     }
 
     var body: some View {
@@ -38,55 +42,26 @@ struct VendorsListView: View {
                     .frame(maxHeight: .infinity)
                 } else {
                     List(selection: $selectedVendor) {
-                        ForEach(filteredVendors) { vendor in
-                            VendorRowView(vendor: vendor)
-                                .tag(vendor)
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        modelContext.delete(vendor)
-                                    } label: {
-                                        Image(systemName: "trash")
-                                    }
+                        if pinnedVendors.isEmpty {
+                            ForEach(unpinnedVendors) { vendor in
+                                vendorRow(for: vendor)
+                            }
+                        } else {
+                            Section("Pinned") {
+                                ForEach(pinnedVendors) { vendor in
+                                    vendorRow(for: vendor)
                                 }
-                                .swipeActions(edge: .leading) {
-                                    Button {
-                                        vendor.isPinned.toggle()
-                                    } label: {
-                                        Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
-                                    }
-                                    .tint(.yellow)
+                            }
+
+                            Section("Vendors") {
+                                ForEach(unpinnedVendors) { vendor in
+                                    vendorRow(for: vendor)
                                 }
-                                .contextMenu {
-                                    Button {
-                                        openWindow(value: vendor.id)
-                                    } label: {
-                                        Label("Open in New Window", systemImage: "macwindow.badge.plus")
-                                    }
-
-                                    Button {
-                                        vendor.isPinned.toggle()
-                                    } label: {
-                                        Label(vendor.isPinned ? "Unpin" : "Pin", systemImage: vendor.isPinned ? "pin.slash" : "pin")
-                                    }
-
-                                    Button {
-                                        selectedVendor = vendor
-                                        vendorToEdit = vendor
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-
-                                    Divider()
-
-                                    Button(role: .destructive) {
-                                        modelContext.delete(vendor)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
+                            }
                         }
                     }
                     .listStyle(.inset(alternatesRowBackgrounds: false))
+                    .animation(.default, value: pinnedVendors.map(\.id))
                 }
             }
             .frame(width: 300)
@@ -124,6 +99,55 @@ struct VendorsListView: View {
         }
         .navigationTitle("Vendors")
     }
+
+    @ViewBuilder
+    private func vendorRow(for vendor: Vendor) -> some View {
+        VendorRowView(vendor: vendor)
+            .tag(vendor)
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    modelContext.delete(vendor)
+                } label: {
+                    Image(systemName: "trash")
+                }
+            }
+            .swipeActions(edge: .leading) {
+                Button {
+                    vendor.isPinned.toggle()
+                } label: {
+                    Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
+                }
+                .tint(.yellow)
+            }
+            .contextMenu {
+                Button {
+                    openWindow(value: vendor.id)
+                } label: {
+                    Label("Open in New Window", systemImage: "macwindow.badge.plus")
+                }
+
+                Button {
+                    vendor.isPinned.toggle()
+                } label: {
+                    Label(vendor.isPinned ? "Unpin" : "Pin", systemImage: vendor.isPinned ? "pin.slash" : "pin")
+                }
+
+                Button {
+                    selectedVendor = vendor
+                    vendorToEdit = vendor
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    modelContext.delete(vendor)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+    }
 }
 
 struct VendorRowView: View {
@@ -141,12 +165,6 @@ struct VendorRowView: View {
             }
 
             Spacer()
-
-            if vendor.isPinned {
-                Image(systemName: "pin.fill")
-                    .foregroundStyle(.yellow)
-                    .font(.subheadline)
-            }
 
             if vendor.totalSpent > 0 {
                 Text(vendor.totalSpent, format: .currency(code: "USD"))

@@ -43,10 +43,15 @@ struct ItemsListView: View {
             result.sort { ($0.needsReorder ? 0 : 1) < ($1.needsReorder ? 0 : 1) }
         }
 
-        // Pinned items always come first
-        result.sort { ($0.isPinned ? 0 : 1) < ($1.isPinned ? 0 : 1) }
-
         return result
+    }
+
+    var pinnedItems: [Item] {
+        filteredItems.filter { $0.isPinned }
+    }
+
+    var unpinnedItems: [Item] {
+        filteredItems.filter { !$0.isPinned }
     }
 
     var body: some View {
@@ -64,56 +69,28 @@ struct ItemsListView: View {
                     .frame(maxHeight: .infinity)
                 } else {
                     List(selection: $selectedItem) {
-                        ForEach(filteredItems) { item in
-                            ItemRowView(item: item)
-                                .tag(item)
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        modelContext.delete(item)
-                                    } label: {
-                                        Image(systemName: "trash")
-                                    }
+                        if pinnedItems.isEmpty {
+                            ForEach(unpinnedItems) { item in
+                                itemRow(for: item)
+                            }
+                            .onMove(perform: moveItems)
+                        } else {
+                            Section("Pinned") {
+                                ForEach(pinnedItems) { item in
+                                    itemRow(for: item)
                                 }
-                                .swipeActions(edge: .leading) {
-                                    Button {
-                                        item.isPinned.toggle()
-                                    } label: {
-                                        Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
-                                    }
-                                    .tint(.yellow)
+                            }
+
+                            Section("Items") {
+                                ForEach(unpinnedItems) { item in
+                                    itemRow(for: item)
                                 }
-                                .contextMenu {
-                                    Button {
-                                        openWindow(value: item.id)
-                                    } label: {
-                                        Label("Open in New Window", systemImage: "macwindow.badge.plus")
-                                    }
-
-                                    Button {
-                                        item.isPinned.toggle()
-                                    } label: {
-                                        Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.slash" : "pin")
-                                    }
-
-                                    Button {
-                                        selectedItem = item
-                                        itemToEdit = item
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-
-                                    Divider()
-
-                                    Button(role: .destructive) {
-                                        modelContext.delete(item)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
+                                .onMove(perform: moveItems)
+                            }
                         }
-                        .onMove(perform: moveItems)
                     }
                     .listStyle(.inset(alternatesRowBackgrounds: false))
+                    .animation(.default, value: pinnedItems.map(\.id))
                 }
             }
             .frame(width: 300)
@@ -173,6 +150,55 @@ struct ItemsListView: View {
         .navigationTitle("Items")
     }
 
+    @ViewBuilder
+    private func itemRow(for item: Item) -> some View {
+        ItemRowView(item: item)
+            .tag(item)
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    modelContext.delete(item)
+                } label: {
+                    Image(systemName: "trash")
+                }
+            }
+            .swipeActions(edge: .leading) {
+                Button {
+                    item.isPinned.toggle()
+                } label: {
+                    Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
+                }
+                .tint(.yellow)
+            }
+            .contextMenu {
+                Button {
+                    openWindow(value: item.id)
+                } label: {
+                    Label("Open in New Window", systemImage: "macwindow.badge.plus")
+                }
+
+                Button {
+                    item.isPinned.toggle()
+                } label: {
+                    Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+                }
+
+                Button {
+                    selectedItem = item
+                    itemToEdit = item
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    modelContext.delete(item)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+    }
+
     private func deleteItems(at offsets: IndexSet) {
         for index in offsets {
             let item = filteredItems[index]
@@ -182,7 +208,7 @@ struct ItemsListView: View {
 
     private func moveItems(from source: IndexSet, to destination: Int) {
         guard sortOption == .manual else { return }
-        var reorderedItems = filteredItems
+        var reorderedItems = unpinnedItems
         reorderedItems.move(fromOffsets: source, toOffset: destination)
         for (index, item) in reorderedItems.enumerated() {
             item.sortOrder = index
@@ -221,12 +247,6 @@ struct ItemRowView: View {
             }
 
             Spacer()
-
-            if item.isPinned {
-                Image(systemName: "pin.fill")
-                    .foregroundStyle(.yellow)
-                    .font(.subheadline)
-            }
 
             if item.needsReorder {
                 Image(systemName: "exclamationmark.triangle.fill")
