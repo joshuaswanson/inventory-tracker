@@ -315,23 +315,22 @@ struct UsageSummaryStatView: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundStyle(color)
-                Text(value)
-                    .font(.system(.title3, design: .rounded))
-                    .fontWeight(.bold)
-            }
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(color)
+            Text(value)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
             Text(title)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .frame(minHeight: 110)
+        .padding(.vertical, 18)
+        .padding(.horizontal, 8)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -383,15 +382,14 @@ struct UsageCardView: View {
                     Spacer()
 
                     // Quantity badge
-                    VStack(alignment: .trailing, spacing: 3) {
+                    VStack(alignment: .trailing, spacing: 4) {
                         if let item = usage.item {
                             Text("-\(usage.quantity)")
-                                .font(.system(.title, design: .rounded))
-                                .fontWeight(.bold)
+                                .font(.system(size: 32, weight: .bold, design: .rounded))
                                 .foregroundStyle(.red)
 
                             Text(item.unit.abbreviation)
-                                .font(.subheadline)
+                                .font(.body)
                                 .foregroundStyle(.secondary)
                         }
                     }

@@ -327,23 +327,22 @@ struct SummaryStatView: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundStyle(color)
-                Text(value)
-                    .font(.system(.title3, design: .rounded))
-                    .fontWeight(.bold)
-            }
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(color)
+            Text(value)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
             Text(title)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .frame(minHeight: 110)
+        .padding(.vertical, 18)
+        .padding(.horizontal, 8)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -409,12 +408,12 @@ struct PurchaseCardView: View {
 
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(purchase.pricePerUnit, format: .currency(code: "USD"))
-                            .font(.system(.title3, design: .rounded))
+                            .font(.system(.title2, design: .rounded))
                             .fontWeight(.bold)
                             .foregroundStyle(.green)
 
                         Text("per unit")
-                            .font(.caption)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
