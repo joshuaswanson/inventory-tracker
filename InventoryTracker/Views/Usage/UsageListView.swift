@@ -17,6 +17,7 @@ struct UsageListView: View {
     @State private var usageToEdit: Usage?
     @State private var sortOption: UsageSortOption = .dateNewest
     @State private var showEstimatesOnly = false
+    @FocusState private var focusedUsageId: UUID?
 
     var filteredUsage: [Usage] {
         var result = usageRecords
@@ -72,10 +73,19 @@ struct UsageListView: View {
         }
 
         var result: [(String, [Usage])] = []
-        if !todayUsage.isEmpty { result.append(("Today", todayUsage)) }
-        if !thisWeekUsage.isEmpty { result.append(("This Week", thisWeekUsage)) }
-        if !thisMonthUsage.isEmpty { result.append(("This Month", thisMonthUsage)) }
-        if !olderUsage.isEmpty { result.append(("Earlier", olderUsage)) }
+
+        // Reverse section order when sorting by oldest first
+        if sortOption == .dateOldest {
+            if !olderUsage.isEmpty { result.append(("Earlier", olderUsage)) }
+            if !thisMonthUsage.isEmpty { result.append(("This Month", thisMonthUsage)) }
+            if !thisWeekUsage.isEmpty { result.append(("This Week", thisWeekUsage)) }
+            if !todayUsage.isEmpty { result.append(("Today", todayUsage)) }
+        } else {
+            if !todayUsage.isEmpty { result.append(("Today", todayUsage)) }
+            if !thisWeekUsage.isEmpty { result.append(("This Week", thisWeekUsage)) }
+            if !thisMonthUsage.isEmpty { result.append(("This Month", thisMonthUsage)) }
+            if !olderUsage.isEmpty { result.append(("Earlier", olderUsage)) }
+        }
 
         return result
     }
@@ -137,7 +147,9 @@ struct UsageListView: View {
                                     Section {
                                         VStack(spacing: 10) {
                                             ForEach(sectionUsage) { usage in
-                                                UsageCardView(usage: usage)
+                                                UsageCardView(usage: usage, isHighlighted: focusedUsageId == usage.id)
+                                                    .focusable()
+                                                    .focused($focusedUsageId, equals: usage.id)
                                                     .contextMenu {
                                                         Button {
                                                             usageToEdit = usage
@@ -337,12 +349,17 @@ struct UsageSummaryStatView: View {
 // MARK: - Usage Card View
 struct UsageCardView: View {
     let usage: Usage
+    var isHighlighted: Bool = false
+
+    private var accentColor: Color {
+        usage.isEstimate ? .teal : .blue
+    }
 
     var body: some View {
         HStack(spacing: 14) {
             // Left accent bar - blue for actual, teal for estimate
             RoundedRectangle(cornerRadius: 3)
-                .fill((usage.isEstimate ? Color.teal : Color.blue).gradient)
+                .fill(accentColor.gradient)
                 .frame(width: 5)
 
             VStack(alignment: .leading, spacing: 10) {
@@ -441,8 +458,14 @@ struct UsageCardView: View {
         }
         .padding(16)
         .frame(maxWidth: 700)
+        .background(isHighlighted ? accentColor.opacity(0.1) : Color.clear)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(accentColor.opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
+        )
+        .animation(.easeInOut(duration: 0.15), value: isHighlighted)
     }
 }
 
