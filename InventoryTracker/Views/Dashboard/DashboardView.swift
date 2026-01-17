@@ -34,7 +34,6 @@ enum DashboardItem: String, CaseIterable, Identifiable, Codable {
     case lowStock = "Low Stock"
     case expiringSoon = "Expiring Soon"
     case inventoryValue = "Inventory Value"
-    case reorderAlerts = "Reorder Alerts"
     case priceAnalytics = "Price Analytics"
 
     var id: String { rawValue }
@@ -43,7 +42,7 @@ enum DashboardItem: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .totalItems, .lowStock, .expiringSoon, .inventoryValue:
             return .small
-        case .reorderAlerts, .priceAnalytics:
+        case .priceAnalytics:
             return .medium
         }
     }
@@ -54,7 +53,6 @@ enum DashboardItem: String, CaseIterable, Identifiable, Codable {
         case .lowStock: return "exclamationmark.triangle.fill"
         case .expiringSoon: return "clock.fill"
         case .inventoryValue: return "dollarsign.circle.fill"
-        case .reorderAlerts: return "exclamationmark.triangle.fill"
         case .priceAnalytics: return "dollarsign.circle.fill"
         }
     }
@@ -65,7 +63,6 @@ enum DashboardItem: String, CaseIterable, Identifiable, Codable {
         case .lowStock: return .orange
         case .expiringSoon: return .red
         case .inventoryValue: return .green
-        case .reorderAlerts: return .orange
         case .priceAnalytics: return .green
         }
     }
@@ -92,8 +89,8 @@ struct DashboardView: View {
     @State private var draggingItem: DashboardItem?
 
     private let columns = 4
-    private let spacing: CGFloat = 12
-    private let cellSize: CGFloat = 141
+    private let spacing: CGFloat = 18
+    private let cellSize: CGFloat = 158
 
     var itemsNeedingReorder: [Item] {
         items.filter { $0.needsReorder }
@@ -242,14 +239,13 @@ struct DashboardView: View {
                     Label("Remove Widget", systemImage: "trash")
                 }
             }
+            .opacity(draggingItem == item ? 0.4 : 1.0)
             .onDrag {
                 draggingItem = item
                 return NSItemProvider(object: item.rawValue as NSString)
             } preview: {
                 cardView(for: item, size: currentSize)
-                    .frame(width: min(size.width, 200), height: min(size.height, 120))
-                    .background(Color(nsColor: .windowBackgroundColor))
-                    .compositingGroup()
+                    .frame(width: size.width, height: size.height)
                     .drawingGroup()
             }
             .onDrop(of: [.text], delegate: DashboardItemDropDelegate(
@@ -302,15 +298,6 @@ struct DashboardView: View {
                     let value = Double(item.currentInventory) * avgPrice
                     return (item.name, value.formatted(.currency(code: "USD")))
                 }
-            )
-        case .reorderAlerts:
-            WidgetCard(
-                title: "Reorder Alerts",
-                value: itemsNeedingReorder.count,
-                icon: item.icon,
-                color: itemsNeedingReorder.isEmpty ? .green : item.color,
-                size: size,
-                items: itemsNeedingReorder.map { ($0.name, "\($0.currentInventory)/\($0.reorderLevel)") }
             )
         case .priceAnalytics:
             let itemsWithPricing = items.filter { $0.lowestPricePaid != nil }
@@ -464,24 +451,66 @@ struct WidgetCard: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                     Spacer()
+                } else if size == .medium {
+                    // Medium: no scroll, just top 3 with dividers
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(items.prefix(maxItems).enumerated()), id: \.element.name) { index, item in
+                            if index > 0 {
+                                Divider()
+                                    .padding(.horizontal, 4)
+                            }
+                            HStack(spacing: 8) {
+                                Text(item.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(item.detail)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(color)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(color.opacity(0.15))
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.vertical, 6)
+                        }
+                    }
                 } else {
+                    // Large: scrollable list
                     ScrollView {
-                        VStack(alignment: .leading, spacing: size == .large ? 8 : 6) {
-                            ForEach(items.prefix(maxItems), id: \.name) { item in
-                                HStack {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(items.prefix(maxItems).enumerated()), id: \.element.name) { index, item in
+                                if index > 0 {
+                                    Divider()
+                                        .padding(.horizontal, 4)
+                                }
+                                HStack(spacing: 8) {
                                     Text(item.name)
-                                        .font(.body)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
                                         .lineLimit(1)
                                     Spacer()
                                     Text(item.detail)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(color)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(color.opacity(0.15))
+                                        .clipShape(Capsule())
                                 }
+                                .padding(.vertical, 6)
                             }
                             if items.count > maxItems {
+                                Divider()
+                                    .padding(.horizontal, 4)
                                 Text("+\(items.count - maxItems) more")
-                                    .font(.subheadline)
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 6)
                             }
                         }
                     }
