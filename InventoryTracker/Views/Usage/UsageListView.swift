@@ -91,8 +91,12 @@ struct UsageListView: View {
     }
 
     // Summary calculations
-    private var totalUsed: Int {
-        filteredUsage.reduce(0) { $0 + $1.quantity }
+    private var usedLastMonth: Int {
+        let calendar = Calendar.current
+        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date())!
+        return filteredUsage
+            .filter { $0.date >= monthAgo }
+            .reduce(0) { $0 + $1.quantity }
     }
 
     private var estimatesCount: Int {
@@ -242,8 +246,8 @@ struct UsageListView: View {
             )
 
             UsageSummaryStatView(
-                title: "Total Used",
-                value: "\(totalUsed)",
+                title: "Used Last Month",
+                value: "\(usedLastMonth)",
                 icon: "chart.line.downtrend.xyaxis",
                 color: .red
             )
@@ -339,7 +343,7 @@ struct UsageSummaryStatView: View {
             Text(value)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
             Text(title)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

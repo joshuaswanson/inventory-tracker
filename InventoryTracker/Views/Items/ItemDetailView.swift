@@ -24,28 +24,27 @@ struct ItemDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 // Hero Card - Inventory Status
                 heroCard
 
                 // Stats Grid
                 statsGrid
 
-                // Pricing Card
-                if item.lowestPricePaid != nil || item.averagePricePaid != nil {
-                    pricingCard
-                }
+                // Pricing & Expiration Row
+                HStack(spacing: 12) {
+                    if item.lowestPricePaid != nil || item.averagePricePaid != nil {
+                        pricingCard
+                    }
 
-                // Expiration Card (for perishables)
-                if item.isPerishable {
-                    expirationCard
+                    if item.isPerishable {
+                        expirationCard
+                    }
                 }
 
                 // Recent Activity
-                HStack(spacing: 16) {
-                    recentPurchasesCard
-                    recentUsageCard
-                }
+                recentPurchasesCard
+                recentUsageCard
 
                 // Notes
                 notesCard
@@ -162,7 +161,7 @@ struct ItemDetailView: View {
 
     // MARK: - Stats Grid
     private var statsGrid: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             StatCard(
                 title: "Daily Usage",
                 value: String(format: "%.1f", item.usageRatePerDay),
@@ -229,7 +228,7 @@ struct ItemDetailView: View {
             }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -284,7 +283,7 @@ struct ItemDetailView: View {
             }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
