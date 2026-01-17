@@ -356,12 +356,6 @@ struct VendorRowView: View {
             }
 
             Spacer()
-
-            if vendor.totalSpent > 0 {
-                Text(vendor.totalSpent, format: .currency(code: "USD"))
-                    .font(.subheadline)
-                    .foregroundStyle(.green)
-            }
         }
         .padding(.vertical, 8)
         .padding(.leading, 12)
