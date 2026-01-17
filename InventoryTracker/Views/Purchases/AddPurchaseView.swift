@@ -38,6 +38,7 @@ struct AddPurchaseView: View {
                                 Text(item.name).tag(item as Item?)
                             }
                         }
+                        .pickerStyle(.menu)
                     }
                 }
 
@@ -52,6 +53,7 @@ struct AddPurchaseView: View {
                                 Text(vendor.name).tag(vendor as Vendor?)
                             }
                         }
+                        .pickerStyle(.menu)
                     }
                 }
 

@@ -65,11 +65,11 @@ struct PriceAnalyticsRow: View {
                         HStack(spacing: 4) {
                             if vp.price == item.lowestPricePaid {
                                 Image(systemName: "star.fill")
-                                    .font(.caption2)
+                                    .font(.caption)
                                     .foregroundStyle(.yellow)
                             }
                             Text("\(vp.vendor.name): \(vp.price, format: .currency(code: "USD"))")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(vp.price == item.lowestPricePaid ? .green : .secondary)
                         }
                     }
@@ -78,7 +78,7 @@ struct PriceAnalyticsRow: View {
 
             if let avg = item.averagePricePaid {
                 Text("Average: \(avg, format: .currency(code: "USD"))")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }

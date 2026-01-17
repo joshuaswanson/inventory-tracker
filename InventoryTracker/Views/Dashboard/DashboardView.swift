@@ -98,7 +98,7 @@ struct SummaryCard: View {
                         .font(.title2)
                         .fontWeight(.bold)
                     Text(title)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()

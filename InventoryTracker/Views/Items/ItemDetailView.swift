@@ -22,7 +22,7 @@ struct ItemDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 // Hero Card - Inventory Status
                 heroCard
 
@@ -81,7 +81,7 @@ struct ItemDetailView: View {
                             .foregroundStyle(.secondary)
                         if item.isPerishable {
                             Image(systemName: "leaf.fill")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(.green)
                         }
                     }
@@ -114,12 +114,12 @@ struct ItemDetailView: View {
 
                 HStack {
                     Text("Reorder at \(item.reorderLevel) \(item.unit.abbreviation)")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                     Spacer()
                     if let days = item.estimatedDaysUntilReorder {
                         Text(days <= 0 ? "Reorder now" : "\(days) days until reorder")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(days <= 7 ? .orange : .secondary)
                     }
                 }
@@ -141,7 +141,7 @@ struct ItemDetailView: View {
                     .foregroundStyle(stockColor)
             }
             Text(item.needsReorder ? "Low Stock" : "In Stock")
-                .font(.caption)
+                .font(.footnote)
                 .fontWeight(.medium)
                 .foregroundStyle(stockColor)
         }
@@ -149,11 +149,7 @@ struct ItemDetailView: View {
 
     // MARK: - Stats Grid
     private var statsGrid: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible()),
-            GridItem(.flexible())
-        ], spacing: 12) {
+        HStack(spacing: 16) {
             StatCard(
                 title: "Daily Usage",
                 value: String(format: "%.1f", item.usageRatePerDay),
@@ -191,7 +187,7 @@ struct ItemDetailView: View {
                 if let lowest = item.lowestPricePaid {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Best Price")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                         Text(lowest, format: .currency(code: "USD"))
                             .font(.title2)
@@ -199,7 +195,7 @@ struct ItemDetailView: View {
                             .foregroundStyle(.green)
                         if let purchase = item.lowestPricePurchase, let vendor = purchase.vendor {
                             Text(vendor.name)
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -208,7 +204,7 @@ struct ItemDetailView: View {
                 if let average = item.averagePricePaid {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Average")
-                            .font(.caption)
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                         Text(average, format: .currency(code: "USD"))
                             .font(.title2)
@@ -237,7 +233,7 @@ struct ItemDetailView: View {
                     if let days = nextExpiring.daysUntilExpiration {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Next Expiring")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(.secondary)
                             Text("\(days) days")
                                 .font(.title2)
@@ -251,7 +247,7 @@ struct ItemDetailView: View {
                     if let expDate = nextExpiring.expirationDate {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text("Date")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(.secondary)
                             Text(expDate, style: .date)
                                 .font(.subheadline)
@@ -311,7 +307,7 @@ struct ItemDetailView: View {
                                     .font(.subheadline)
                                 if let vendor = purchase.vendor {
                                     Text(vendor.name)
-                                        .font(.caption)
+                                        .font(.footnote)
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -321,7 +317,7 @@ struct ItemDetailView: View {
                                     .font(.subheadline)
                                     .fontWeight(.medium)
                                 Text("\(purchase.quantity) \(item.unit.abbreviation)")
-                                    .font(.caption)
+                                    .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -370,7 +366,7 @@ struct ItemDetailView: View {
                                     .font(.subheadline)
                                 if usage.isEstimate {
                                     Text("Estimated")
-                                        .font(.caption)
+                                        .font(.footnote)
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -436,15 +432,15 @@ struct StatCard: View {
                 .fontWeight(.bold)
 
             Text(unit)
-                .font(.caption)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
 
             Text(title)
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .padding(16)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
