@@ -11,6 +11,8 @@ final class Item {
     var notes: String
     var createdAt: Date
     var sortOrder: Int = 0
+    var isPinned: Bool = false
+    @Attribute(.externalStorage) var imageData: Data?
 
     @Relationship(deleteRule: .cascade, inverse: \Purchase.item)
     var purchases: [Purchase] = []
@@ -24,7 +26,8 @@ final class Item {
         reorderLevel: Int = 10,
         isPerishable: Bool = false,
         notes: String = "",
-        sortOrder: Int = 0
+        sortOrder: Int = 0,
+        imageData: Data? = nil
     ) {
         self.id = UUID()
         self.name = name
@@ -34,6 +37,7 @@ final class Item {
         self.notes = notes
         self.createdAt = Date()
         self.sortOrder = sortOrder
+        self.imageData = imageData
     }
 
     var unit: UnitOfMeasure {
