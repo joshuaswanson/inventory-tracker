@@ -29,6 +29,8 @@
 		A1000020001 /* ExpirationTrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020000 /* ExpirationTrackingView.swift */; };
 		A1000021001 /* InventoryCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000021000 /* InventoryCalculator.swift */; };
 		A1000022001 /* UnitOfMeasure.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000022000 /* UnitOfMeasure.swift */; };
+		A1000023001 /* ItemWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000023000 /* ItemWindowView.swift */; };
+		A1000024001 /* VendorWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000024000 /* VendorWindowView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +57,8 @@
 		A1000020000 /* ExpirationTrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpirationTrackingView.swift; sourceTree = "<group>"; };
 		A1000021000 /* InventoryCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryCalculator.swift; sourceTree = "<group>"; };
 		A1000022000 /* UnitOfMeasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitOfMeasure.swift; sourceTree = "<group>"; };
+		A1000023000 /* ItemWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemWindowView.swift; sourceTree = "<group>"; };
+		A1000024000 /* VendorWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorWindowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +131,7 @@
 				A1000008000 /* ItemsListView.swift */,
 				A1000009000 /* ItemDetailView.swift */,
 				A1000010000 /* AddItemView.swift */,
+				A1000023000 /* ItemWindowView.swift */,
 			);
 			path = Items;
 			sourceTree = "<group>";
@@ -136,6 +141,7 @@
 			children = (
 				A1000011000 /* VendorsListView.swift */,
 				A1000012000 /* AddVendorView.swift */,
+				A1000024000 /* VendorWindowView.swift */,
 			);
 			path = Vendors;
 			sourceTree = "<group>";
@@ -267,6 +273,8 @@
 				A1000020001 /* ExpirationTrackingView.swift in Sources */,
 				A1000021001 /* InventoryCalculator.swift in Sources */,
 				A1000022001 /* UnitOfMeasure.swift in Sources */,
+				A1000023001 /* ItemWindowView.swift in Sources */,
+				A1000024001 /* VendorWindowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
