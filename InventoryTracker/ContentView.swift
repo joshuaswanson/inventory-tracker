@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Query private var items: [Item]
-    @Query private var vendors: [Vendor]
+    @Query(filter: #Predicate<Item> { !$0.isDeleted }) private var items: [Item]
+    @Query(filter: #Predicate<Vendor> { !$0.isDeleted }) private var vendors: [Vendor]
     @State private var selectedTab: AppTab = .dashboard
 
     enum AppTab: String, CaseIterable, Identifiable {

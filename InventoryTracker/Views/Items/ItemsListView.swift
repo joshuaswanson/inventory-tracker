@@ -16,13 +16,11 @@ struct ItemsListView: View {
     @State private var showingAddItem = false
     @State private var searchText = ""
     @State private var showingOnlyLowStock = false
-    @State private var selectedItem: Item?
+    @State private var selectedItems: Set<Item.ID> = []
     @State private var itemToEdit: Item?
     @State private var itemForPurchase: Item?
     @State private var itemForUsage: Item?
     @State private var sortOption: ItemSortOption = .manual
-    @State private var lastClickedItem: Item?
-    @State private var lastClickTime: Date = .distantPast
 
     var filteredItems: [Item] {
         var result = items
@@ -80,7 +78,7 @@ struct ItemsListView: View {
                         }
                     }
                 } else {
-                    List(selection: $selectedItem) {
+                    List(selection: $selectedItems) {
                         if pinnedItems.isEmpty {
                             ForEach(unpinnedItems) { item in
                                 itemRow(for: item)
@@ -166,12 +164,29 @@ struct ItemsListView: View {
                     .help("Filter and sort items")
                 }
 
-                if selectedItem != nil {
+                if selectedItems.count == 1, let itemId = selectedItems.first, let item = items.first(where: { $0.id == itemId }) {
                     ToolbarItem(id: "edit", placement: .secondaryAction) {
                         Button("Edit") {
-                            itemToEdit = selectedItem
+                            itemToEdit = item
                         }
                         .help("Edit item")
+                    }
+                }
+
+                if !selectedItems.isEmpty {
+                    ToolbarItem(id: "delete", placement: .secondaryAction) {
+                        Button(role: .destructive) {
+                            for itemId in selectedItems {
+                                if let item = items.first(where: { $0.id == itemId }) {
+                                    item.isDeleted = true
+                                    item.deletedAt = Date()
+                                }
+                            }
+                            selectedItems.removeAll()
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .help("Delete selected items")
                     }
                 }
             }
@@ -180,8 +195,15 @@ struct ItemsListView: View {
 
             // Right: Detail view - always present to prevent snapping
             Group {
-                if let item = selectedItem {
+                if selectedItems.count == 1, let itemId = selectedItems.first, let item = items.first(where: { $0.id == itemId }) {
                     ItemDetailView(item: item)
+                } else if selectedItems.count > 1 {
+                    ContentUnavailableView {
+                        Label("\(selectedItems.count) Items Selected", systemImage: "shippingbox")
+                    } description: {
+                        Text("Press Delete to remove selected items.")
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ContentUnavailableView {
                         Label("No Item Selected", systemImage: "shippingbox")
@@ -215,15 +237,6 @@ struct ItemsListView: View {
             AddUsageView(preselectedItem: item)
         }
         .navigationTitle("Items")
-        .onChange(of: selectedItem) { oldValue, newValue in
-            guard let item = newValue else { return }
-            let now = Date()
-            if item == lastClickedItem && now.timeIntervalSince(lastClickTime) < 0.4 {
-                openWindow(value: ItemWindowID(id: item.id))
-            }
-            lastClickedItem = item
-            lastClickTime = now
-        }
     }
 
     @ViewBuilder
@@ -237,9 +250,7 @@ struct ItemsListView: View {
                 Button(role: .destructive) {
                     item.isDeleted = true
                     item.deletedAt = Date()
-                    if selectedItem == item {
-                        selectedItem = nil
-                    }
+                    selectedItems.remove(item.id)
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -253,49 +264,62 @@ struct ItemsListView: View {
                 .tint(.orange)
             }
             .contextMenu {
+                let selectedItemsList = items.filter { selectedItems.contains($0.id) }
+                let isMultiSelect = selectedItems.contains(item.id) && selectedItems.count > 1
+                let itemsToActOn = isMultiSelect ? selectedItemsList : [item]
+
                 Button {
-                    openWindow(value: ItemWindowID(id: item.id))
+                    for actItem in itemsToActOn {
+                        openWindow(value: ItemWindowID(id: actItem.id))
+                    }
                 } label: {
-                    Label("Open in New Window", systemImage: "macwindow.badge.plus")
+                    Label(isMultiSelect ? "Open in New Windows" : "Open in New Window", systemImage: "macwindow.badge.plus")
                 }
 
                 Button {
-                    item.isPinned.toggle()
+                    let shouldPin = itemsToActOn.contains { !$0.isPinned }
+                    for actItem in itemsToActOn {
+                        actItem.isPinned = shouldPin
+                    }
                 } label: {
-                    Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+                    let allPinned = itemsToActOn.allSatisfy { $0.isPinned }
+                    Label(allPinned ? (isMultiSelect ? "Unpin All" : "Unpin") : (isMultiSelect ? "Pin All" : "Pin"),
+                          systemImage: allPinned ? "pin.slash" : "pin")
                 }
 
-                Button {
-                    selectedItem = item
-                    itemToEdit = item
-                } label: {
-                    Label("Edit", systemImage: "pencil")
-                }
+                if !isMultiSelect {
+                    Button {
+                        selectedItems = [item.id]
+                        itemToEdit = item
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
 
-                Divider()
+                    Divider()
 
-                Button {
-                    itemForPurchase = item
-                } label: {
-                    Label("Add Recent Purchase", systemImage: "cart.badge.plus")
-                }
+                    Button {
+                        itemForPurchase = item
+                    } label: {
+                        Label("Add Recent Purchase", systemImage: "cart.badge.plus")
+                    }
 
-                Button {
-                    itemForUsage = item
-                } label: {
-                    Label("Add Recent Usage", systemImage: "minus.circle")
+                    Button {
+                        itemForUsage = item
+                    } label: {
+                        Label("Add Recent Usage", systemImage: "minus.circle")
+                    }
                 }
 
                 Divider()
 
                 Button(role: .destructive) {
-                    item.isDeleted = true
-                    item.deletedAt = Date()
-                    if selectedItem == item {
-                        selectedItem = nil
+                    for actItem in itemsToActOn {
+                        actItem.isDeleted = true
+                        actItem.deletedAt = Date()
+                        selectedItems.remove(actItem.id)
                     }
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Label(isMultiSelect ? "Delete All" : "Delete", systemImage: "trash")
                 }
             }
     }
@@ -347,6 +371,7 @@ struct ItemRowView: View {
                 HStack {
                     Text(item.name)
                         .font(.headline)
+                        .lineLimit(1)
 
                     if item.isPerishable {
                         Image(systemName: "leaf.fill")

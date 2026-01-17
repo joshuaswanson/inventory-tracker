@@ -19,10 +19,8 @@ struct VendorsListView: View {
 
     @State private var showingAddVendor = false
     @State private var searchText = ""
-    @State private var selectedVendor: Vendor?
+    @State private var selectedVendors: Set<Vendor.ID> = []
     @State private var vendorToEdit: Vendor?
-    @State private var lastClickedVendor: Vendor?
-    @State private var lastClickTime: Date = .distantPast
     @State private var sortOption: VendorSortOption = .manual
 
     var filteredVendors: [Vendor] {
@@ -77,7 +75,7 @@ struct VendorsListView: View {
                         }
                     }
                 } else {
-                    List(selection: $selectedVendor) {
+                    List(selection: $selectedVendors) {
                         if pinnedVendors.isEmpty {
                             ForEach(unpinnedVendors) { vendor in
                                 vendorRow(for: vendor)
@@ -142,12 +140,29 @@ struct VendorsListView: View {
                     .help("Filter and sort vendors")
                 }
 
-                if selectedVendor != nil {
+                if selectedVendors.count == 1, let vendorId = selectedVendors.first, let vendor = vendors.first(where: { $0.id == vendorId }) {
                     ToolbarItem(id: "edit", placement: .secondaryAction) {
                         Button("Edit") {
-                            vendorToEdit = selectedVendor
+                            vendorToEdit = vendor
                         }
                         .help("Edit vendor")
+                    }
+                }
+
+                if !selectedVendors.isEmpty {
+                    ToolbarItem(id: "delete", placement: .secondaryAction) {
+                        Button(role: .destructive) {
+                            for vendorId in selectedVendors {
+                                if let vendor = vendors.first(where: { $0.id == vendorId }) {
+                                    vendor.isDeleted = true
+                                    vendor.deletedAt = Date()
+                                }
+                            }
+                            selectedVendors.removeAll()
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .help("Delete selected vendors")
                     }
                 }
             }
@@ -156,8 +171,15 @@ struct VendorsListView: View {
 
             // Right: Detail view
             Group {
-                if let vendor = selectedVendor {
+                if selectedVendors.count == 1, let vendorId = selectedVendors.first, let vendor = vendors.first(where: { $0.id == vendorId }) {
                     VendorDetailView(vendor: vendor)
+                } else if selectedVendors.count > 1 {
+                    ContentUnavailableView {
+                        Label("\(selectedVendors.count) Vendors Selected", systemImage: "building.2")
+                    } description: {
+                        Text("Press Delete to remove selected vendors.")
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ContentUnavailableView {
                         Label("No Vendor Selected", systemImage: "building.2")
@@ -185,15 +207,6 @@ struct VendorsListView: View {
             EditVendorView(vendor: vendor)
         }
         .navigationTitle("Vendors")
-        .onChange(of: selectedVendor) { oldValue, newValue in
-            guard let vendor = newValue else { return }
-            let now = Date()
-            if vendor == lastClickedVendor && now.timeIntervalSince(lastClickTime) < 0.4 {
-                openWindow(value: VendorWindowID(id: vendor.id))
-            }
-            lastClickedVendor = vendor
-            lastClickTime = now
-        }
     }
 
     @ViewBuilder
@@ -207,9 +220,7 @@ struct VendorsListView: View {
                 Button(role: .destructive) {
                     vendor.isDeleted = true
                     vendor.deletedAt = Date()
-                    if selectedVendor == vendor {
-                        selectedVendor = nil
-                    }
+                    selectedVendors.remove(vendor.id)
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -223,48 +234,61 @@ struct VendorsListView: View {
                 .tint(.orange)
             }
             .contextMenu {
+                let selectedVendorsList = vendors.filter { selectedVendors.contains($0.id) }
+                let isMultiSelect = selectedVendors.contains(vendor.id) && selectedVendors.count > 1
+                let vendorsToActOn = isMultiSelect ? selectedVendorsList : [vendor]
+
                 Button {
-                    openWindow(value: VendorWindowID(id: vendor.id))
+                    for actVendor in vendorsToActOn {
+                        openWindow(value: VendorWindowID(id: actVendor.id))
+                    }
                 } label: {
-                    Label("Open in New Window", systemImage: "macwindow.badge.plus")
+                    Label(isMultiSelect ? "Open in New Windows" : "Open in New Window", systemImage: "macwindow.badge.plus")
                 }
 
                 Button {
-                    vendor.isPinned.toggle()
+                    let shouldPin = vendorsToActOn.contains { !$0.isPinned }
+                    for actVendor in vendorsToActOn {
+                        actVendor.isPinned = shouldPin
+                    }
                 } label: {
-                    Label(vendor.isPinned ? "Unpin" : "Pin", systemImage: vendor.isPinned ? "pin.slash" : "pin")
+                    let allPinned = vendorsToActOn.allSatisfy { $0.isPinned }
+                    Label(allPinned ? (isMultiSelect ? "Unpin All" : "Unpin") : (isMultiSelect ? "Pin All" : "Pin"),
+                          systemImage: allPinned ? "pin.slash" : "pin")
                 }
 
-                Button {
-                    selectedVendor = vendor
-                    vendorToEdit = vendor
-                } label: {
-                    Label("Edit", systemImage: "pencil")
+                if !isMultiSelect {
+                    Button {
+                        selectedVendors = [vendor.id]
+                        vendorToEdit = vendor
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+
+                    Divider()
+
+                    if !vendor.phone.isEmpty {
+                        Button {
+                            let cleanedPhone = vendor.phone.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
+                            if let url = URL(string: "tel:\(cleanedPhone)") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        } label: {
+                            Label("Call", systemImage: "phone")
+                        }
+                    }
                 }
 
                 Divider()
 
-                if !vendor.phone.isEmpty {
-                    Button {
-                        let cleanedPhone = vendor.phone.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
-                        if let url = URL(string: "tel:\(cleanedPhone)") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    } label: {
-                        Label("Call", systemImage: "phone")
-                    }
-
-                    Divider()
-                }
-
                 Button(role: .destructive) {
-                    vendor.isDeleted = true
-                    vendor.deletedAt = Date()
-                    if selectedVendor == vendor {
-                        selectedVendor = nil
+                    for actVendor in vendorsToActOn {
+                        actVendor.isDeleted = true
+                        actVendor.deletedAt = Date()
+                        selectedVendors.remove(actVendor.id)
                     }
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Label(isMultiSelect ? "Delete All" : "Delete", systemImage: "trash")
                 }
             }
     }
