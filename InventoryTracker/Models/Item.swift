@@ -12,6 +12,8 @@ final class Item {
     var createdAt: Date
     var sortOrder: Int = 0
     var isPinned: Bool = false
+    var isDeleted: Bool = false
+    var deletedAt: Date?
     @Attribute(.externalStorage) var imageData: Data?
 
     @Relationship(deleteRule: .cascade, inverse: \Purchase.item)
