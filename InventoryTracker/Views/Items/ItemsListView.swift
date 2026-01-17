@@ -224,7 +224,16 @@ struct ItemsListView: View {
     }
 
     private func moveItems(from source: IndexSet, to destination: Int) {
-        guard sortOption == .manual else { return }
+        // Switch to manual sort if needed and adopt current order
+        if sortOption != .manual {
+            // First, set sortOrder based on current filtered order
+            for (index, item) in unpinnedItems.enumerated() {
+                item.sortOrder = index
+            }
+            sortOption = .manual
+        }
+
+        // Now perform the move
         var reorderedItems = unpinnedItems
         reorderedItems.move(fromOffsets: source, toOffset: destination)
         for (index, item) in reorderedItems.enumerated() {

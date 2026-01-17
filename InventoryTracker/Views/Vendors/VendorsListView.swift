@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 
 struct VendorsListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -194,6 +197,7 @@ struct VendorDetailView: View {
     @Bindable var vendor: Vendor
 
     @State private var showingEditVendor = false
+    @State private var showingCallConfirmation = false
 
     var body: some View {
         ScrollView {
@@ -314,7 +318,19 @@ struct VendorDetailView: View {
                         Image(systemName: "phone.fill")
                             .foregroundStyle(.secondary)
                             .frame(width: 24)
-                        Link(vendor.phone, destination: URL(string: "tel:\(vendor.phone)")!)
+                        Button(PhoneFormatter.format(vendor.phone)) {
+                            showingCallConfirmation = true
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.blue)
+                    }
+                    .confirmationDialog("Call \(PhoneFormatter.format(vendor.phone))?", isPresented: $showingCallConfirmation) {
+                        Button("Call") {
+                            if let url = URL(string: "tel:\(PhoneFormatter.stripFormatting(vendor.phone))") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
                     }
                 }
 
