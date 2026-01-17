@@ -1,25 +1,50 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 #if os(macOS)
 import AppKit
 #endif
 
+enum VendorSortOption: String, CaseIterable {
+    case manual = "Manual"
+    case alphabetical = "Alphabetical"
+    case purchaseCount = "Purchase Count"
+    case totalSpent = "Total Spent"
+}
+
 struct VendorsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
-    @Query(filter: #Predicate<Vendor> { !$0.isDeleted }, sort: \Vendor.name) private var vendors: [Vendor]
+    @Query(filter: #Predicate<Vendor> { !$0.isDeleted }, sort: \Vendor.sortOrder) private var vendors: [Vendor]
 
     @State private var showingAddVendor = false
     @State private var searchText = ""
     @State private var selectedVendor: Vendor?
     @State private var vendorToEdit: Vendor?
+    @State private var lastClickedVendor: Vendor?
+    @State private var lastClickTime: Date = .distantPast
+    @State private var sortOption: VendorSortOption = .manual
 
     var filteredVendors: [Vendor] {
-        if searchText.isEmpty {
-            return Array(vendors)
-        } else {
-            return vendors.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        var result = vendors.map { $0 }
+
+        if !searchText.isEmpty {
+            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
+
+        // Apply sorting
+        switch sortOption {
+        case .manual:
+            result.sort { $0.sortOrder < $1.sortOrder }
+        case .alphabetical:
+            result.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .purchaseCount:
+            result.sort { $0.totalPurchases > $1.totalPurchases }
+        case .totalSpent:
+            result.sort { $0.totalSpent > $1.totalSpent }
+        }
+
+        return result
     }
 
     var pinnedVendors: [Vendor] {
@@ -43,12 +68,21 @@ struct VendorsListView: View {
                         Text("Add vendors to track where you purchase items.")
                     }
                     .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingAddVendor = true
+                        } label: {
+                            Label("Add Vendor", systemImage: "plus")
+                        }
+                    }
                 } else {
                     List(selection: $selectedVendor) {
                         if pinnedVendors.isEmpty {
                             ForEach(unpinnedVendors) { vendor in
                                 vendorRow(for: vendor)
                             }
+                            .onMove(perform: moveVendors)
                         } else {
                             Section("Pinned") {
                                 ForEach(pinnedVendors) { vendor in
@@ -60,19 +94,60 @@ struct VendorsListView: View {
                                 ForEach(unpinnedVendors) { vendor in
                                     vendorRow(for: vendor)
                                 }
+                                .onMove(perform: moveVendors)
                             }
                         }
                     }
                     .listStyle(.inset(alternatesRowBackgrounds: false))
                     .animation(.default, value: pinnedVendors.map(\.id))
+                    .animation(.default, value: unpinnedVendors.map(\.id))
+                    .contextMenu {
+                        Button {
+                            showingAddVendor = true
+                        } label: {
+                            Label("Add Vendor", systemImage: "plus")
+                        }
+                    }
                 }
             }
             .frame(width: 300)
             .searchable(text: $searchText, placement: .sidebar, prompt: "Search vendors")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(id: "add", placement: .primaryAction) {
                     Button(action: { showingAddVendor = true }) {
                         Label("Add Vendor", systemImage: "plus")
+                    }
+                    .help("Add vendor")
+                }
+
+                ToolbarItem(id: "filter", placement: .secondaryAction) {
+                    Menu {
+                        Menu("Sort By") {
+                            ForEach(VendorSortOption.allCases, id: \.self) { option in
+                                Button {
+                                    sortOption = option
+                                } label: {
+                                    if sortOption == option {
+                                        Label(option.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.rawValue)
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Filter", systemImage: "line.3.horizontal.decrease")
+                    }
+                    .menuIndicator(.hidden)
+                    .help("Filter and sort vendors")
+                }
+
+                if selectedVendor != nil {
+                    ToolbarItem(id: "edit", placement: .secondaryAction) {
+                        Button("Edit") {
+                            vendorToEdit = selectedVendor
+                        }
+                        .help("Edit vendor")
                     }
                 }
             }
@@ -89,6 +164,15 @@ struct VendorsListView: View {
                     } description: {
                         Text("Select a vendor from the list to view details.")
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingAddVendor = true
+                        } label: {
+                            Label("Add Vendor", systemImage: "plus")
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -101,12 +185,24 @@ struct VendorsListView: View {
             EditVendorView(vendor: vendor)
         }
         .navigationTitle("Vendors")
+        .onChange(of: selectedVendor) { oldValue, newValue in
+            guard let vendor = newValue else { return }
+            let now = Date()
+            if vendor == lastClickedVendor && now.timeIntervalSince(lastClickTime) < 0.4 {
+                openWindow(value: VendorWindowID(id: vendor.id))
+            }
+            lastClickedVendor = vendor
+            lastClickTime = now
+        }
     }
 
     @ViewBuilder
     private func vendorRow(for vendor: Vendor) -> some View {
         VendorRowView(vendor: vendor)
             .tag(vendor)
+            .onDoubleClick {
+                openWindow(value: VendorWindowID(id: vendor.id))
+            }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     vendor.isDeleted = true
@@ -124,11 +220,11 @@ struct VendorsListView: View {
                 } label: {
                     Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
                 }
-                .tint(.yellow)
+                .tint(.orange)
             }
             .contextMenu {
                 Button {
-                    openWindow(value: vendor.id)
+                    openWindow(value: VendorWindowID(id: vendor.id))
                 } label: {
                     Label("Open in New Window", systemImage: "macwindow.badge.plus")
                 }
@@ -148,6 +244,19 @@ struct VendorsListView: View {
 
                 Divider()
 
+                if !vendor.phone.isEmpty {
+                    Button {
+                        let cleanedPhone = vendor.phone.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
+                        if let url = URL(string: "tel:\(cleanedPhone)") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    } label: {
+                        Label("Call", systemImage: "phone")
+                    }
+
+                    Divider()
+                }
+
                 Button(role: .destructive) {
                     vendor.isDeleted = true
                     vendor.deletedAt = Date()
@@ -158,9 +267,24 @@ struct VendorsListView: View {
                     Label("Delete", systemImage: "trash")
                 }
             }
-            .onTapGesture(count: 2) {
-                openWindow(value: vendor.id)
+    }
+
+    private func moveVendors(from source: IndexSet, to destination: Int) {
+        // Switch to manual sort if needed and adopt current order
+        if sortOption != .manual {
+            // First, set sortOrder based on current filtered order
+            for (index, vendor) in unpinnedVendors.enumerated() {
+                vendor.sortOrder = index
             }
+            sortOption = .manual
+        }
+
+        // Now perform the move
+        var reorderedVendors = unpinnedVendors
+        reorderedVendors.move(fromOffsets: source, toOffset: destination)
+        for (index, vendor) in reorderedVendors.enumerated() {
+            vendor.sortOrder = index
+        }
     }
 }
 
@@ -168,7 +292,15 @@ struct VendorRowView: View {
     let vendor: Vendor
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            if let imageData = vendor.imageData, let nsImage = NSImage(data: imageData) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(vendor.name)
                     .font(.headline)
@@ -198,6 +330,7 @@ struct VendorDetailView: View {
 
     @State private var showingEditVendor = false
     @State private var showingCallConfirmation = false
+    @FocusState private var isNotesFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -221,11 +354,16 @@ struct VendorDetailView: View {
             }
             .padding()
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isNotesFocused = false
+        }
         .background(Color.primary.opacity(0.03))
         .navigationTitle(vendor.name)
-        .toolbar {
-            Button("Edit") {
-                showingEditVendor = true
+        .onAppear {
+            // Prevent notes from auto-focusing - delay needed because system focus happens after onAppear
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isNotesFocused = false
             }
         }
         .sheet(isPresented: $showingEditVendor) {
@@ -241,6 +379,14 @@ struct VendorDetailView: View {
     private var heroCard: some View {
         VStack(spacing: 16) {
             HStack {
+                if let imageData = vendor.imageData, let nsImage = NSImage(data: imageData) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 80, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Total Spent")
                         .font(.subheadline)
@@ -419,11 +565,13 @@ struct VendorDetailView: View {
                 .font(.body)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 60)
+                .focused($isNotesFocused)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .onTapGesture { }
     }
 }
 
@@ -435,21 +583,27 @@ struct VendorStatCard: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(color)
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title)
+                    .foregroundStyle(color)
+                Spacer()
+            }
 
-            Text(value)
-                .font(.title3)
-                .fontWeight(.bold)
-
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(value)
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                    Text(title)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(16)
+        .padding()
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -465,10 +619,53 @@ struct EditVendorView: View {
     @State private var email = ""
     @State private var address = ""
     @State private var notes = ""
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var imageData: Data?
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Image") {
+                    HStack {
+                        if let imageData, let nsImage = NSImage(data: imageData) {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 80, height: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.2))
+                                .frame(width: 80, height: 80)
+                                .overlay {
+                                    Image(systemName: "building.2")
+                                        .font(.title)
+                                        .foregroundStyle(.secondary)
+                                }
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 8) {
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                Label("Select Photo", systemImage: "photo.on.rectangle")
+                            }
+                            .buttonStyle(.bordered)
+
+                            if imageData != nil {
+                                Button(role: .destructive) {
+                                    imageData = nil
+                                    selectedPhoto = nil
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section("Vendor Details") {
                     TextField("Vendor Name", text: $name)
                     TextField("Contact Name", text: $contactName)
@@ -476,6 +673,12 @@ struct EditVendorView: View {
 
                 Section("Contact Information") {
                     TextField("Phone", text: $phone)
+                        .onChange(of: phone) { _, newValue in
+                            let formatted = PhoneFormatter.format(newValue)
+                            if formatted != newValue {
+                                phone = formatted
+                            }
+                        }
                         #if os(iOS)
                         .keyboardType(.phonePad)
                         #endif
@@ -489,12 +692,20 @@ struct EditVendorView: View {
 
                 Section("Notes") {
                     TextEditor(text: $notes)
+                        .font(.body)
                         .frame(minHeight: 100)
                         .scrollContentBackground(.hidden)
                 }
             }
+            .onChange(of: selectedPhoto) { _, newValue in
+                Task {
+                    if let data = try? await newValue?.loadTransferable(type: Data.self) {
+                        imageData = data
+                    }
+                }
+            }
             .formStyle(.grouped)
-                        .navigationTitle("Edit Vendor")
+            .navigationTitle("Edit Vendor")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -514,10 +725,11 @@ struct EditVendorView: View {
             .onAppear {
                 name = vendor.name
                 contactName = vendor.contactName
-                phone = vendor.phone
+                phone = PhoneFormatter.format(vendor.phone)
                 email = vendor.email
                 address = vendor.address
                 notes = vendor.notes
+                imageData = vendor.imageData
             }
         }
         #if os(macOS)
@@ -529,10 +741,11 @@ struct EditVendorView: View {
     private func saveChanges() {
         vendor.name = name
         vendor.contactName = contactName
-        vendor.phone = phone
+        vendor.phone = PhoneFormatter.stripFormatting(phone)
         vendor.email = email
         vendor.address = address
         vendor.notes = notes
+        vendor.imageData = imageData
         dismiss()
     }
 }

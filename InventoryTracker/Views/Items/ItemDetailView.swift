@@ -9,6 +9,7 @@ struct ItemDetailView: View {
     @State private var showingEditItem = false
     @State private var showingAddPurchase = false
     @State private var showingAddUsage = false
+    @FocusState private var isNotesFocused: Bool
 
     private var stockPercentage: Double {
         guard item.reorderLevel > 0 else { return 1.0 }
@@ -51,11 +52,16 @@ struct ItemDetailView: View {
             }
             .padding()
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isNotesFocused = false
+        }
         .background(Color.primary.opacity(0.03))
         .navigationTitle(item.name)
-        .toolbar {
-            Button("Edit") {
-                showingEditItem = true
+        .onAppear {
+            // Prevent notes from auto-focusing - delay needed because system focus happens after onAppear
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isNotesFocused = false
             }
         }
         .sheet(isPresented: $showingEditItem) {
@@ -402,15 +408,24 @@ struct ItemDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Notes", systemImage: "note.text")
                 .font(.headline)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isNotesFocused = true
+                }
             TextEditor(text: $item.notes)
                 .font(.body)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 60)
+                .focused($isNotesFocused)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isNotesFocused = true
+        }
     }
 
     private func expirationColor(days: Int) -> Color {
@@ -430,25 +445,32 @@ struct StatCard: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(color)
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title)
+                    .foregroundStyle(color)
+                Spacer()
+            }
 
-            Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
-
-            Text(unit)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(value)
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text(unit)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(title)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(16)
+        .padding()
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -527,6 +549,7 @@ struct EditItemView: View {
 
                 Section("Notes") {
                     TextEditor(text: $notes)
+                        .font(.body)
                         .frame(minHeight: 100)
                         .scrollContentBackground(.hidden)
                 }

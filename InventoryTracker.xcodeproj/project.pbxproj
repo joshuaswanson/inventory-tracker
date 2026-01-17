@@ -33,6 +33,7 @@
 		A1000024001 /* VendorWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000024000 /* VendorWindowView.swift */; };
 		A1000025001 /* RecentlyDeletedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000 /* RecentlyDeletedView.swift */; };
 		A1000026001 /* PhoneFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026000 /* PhoneFormatter.swift */; };
+		A1000027001 /* DoubleClickHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000 /* DoubleClickHandler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +64,7 @@
 		A1000024000 /* VendorWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorWindowView.swift; sourceTree = "<group>"; };
 		A1000025000 /* RecentlyDeletedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentlyDeletedView.swift; sourceTree = "<group>"; };
 		A1000026000 /* PhoneFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneFormatter.swift; sourceTree = "<group>"; };
+		A1000027000 /* DoubleClickHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoubleClickHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -174,6 +176,7 @@
 			children = (
 				A1000021000 /* InventoryCalculator.swift */,
 				A1000026000 /* PhoneFormatter.swift */,
+				A1000027000 /* DoubleClickHandler.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -283,6 +286,7 @@
 				A1000024001 /* VendorWindowView.swift in Sources */,
 				A1000025001 /* RecentlyDeletedView.swift in Sources */,
 				A1000026001 /* PhoneFormatter.swift in Sources */,
+				A1000027001 /* DoubleClickHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

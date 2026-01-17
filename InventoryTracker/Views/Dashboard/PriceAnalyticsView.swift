@@ -12,14 +12,15 @@ struct PriceAnalyticsView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Best Prices by Item", systemImage: "dollarsign.circle.fill")
-                    .font(.headline)
+                    .font(.title2)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.green)
                 Spacer()
             }
 
             if itemsWithPricing.isEmpty {
                 Text("No purchase history yet. Add purchases to see price analytics.")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
             } else {
@@ -48,12 +49,12 @@ struct PriceAnalyticsRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(item.name)
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.medium)
                 Spacer()
                 if let lowest = item.lowestPricePaid {
                     Text(lowest, format: .currency(code: "USD"))
-                        .font(.subheadline)
+                        .font(.body)
                         .fontWeight(.bold)
                         .foregroundStyle(.green)
                 }
@@ -65,11 +66,11 @@ struct PriceAnalyticsRow: View {
                         HStack(spacing: 4) {
                             if vp.price == item.lowestPricePaid {
                                 Image(systemName: "star.fill")
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundStyle(.yellow)
                             }
                             Text("\(vp.vendor.name): \(vp.price, format: .currency(code: "USD"))")
-                                .font(.footnote)
+                                .font(.subheadline)
                                 .foregroundStyle(vp.price == item.lowestPricePaid ? .green : .secondary)
                         }
                     }
@@ -78,11 +79,11 @@ struct PriceAnalyticsRow: View {
 
             if let avg = item.averagePricePaid {
                 Text("Average: \(avg, format: .currency(code: "USD"))")
-                    .font(.footnote)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 

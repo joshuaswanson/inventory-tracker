@@ -18,7 +18,11 @@ struct ItemsListView: View {
     @State private var showingOnlyLowStock = false
     @State private var selectedItem: Item?
     @State private var itemToEdit: Item?
+    @State private var itemForPurchase: Item?
+    @State private var itemForUsage: Item?
     @State private var sortOption: ItemSortOption = .manual
+    @State private var lastClickedItem: Item?
+    @State private var lastClickTime: Date = .distantPast
 
     var filteredItems: [Item] {
         var result = items
@@ -67,6 +71,14 @@ struct ItemsListView: View {
                         Text("Add items to start tracking your inventory.")
                     }
                     .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingAddItem = true
+                        } label: {
+                            Label("Add Item", systemImage: "plus")
+                        }
+                    }
                 } else {
                     List(selection: $selectedItem) {
                         if pinnedItems.isEmpty {
@@ -91,42 +103,76 @@ struct ItemsListView: View {
                     }
                     .listStyle(.inset(alternatesRowBackgrounds: false))
                     .animation(.default, value: pinnedItems.map(\.id))
+                    .animation(.default, value: unpinnedItems.map(\.id))
+                    .contextMenu {
+                        Button {
+                            showingAddItem = true
+                        } label: {
+                            Label("Add Item", systemImage: "plus")
+                        }
+                    }
                 }
             }
             .frame(width: 300)
             .searchable(text: $searchText, placement: .sidebar, prompt: "Search items")
             .toolbar {
-                ToolbarItem(placement: .navigation) {
-                    Toggle(isOn: $showingOnlyLowStock) {
-                        Label("Low Stock", systemImage: "exclamationmark.triangle")
-                    }
-                    .help("Show low stock only")
-                }
-
-                ToolbarItem(placement: .automatic) {
-                    Menu {
-                        ForEach(ItemSortOption.allCases, id: \.self) { option in
-                            Button {
-                                sortOption = option
-                            } label: {
-                                if sortOption == option {
-                                    Label(option.rawValue, systemImage: "checkmark")
-                                } else {
-                                    Text(option.rawValue)
-                                }
-                            }
-                        }
-                    } label: {
-                        Label("Sort", systemImage: "arrow.up.arrow.down")
-                    }
-                    .help("Sort items")
-                }
-
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(id: "add", placement: .primaryAction) {
                     Button(action: { showingAddItem = true }) {
                         Label("Add Item", systemImage: "plus")
                     }
                     .help("Add item")
+                }
+
+                ToolbarItem(id: "filter", placement: .secondaryAction) {
+                    Menu {
+                        Button {
+                            showingOnlyLowStock = false
+                        } label: {
+                            if !showingOnlyLowStock {
+                                Label("All Items", systemImage: "checkmark")
+                            } else {
+                                Text("All Items")
+                            }
+                        }
+                        Button {
+                            showingOnlyLowStock = true
+                        } label: {
+                            if showingOnlyLowStock {
+                                Label("Low Stock Only", systemImage: "checkmark")
+                            } else {
+                                Text("Low Stock Only")
+                            }
+                        }
+
+                        Divider()
+
+                        Menu("Sort By") {
+                            ForEach(ItemSortOption.allCases, id: \.self) { option in
+                                Button {
+                                    sortOption = option
+                                } label: {
+                                    if sortOption == option {
+                                        Label(option.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.rawValue)
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Filter", systemImage: "line.3.horizontal.decrease")
+                    }
+                    .menuIndicator(.hidden)
+                    .help("Filter and sort items")
+                }
+
+                if selectedItem != nil {
+                    ToolbarItem(id: "edit", placement: .secondaryAction) {
+                        Button("Edit") {
+                            itemToEdit = selectedItem
+                        }
+                        .help("Edit item")
+                    }
                 }
             }
 
@@ -142,6 +188,15 @@ struct ItemsListView: View {
                     } description: {
                         Text("Select an item from the list to view details.")
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingAddItem = true
+                        } label: {
+                            Label("Add Item", systemImage: "plus")
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -153,13 +208,31 @@ struct ItemsListView: View {
         .sheet(item: $itemToEdit) { item in
             EditItemView(item: item)
         }
+        .sheet(item: $itemForPurchase) { item in
+            AddPurchaseView(preselectedItem: item)
+        }
+        .sheet(item: $itemForUsage) { item in
+            AddUsageView(preselectedItem: item)
+        }
         .navigationTitle("Items")
+        .onChange(of: selectedItem) { oldValue, newValue in
+            guard let item = newValue else { return }
+            let now = Date()
+            if item == lastClickedItem && now.timeIntervalSince(lastClickTime) < 0.4 {
+                openWindow(value: ItemWindowID(id: item.id))
+            }
+            lastClickedItem = item
+            lastClickTime = now
+        }
     }
 
     @ViewBuilder
     private func itemRow(for item: Item) -> some View {
         ItemRowView(item: item)
             .tag(item)
+            .onDoubleClick {
+                openWindow(value: ItemWindowID(id: item.id))
+            }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     item.isDeleted = true
@@ -177,11 +250,11 @@ struct ItemsListView: View {
                 } label: {
                     Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
                 }
-                .tint(.yellow)
+                .tint(.orange)
             }
             .contextMenu {
                 Button {
-                    openWindow(value: item.id)
+                    openWindow(value: ItemWindowID(id: item.id))
                 } label: {
                     Label("Open in New Window", systemImage: "macwindow.badge.plus")
                 }
@@ -201,6 +274,20 @@ struct ItemsListView: View {
 
                 Divider()
 
+                Button {
+                    itemForPurchase = item
+                } label: {
+                    Label("Add Recent Purchase", systemImage: "cart.badge.plus")
+                }
+
+                Button {
+                    itemForUsage = item
+                } label: {
+                    Label("Add Recent Usage", systemImage: "minus.circle")
+                }
+
+                Divider()
+
                 Button(role: .destructive) {
                     item.isDeleted = true
                     item.deletedAt = Date()
@@ -211,9 +298,10 @@ struct ItemsListView: View {
                     Label("Delete", systemImage: "trash")
                 }
             }
-            .onTapGesture(count: 2) {
-                openWindow(value: item.id)
-            }
+    }
+
+    private func handleItemDoubleClick(_ item: Item) {
+        openWindow(value: ItemWindowID(id: item.id))
     }
 
     private func deleteItems(at offsets: IndexSet) {

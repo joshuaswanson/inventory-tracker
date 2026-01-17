@@ -8,11 +8,12 @@ struct ReorderAlertsView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Reorder Alerts", systemImage: "exclamationmark.triangle.fill")
-                    .font(.headline)
+                    .font(.title2)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.orange)
                 Spacer()
                 Text("\(items.count) item(s)")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
             }
 
@@ -36,14 +37,14 @@ struct ReorderAlertRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.medium)
 
                 HStack {
                     Text("Current: \(item.currentInventory) \(item.unit.abbreviation)")
                     Text("Reorder at: \(item.reorderLevel)")
                 }
-                .font(.footnote)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
 
@@ -53,16 +54,16 @@ struct ReorderAlertRow: View {
                 if let days = item.estimatedDaysUntilReorder {
                     if days <= 0 {
                         Text("Order Now")
-                            .font(.footnote)
+                            .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
                             .background(.red)
                             .clipShape(Capsule())
                     } else {
                         Text("\(days) days left")
-                            .font(.footnote)
+                            .font(.subheadline)
                             .foregroundStyle(days <= 7 ? .orange : .secondary)
                     }
                 }
@@ -70,12 +71,12 @@ struct ReorderAlertRow: View {
                 if let lowestPrice = item.lowestPricePaid,
                    let vendor = item.lowestPricePurchase?.vendor {
                     Text("Best: \(lowestPrice, format: .currency(code: "USD")) @ \(vendor.name)")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.green)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 

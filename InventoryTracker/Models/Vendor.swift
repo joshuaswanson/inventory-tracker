@@ -11,9 +11,11 @@ final class Vendor {
     var address: String
     var notes: String
     var createdAt: Date
+    var sortOrder: Int = 0
     var isPinned: Bool = false
     var isDeleted: Bool = false
     var deletedAt: Date?
+    @Attribute(.externalStorage) var imageData: Data?
 
     @Relationship(deleteRule: .nullify, inverse: \Purchase.vendor)
     var purchases: [Purchase] = []
