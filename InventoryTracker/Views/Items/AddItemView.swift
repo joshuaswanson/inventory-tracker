@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct AddItemView: View {
     @Environment(\.modelContext) private var modelContext
@@ -10,10 +11,53 @@ struct AddItemView: View {
     @State private var reorderLevel = 10
     @State private var isPerishable = false
     @State private var notes = ""
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var imageData: Data?
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Image") {
+                    HStack {
+                        if let imageData, let nsImage = NSImage(data: imageData) {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 80, height: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.2))
+                                .frame(width: 80, height: 80)
+                                .overlay {
+                                    Image(systemName: "photo")
+                                        .font(.title)
+                                        .foregroundStyle(.secondary)
+                                }
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 8) {
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                Label("Select Photo", systemImage: "photo.on.rectangle")
+                            }
+                            .buttonStyle(.bordered)
+
+                            if imageData != nil {
+                                Button(role: .destructive) {
+                                    imageData = nil
+                                    selectedPhoto = nil
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section("Item Details") {
                     TextField("Item Name", text: $name)
 
@@ -32,6 +76,13 @@ struct AddItemView: View {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
                         .scrollContentBackground(.hidden)
+                }
+            }
+            .onChange(of: selectedPhoto) { _, newValue in
+                Task {
+                    if let data = try? await newValue?.loadTransferable(type: Data.self) {
+                        imageData = data
+                    }
                 }
             }
             .formStyle(.grouped)
@@ -65,7 +116,8 @@ struct AddItemView: View {
             unitOfMeasure: selectedUnit,
             reorderLevel: reorderLevel,
             isPerishable: isPerishable,
-            notes: notes
+            notes: notes,
+            imageData: imageData
         )
         modelContext.insert(item)
         dismiss()
