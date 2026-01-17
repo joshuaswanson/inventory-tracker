@@ -19,6 +19,7 @@ struct PurchasesListView: View {
     @State private var sortOption: PurchaseSortOption = .dateNewest
     @State private var showExpiringSoonOnly = false
     @State private var purchaseToEdit: Purchase?
+    @FocusState private var focusedPurchaseId: UUID?
 
     var filteredPurchases: [Purchase] {
         var result = purchases
@@ -90,10 +91,19 @@ struct PurchasesListView: View {
         }
 
         var result: [(String, [Purchase])] = []
-        if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
-        if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
-        if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
-        if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
+
+        // Reverse section order when sorting by oldest first
+        if sortOption == .dateOldest {
+            if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
+            if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
+            if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
+            if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
+        } else {
+            if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
+            if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
+            if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
+            if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
+        }
 
         return result
     }
@@ -140,7 +150,9 @@ struct PurchasesListView: View {
                                     Section {
                                         VStack(spacing: 10) {
                                             ForEach(sectionPurchases) { purchase in
-                                                PurchaseCardView(purchase: purchase)
+                                                PurchaseCardView(purchase: purchase, isHighlighted: focusedPurchaseId == purchase.id)
+                                                    .focusable()
+                                                    .focused($focusedPurchaseId, equals: purchase.id)
                                                     .contextMenu {
                                                         Button {
                                                             purchaseToEdit = purchase
@@ -349,6 +361,7 @@ struct SummaryStatView: View {
 // MARK: - Purchase Card View
 struct PurchaseCardView: View {
     let purchase: Purchase
+    var isHighlighted: Bool = false
 
     private var expirationColor: Color {
         switch purchase.expirationStatus {
@@ -358,6 +371,13 @@ struct PurchaseCardView: View {
         case .good: return .green
         case .notApplicable: return .clear
         }
+    }
+
+    private var highlightColor: Color {
+        if purchase.expirationDate != nil {
+            return expirationColor
+        }
+        return .accentColor
     }
 
     var body: some View {
@@ -496,8 +516,14 @@ struct PurchaseCardView: View {
         }
         .padding(16)
         .frame(maxWidth: 700)
+        .background(isHighlighted ? highlightColor.opacity(0.1) : Color.clear)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(highlightColor.opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
+        )
+        .animation(.easeInOut(duration: 0.15), value: isHighlighted)
     }
 }
 
