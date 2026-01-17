@@ -11,7 +11,7 @@ enum ItemSortOption: String, CaseIterable {
 struct ItemsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
-    @Query(sort: \Item.sortOrder) private var items: [Item]
+    @Query(filter: #Predicate<Item> { !$0.isDeleted }, sort: \Item.sortOrder) private var items: [Item]
 
     @State private var showingAddItem = false
     @State private var searchText = ""
@@ -162,7 +162,11 @@ struct ItemsListView: View {
             .tag(item)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
-                    modelContext.delete(item)
+                    item.isDeleted = true
+                    item.deletedAt = Date()
+                    if selectedItem == item {
+                        selectedItem = nil
+                    }
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -198,10 +202,17 @@ struct ItemsListView: View {
                 Divider()
 
                 Button(role: .destructive) {
-                    modelContext.delete(item)
+                    item.isDeleted = true
+                    item.deletedAt = Date()
+                    if selectedItem == item {
+                        selectedItem = nil
+                    }
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+            }
+            .onTapGesture(count: 2) {
+                openWindow(value: item.id)
             }
     }
 

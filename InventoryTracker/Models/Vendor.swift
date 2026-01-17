@@ -12,6 +12,8 @@ final class Vendor {
     var notes: String
     var createdAt: Date
     var isPinned: Bool = false
+    var isDeleted: Bool = false
+    var deletedAt: Date?
 
     @Relationship(deleteRule: .nullify, inverse: \Purchase.vendor)
     var purchases: [Purchase] = []

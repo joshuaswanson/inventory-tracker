@@ -4,7 +4,7 @@ import SwiftData
 struct VendorsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
-    @Query(sort: \Vendor.name) private var vendors: [Vendor]
+    @Query(filter: #Predicate<Vendor> { !$0.isDeleted }, sort: \Vendor.name) private var vendors: [Vendor]
 
     @State private var showingAddVendor = false
     @State private var searchText = ""
@@ -106,7 +106,11 @@ struct VendorsListView: View {
             .tag(vendor)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
-                    modelContext.delete(vendor)
+                    vendor.isDeleted = true
+                    vendor.deletedAt = Date()
+                    if selectedVendor == vendor {
+                        selectedVendor = nil
+                    }
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -142,10 +146,17 @@ struct VendorsListView: View {
                 Divider()
 
                 Button(role: .destructive) {
-                    modelContext.delete(vendor)
+                    vendor.isDeleted = true
+                    vendor.deletedAt = Date()
+                    if selectedVendor == vendor {
+                        selectedVendor = nil
+                    }
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+            }
+            .onTapGesture(count: 2) {
+                openWindow(value: vendor.id)
             }
     }
 }

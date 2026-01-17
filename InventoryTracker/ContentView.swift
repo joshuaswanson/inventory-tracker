@@ -10,6 +10,7 @@ struct ContentView: View {
         case purchases = "Purchases"
         case usage = "Usage"
         case vendors = "Vendors"
+        case recentlyDeleted = "Recently Deleted"
 
         var id: String { rawValue }
 
@@ -20,6 +21,7 @@ struct ContentView: View {
             case .purchases: return "cart.fill"
             case .usage: return "chart.line.downtrend.xyaxis"
             case .vendors: return "building.2.fill"
+            case .recentlyDeleted: return "trash"
             }
         }
     }
@@ -44,6 +46,9 @@ struct ContentView: View {
                     Label(AppTab.usage.rawValue, systemImage: AppTab.usage.icon)
                         .tag(AppTab.usage)
                 }
+
+                Label(AppTab.recentlyDeleted.rawValue, systemImage: AppTab.recentlyDeleted.icon)
+                    .tag(AppTab.recentlyDeleted)
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
         } detail: {
@@ -82,6 +87,8 @@ struct ContentView: View {
             UsageListView()
         case .vendors:
             VendorsListView()
+        case .recentlyDeleted:
+            RecentlyDeletedView()
         }
     }
 }

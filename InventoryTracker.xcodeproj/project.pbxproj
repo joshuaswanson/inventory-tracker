@@ -31,6 +31,7 @@
 		A1000022001 /* UnitOfMeasure.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000022000 /* UnitOfMeasure.swift */; };
 		A1000023001 /* ItemWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000023000 /* ItemWindowView.swift */; };
 		A1000024001 /* VendorWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000024000 /* VendorWindowView.swift */; };
+		A1000025001 /* RecentlyDeletedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000 /* RecentlyDeletedView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +60,7 @@
 		A1000022000 /* UnitOfMeasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitOfMeasure.swift; sourceTree = "<group>"; };
 		A1000023000 /* ItemWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemWindowView.swift; sourceTree = "<group>"; };
 		A1000024000 /* VendorWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorWindowView.swift; sourceTree = "<group>"; };
+		A1000025000 /* RecentlyDeletedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentlyDeletedView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +123,7 @@
 				A1000000011 /* Purchases */,
 				A1000000012 /* Usage */,
 				A1000000014 /* Dashboard */,
+				A1000025000 /* RecentlyDeletedView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -275,6 +278,7 @@
 				A1000022001 /* UnitOfMeasure.swift in Sources */,
 				A1000023001 /* ItemWindowView.swift in Sources */,
 				A1000024001 /* VendorWindowView.swift in Sources */,
+				A1000025001 /* RecentlyDeletedView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
