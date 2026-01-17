@@ -110,13 +110,6 @@ struct VendorsListView: View {
                 } label: {
                     Image(systemName: "trash")
                 }
-
-                Button {
-                    vendor.isPinned.toggle()
-                } label: {
-                    Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
-                }
-                .tint(.yellow)
             }
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {
@@ -125,12 +118,6 @@ struct VendorsListView: View {
                     Image(systemName: vendor.isPinned ? "pin.slash.fill" : "pin.fill")
                 }
                 .tint(.yellow)
-
-                Button(role: .destructive) {
-                    modelContext.delete(vendor)
-                } label: {
-                    Image(systemName: "trash")
-                }
             }
             .contextMenu {
                 Button {

@@ -105,9 +105,15 @@ struct ItemsListView: View {
 
                 ToolbarItem(placement: .automatic) {
                     Menu {
-                        Picker("Sort By", selection: $sortOption) {
-                            ForEach(ItemSortOption.allCases, id: \.self) { option in
-                                Text(option.rawValue).tag(option)
+                        ForEach(ItemSortOption.allCases, id: \.self) { option in
+                            Button {
+                                sortOption = option
+                            } label: {
+                                if sortOption == option {
+                                    Label(option.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(option.rawValue)
+                                }
                             }
                         }
                     } label: {
@@ -160,13 +166,6 @@ struct ItemsListView: View {
                 } label: {
                     Image(systemName: "trash")
                 }
-
-                Button {
-                    item.isPinned.toggle()
-                } label: {
-                    Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
-                }
-                .tint(.yellow)
             }
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {
@@ -175,12 +174,6 @@ struct ItemsListView: View {
                     Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
                 }
                 .tint(.yellow)
-
-                Button(role: .destructive) {
-                    modelContext.delete(item)
-                } label: {
-                    Image(systemName: "trash")
-                }
             }
             .contextMenu {
                 Button {
