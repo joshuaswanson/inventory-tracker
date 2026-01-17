@@ -154,20 +154,33 @@ struct ItemsListView: View {
     private func itemRow(for item: Item) -> some View {
         ItemRowView(item: item)
             .tag(item)
-            .swipeActions(edge: .trailing) {
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     modelContext.delete(item)
                 } label: {
                     Image(systemName: "trash")
                 }
-            }
-            .swipeActions(edge: .leading) {
+
                 Button {
                     item.isPinned.toggle()
                 } label: {
                     Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
                 }
                 .tint(.yellow)
+            }
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button {
+                    item.isPinned.toggle()
+                } label: {
+                    Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
+                }
+                .tint(.yellow)
+
+                Button(role: .destructive) {
+                    modelContext.delete(item)
+                } label: {
+                    Image(systemName: "trash")
+                }
             }
             .contextMenu {
                 Button {
