@@ -191,7 +191,6 @@ struct DashboardView: View {
 
                 ZStack(alignment: .topLeading) {
                     ForEach(layout.cells, id: \.item.id) { cell in
-                        let widgetSize = sizeFor(cell.item)
                         let x = CGFloat(cell.col) * (cellSize + spacing)
                         let y = CGFloat(cell.row) * (cellSize + spacing)
                         let width = CGFloat(cell.colSpan) * cellSize + CGFloat(cell.colSpan - 1) * spacing
@@ -501,8 +500,8 @@ struct WidgetCard: View {
     private var maxItems: Int {
         switch size {
         case .small: return 0
-        case .medium: return 3
-        case .large: return 8
+        case .medium: return 2
+        case .large: return 7
         }
     }
 
@@ -555,19 +554,8 @@ struct WidgetCard: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                     Spacer()
                 } else if size == .medium {
-                    // Medium: no scroll, just top 3 with dividers
+                    // Medium: top 2 items with +X more
                     VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(items.prefix(maxItems).enumerated()), id: \.element.name) { index, item in
-                            if index > 0 {
-                                Divider()
-                                    .padding(.horizontal, 4)
-                            }
-                            itemRow(item: item)
-                        }
-                    }
-                } else {
-                    // Large: scrollable list (use VStack for preview since ScrollView doesn't render)
-                    let listContent = VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(items.prefix(maxItems).enumerated()), id: \.element.name) { index, item in
                             if index > 0 {
                                 Divider()
@@ -585,12 +573,24 @@ struct WidgetCard: View {
                                 .padding(.vertical, 6)
                         }
                     }
-
-                    if isPreview {
-                        listContent
-                    } else {
-                        ScrollView {
-                            listContent
+                } else {
+                    // Large: top 8 items without scroll
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(items.prefix(maxItems).enumerated()), id: \.element.name) { index, item in
+                            if index > 0 {
+                                Divider()
+                                    .padding(.horizontal, 4)
+                            }
+                            itemRow(item: item)
+                        }
+                        if items.count > maxItems {
+                            Divider()
+                                .padding(.horizontal, 4)
+                            Text("+\(items.count - maxItems) more")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 6)
                         }
                     }
                 }
