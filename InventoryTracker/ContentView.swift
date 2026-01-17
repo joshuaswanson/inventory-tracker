@@ -12,6 +12,7 @@ struct ContentView: View {
         case purchases = "Purchases"
         case usage = "Usage"
         case vendors = "Vendors"
+        case duplicates = "Duplicates"
         case recentlyDeleted = "Recently Deleted"
 
         var id: String { rawValue }
@@ -23,6 +24,7 @@ struct ContentView: View {
             case .purchases: return "cart.fill"
             case .usage: return "chart.line.downtrend.xyaxis"
             case .vendors: return "building.2.fill"
+            case .duplicates: return "doc.on.doc"
             case .recentlyDeleted: return "trash"
             }
         }
@@ -62,6 +64,8 @@ struct ContentView: View {
                 }
 
                 Section("Utilities") {
+                    Label(AppTab.duplicates.rawValue, systemImage: AppTab.duplicates.icon)
+                        .tag(AppTab.duplicates)
                     Label(AppTab.recentlyDeleted.rawValue, systemImage: AppTab.recentlyDeleted.icon)
                         .tag(AppTab.recentlyDeleted)
                 }
@@ -103,6 +107,8 @@ struct ContentView: View {
             UsageListView()
         case .vendors:
             VendorsListView()
+        case .duplicates:
+            DuplicatesView()
         case .recentlyDeleted:
             RecentlyDeletedView()
         }
