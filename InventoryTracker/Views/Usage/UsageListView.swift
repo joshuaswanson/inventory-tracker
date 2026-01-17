@@ -7,6 +7,7 @@ struct UsageListView: View {
 
     @State private var showingAddUsage = false
     @State private var searchText = ""
+    @State private var usageToEdit: Usage?
 
     var filteredUsage: [Usage] {
         if searchText.isEmpty {
@@ -31,8 +32,29 @@ struct UsageListView: View {
                     List {
                         ForEach(filteredUsage) { usage in
                             UsageRowView(usage: usage)
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        modelContext.delete(usage)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                }
+                                .contextMenu {
+                                    Button {
+                                        usageToEdit = usage
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+
+                                    Divider()
+
+                                    Button(role: .destructive) {
+                                        modelContext.delete(usage)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                         }
-                        .onDelete(perform: deleteUsage)
                     }
                 }
             }
@@ -48,13 +70,9 @@ struct UsageListView: View {
             .sheet(isPresented: $showingAddUsage) {
                 AddUsageView()
             }
-        }
-    }
-
-    private func deleteUsage(at offsets: IndexSet) {
-        for index in offsets {
-            let usage = filteredUsage[index]
-            modelContext.delete(usage)
+            .sheet(item: $usageToEdit) { usage in
+                EditUsageView(usage: usage)
+            }
         }
     }
 }
@@ -95,7 +113,8 @@ struct UsageRowView: View {
                     .foregroundStyle(.red)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
     }
 }
 
