@@ -289,6 +289,16 @@ struct VendorsListView: View {
                             Label("Call", systemImage: "phone")
                         }
                     }
+
+                    if !vendor.email.isEmpty {
+                        Button {
+                            if let url = URL(string: "mailto:\(vendor.email)") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        } label: {
+                            Label("Email", systemImage: "envelope")
+                        }
+                    }
                 }
 
                 Divider()
@@ -365,6 +375,7 @@ struct VendorRowView: View {
 
 struct VendorDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openWindow) private var openWindow
     @Bindable var vendor: Vendor
 
     @State private var showingEditVendor = false
@@ -561,26 +572,32 @@ struct VendorDetailView: View {
                 VStack(spacing: 8) {
                     ForEach(vendor.purchases.sorted { $0.date > $1.date }.prefix(5), id: \.id) { purchase in
                         if let item = purchase.item {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Text(purchase.date, style: .date)
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
+                            Button {
+                                openWindow(value: ItemWindowID(id: item.id))
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.name)
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        Text(purchase.date, style: .date)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text(purchase.pricePerUnit, format: .currency(code: "USD"))
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        Text("\(purchase.quantity) \(item.unit.abbreviation)")
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text(purchase.pricePerUnit, format: .currency(code: "USD"))
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Text("\(purchase.quantity) \(item.unit.abbreviation)")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-                                }
+                                .padding(.vertical, 4)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.vertical, 4)
+                            .buttonStyle(.plain)
                             if purchase.id != vendor.purchases.sorted(by: { $0.date > $1.date }).prefix(5).last?.id {
                                 Divider()
                             }
