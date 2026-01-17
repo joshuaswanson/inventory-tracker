@@ -1,6 +1,14 @@
 import SwiftUI
 import SwiftData
 
+enum PurchaseSortOption: String, CaseIterable {
+    case dateNewest = "Newest First"
+    case dateOldest = "Oldest First"
+    case priceHighest = "Highest Price"
+    case priceLowest = "Lowest Price"
+    case expirationSoonest = "Expiring Soon"
+}
+
 struct PurchasesListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Purchase.date, order: .reverse) private var purchases: [Purchase]
@@ -8,6 +16,9 @@ struct PurchasesListView: View {
     @State private var showingAddPurchase = false
     @State private var searchText = ""
     @State private var selectedItem: Item?
+    @State private var sortOption: PurchaseSortOption = .dateNewest
+    @State private var showExpiringSoonOnly = false
+    @State private var purchaseToEdit: Purchase?
 
     var filteredPurchases: [Purchase] {
         var result = purchases
@@ -23,56 +34,278 @@ struct PurchasesListView: View {
             }
         }
 
+        if showExpiringSoonOnly {
+            result = result.filter { purchase in
+                if let days = purchase.daysUntilExpiration {
+                    return days <= 30 && days >= 0
+                }
+                return false
+            }
+        }
+
+        // Apply sorting
+        switch sortOption {
+        case .dateNewest:
+            result.sort { $0.date > $1.date }
+        case .dateOldest:
+            result.sort { $0.date < $1.date }
+        case .priceHighest:
+            result.sort { $0.pricePerUnit > $1.pricePerUnit }
+        case .priceLowest:
+            result.sort { $0.pricePerUnit < $1.pricePerUnit }
+        case .expirationSoonest:
+            result.sort { p1, p2 in
+                let d1 = p1.daysUntilExpiration ?? Int.max
+                let d2 = p2.daysUntilExpiration ?? Int.max
+                return d1 < d2
+            }
+        }
+
         return result
+    }
+
+    // Group purchases by date
+    private var groupedPurchases: [(String, [Purchase])] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: today)!
+        let monthAgo = calendar.date(byAdding: .month, value: -1, to: today)!
+
+        var todayPurchases: [Purchase] = []
+        var thisWeekPurchases: [Purchase] = []
+        var thisMonthPurchases: [Purchase] = []
+        var olderPurchases: [Purchase] = []
+
+        for purchase in filteredPurchases {
+            let purchaseDate = calendar.startOfDay(for: purchase.date)
+            if purchaseDate >= today {
+                todayPurchases.append(purchase)
+            } else if purchaseDate >= weekAgo {
+                thisWeekPurchases.append(purchase)
+            } else if purchaseDate >= monthAgo {
+                thisMonthPurchases.append(purchase)
+            } else {
+                olderPurchases.append(purchase)
+            }
+        }
+
+        var result: [(String, [Purchase])] = []
+        if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
+        if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
+        if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
+        if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
+
+        return result
+    }
+
+    // Summary calculations
+    private var totalSpent: Double {
+        filteredPurchases.reduce(0) { $0 + $1.totalCost }
+    }
+
+    private var expiringSoonCount: Int {
+        purchases.filter { purchase in
+            if let days = purchase.daysUntilExpiration {
+                return days <= 30 && days >= 0
+            }
+            return false
+        }.count
+    }
+
+    private var expiredCount: Int {
+        purchases.filter { $0.isExpired }.count
     }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if filteredPurchases.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Purchases", systemImage: "cart")
-                    } description: {
-                        Text("Record purchases to track inventory and pricing.")
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .contextMenu {
-                        Button {
-                            showingAddPurchase = true
-                        } label: {
-                            Label("Add Purchase", systemImage: "plus")
-                        }
-                    }
+            VStack(spacing: 0) {
+                Divider()
+
+                if filteredPurchases.isEmpty && searchText.isEmpty && !showExpiringSoonOnly {
+                    emptyStateView
+                } else if filteredPurchases.isEmpty {
+                    noResultsView
                 } else {
-                    List {
-                        ForEach(filteredPurchases) { purchase in
-                            PurchaseRowView(purchase: purchase)
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            // Summary Header
+                            summaryHeader
+                                .padding(.horizontal)
+                                .padding(.top, 12)
+
+                            // Grouped List
+                            LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
+                                ForEach(groupedPurchases, id: \.0) { section, sectionPurchases in
+                                    Section {
+                                        VStack(spacing: 8) {
+                                            ForEach(sectionPurchases) { purchase in
+                                                PurchaseCardView(purchase: purchase)
+                                                    .contextMenu {
+                                                        Button {
+                                                            purchaseToEdit = purchase
+                                                        } label: {
+                                                            Label("Edit", systemImage: "pencil")
+                                                        }
+
+                                                        Divider()
+
+                                                        Button(role: .destructive) {
+                                                            modelContext.delete(purchase)
+                                                        } label: {
+                                                            Label("Delete", systemImage: "trash")
+                                                        }
+                                                    }
+                                            }
+                                        }
+                                        .padding(.horizontal)
+                                    } header: {
+                                        sectionHeader(section)
+                                    }
+                                }
+                            }
+                            .padding(.bottom, 16)
                         }
-                        .onDelete(perform: deletePurchases)
                     }
-                    .contextMenu {
-                        Button {
-                            showingAddPurchase = true
-                        } label: {
-                            Label("Add Purchase", systemImage: "plus")
-                        }
-                    }
+                    .background(Color.primary.opacity(0.03))
                 }
             }
             .navigationTitle("Purchases")
-            .searchable(text: $searchText, prompt: "Search purchases")
+            .searchable(text: $searchText, prompt: "Search by item or vendor")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showingAddPurchase = true }) {
                         Label("Add Purchase", systemImage: "plus")
                     }
                 }
+
+                ToolbarItem(placement: .secondaryAction) {
+                    Menu {
+                        Toggle(isOn: $showExpiringSoonOnly) {
+                            Label("Expiring Soon Only", systemImage: "clock.badge.exclamationmark")
+                        }
+
+                        Divider()
+
+                        Menu("Sort By") {
+                            ForEach(PurchaseSortOption.allCases, id: \.self) { option in
+                                Button {
+                                    sortOption = option
+                                } label: {
+                                    if sortOption == option {
+                                        Label(option.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.rawValue)
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Filter", systemImage: showExpiringSoonOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease")
+                    }
+                    .menuIndicator(.hidden)
+                }
             }
             .sheet(isPresented: $showingAddPurchase) {
                 AddPurchaseView()
             }
+            .sheet(item: $purchaseToEdit) { purchase in
+                EditPurchaseView(purchase: purchase)
+            }
         }
+    }
+
+    // MARK: - Summary Header
+    private var summaryHeader: some View {
+        HStack(spacing: 12) {
+            SummaryStatView(
+                title: "Purchases",
+                value: "\(filteredPurchases.count)",
+                icon: "cart.fill",
+                color: .purple
+            )
+
+            SummaryStatView(
+                title: "Total Spent",
+                value: totalSpent.formatted(.currency(code: "USD")),
+                icon: "dollarsign.circle.fill",
+                color: .green
+            )
+
+            if expiringSoonCount > 0 {
+                SummaryStatView(
+                    title: "Expiring Soon",
+                    value: "\(expiringSoonCount)",
+                    icon: "clock.badge.exclamationmark.fill",
+                    color: .orange
+                )
+            }
+
+            if expiredCount > 0 {
+                SummaryStatView(
+                    title: "Expired",
+                    value: "\(expiredCount)",
+                    icon: "exclamationmark.triangle.fill",
+                    color: .red
+                )
+            }
+        }
+    }
+
+    // MARK: - Section Header
+    private func sectionHeader(_ title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
+    }
+
+    // MARK: - Empty State
+    private var emptyStateView: some View {
+        ContentUnavailableView {
+            Label("No Purchases", systemImage: "cart")
+        } description: {
+            Text("Record purchases to track inventory and pricing.")
+        } actions: {
+            Button(action: { showingAddPurchase = true }) {
+                Text("Add Purchase")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                showingAddPurchase = true
+            } label: {
+                Label("Add Purchase", systemImage: "plus")
+            }
+        }
+    }
+
+    // MARK: - No Results View
+    private var noResultsView: some View {
+        ContentUnavailableView {
+            Label("No Results", systemImage: "magnifyingglass")
+        } description: {
+            if showExpiringSoonOnly {
+                Text("No purchases expiring within 30 days.")
+            } else {
+                Text("No purchases match your search.")
+            }
+        } actions: {
+            if showExpiringSoonOnly {
+                Button("Show All Purchases") {
+                    showExpiringSoonOnly = false
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func deletePurchases(at offsets: IndexSet) {
@@ -83,58 +316,294 @@ struct PurchasesListView: View {
     }
 }
 
-struct PurchaseRowView: View {
-    let purchase: Purchase
+// MARK: - Summary Stat View
+struct SummaryStatView: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                if let item = purchase.item {
-                    Text(item.name)
-                        .font(.headline)
-                } else {
-                    Text("Unknown Item")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                }
+        VStack(spacing: 6) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.subheadline)
+                    .foregroundStyle(color)
+                Text(value)
+                    .font(.system(.headline, design: .rounded))
+                    .fontWeight(.bold)
+            }
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
 
-                Spacer()
+// MARK: - Purchase Card View
+struct PurchaseCardView: View {
+    let purchase: Purchase
 
-                Text(purchase.pricePerUnit, format: .currency(code: "USD"))
-                    .fontWeight(.semibold)
+    private var expirationColor: Color {
+        switch purchase.expirationStatus {
+        case .expired: return .red
+        case .critical: return .orange
+        case .warning: return .yellow
+        case .good: return .green
+        case .notApplicable: return .clear
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Left accent bar for expiration status
+            if purchase.expirationDate != nil {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(expirationColor.gradient)
+                    .frame(width: 4)
             }
 
-            HStack {
-                Text(purchase.date, style: .date)
+            VStack(alignment: .leading, spacing: 8) {
+                // Top row: Item name and price
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let item = purchase.item {
+                            HStack(spacing: 6) {
+                                Text(item.name)
+                                    .font(.headline)
+                                    .lineLimit(1)
+
+                                if item.isPerishable {
+                                    Image(systemName: "leaf.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.green)
+                                }
+                            }
+                        } else {
+                            Text("Unknown Item")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if let vendor = purchase.vendor {
+                            HStack(spacing: 4) {
+                                Image(systemName: "building.2")
+                                    .font(.caption2)
+                                Text(vendor.name)
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(purchase.pricePerUnit, format: .currency(code: "USD"))
+                            .font(.system(.headline, design: .rounded))
+                            .fontWeight(.bold)
+                            .foregroundStyle(.green)
+
+                        Text("per unit")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                // Divider
+                Divider()
+
+                // Bottom row: Date, quantity, and expiration
+                HStack {
+                    // Date
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.caption)
+                        Text(purchase.date, style: .date)
+                    }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                if let vendor = purchase.vendor {
-                    Text("from \(vendor.name)")
+                    Spacer()
+
+                    // Quantity
+                    if let item = purchase.item {
+                        HStack(spacing: 4) {
+                            Image(systemName: "shippingbox")
+                                .font(.caption)
+                            Text("\(purchase.quantity) \(item.unit.abbreviation)")
+                        }
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    // Total cost
+                    Text(purchase.totalCost, format: .currency(code: "USD"))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
                 }
 
-                Spacer()
+                // Expiration status if applicable
+                if purchase.isExpired {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text("Expired")
+                    }
+                    .font(.footnote)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.red.opacity(0.1))
+                    .clipShape(Capsule())
+                } else if let days = purchase.daysUntilExpiration, days <= 30 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                        Text(days == 0 ? "Expires today" : days == 1 ? "Expires tomorrow" : "Expires in \(days) days")
+                    }
+                    .font(.footnote)
+                    .fontWeight(.medium)
+                    .foregroundStyle(days <= 7 ? .orange : .yellow)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background((days <= 7 ? Color.orange : Color.yellow).opacity(0.1))
+                    .clipShape(Capsule())
+                }
 
-                if let item = purchase.item {
-                    Text("\(purchase.quantity) \(item.unit.abbreviation)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                // Lot number if present
+                if !purchase.lotNumber.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "number")
+                            .font(.caption2)
+                        Text("Lot: \(purchase.lotNumber)")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
+            .padding(.vertical, 4)
+        }
+        .padding(12)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
 
-            if purchase.isExpired {
-                Label("Expired", systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            } else if let days = purchase.daysUntilExpiration, days <= 30 {
-                Label("Expires in \(days) days", systemImage: "clock")
-                    .font(.footnote)
-                    .foregroundStyle(days <= 7 ? .orange : .yellow)
+// MARK: - Edit Purchase View
+struct EditPurchaseView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Query(filter: #Predicate<Item> { !$0.isDeleted }, sort: \Item.name) private var items: [Item]
+    @Query(filter: #Predicate<Vendor> { !$0.isDeleted }, sort: \Vendor.name) private var vendors: [Vendor]
+    @Bindable var purchase: Purchase
+
+    @State private var selectedItem: Item?
+    @State private var selectedVendor: Vendor?
+    @State private var date: Date = Date()
+    @State private var quantity: Int = 1
+    @State private var pricePerUnit: String = ""
+    @State private var hasExpirationDate: Bool = false
+    @State private var expirationDate: Date = Date()
+    @State private var lotNumber: String = ""
+    @State private var notes: String = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Item") {
+                    if let item = purchase.item {
+                        Text(item.name)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Vendor") {
+                    Picker("Vendor", selection: $selectedVendor) {
+                        Text("None").tag(nil as Vendor?)
+                        ForEach(vendors) { vendor in
+                            Text(vendor.name).tag(vendor as Vendor?)
+                        }
+                    }
+                }
+
+                Section("Purchase Details") {
+                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                    Stepper("Quantity: \(quantity)", value: $quantity, in: 1...10000)
+                    HStack {
+                        Text("Price per Unit")
+                        Spacer()
+                        TextField("0.00", text: $pricePerUnit)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 100)
+                            #if os(iOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
+                }
+
+                if purchase.item?.isPerishable == true {
+                    Section("Expiration") {
+                        Toggle("Has Expiration Date", isOn: $hasExpirationDate)
+                        if hasExpirationDate {
+                            DatePicker("Expiration Date", selection: $expirationDate, displayedComponents: .date)
+                        }
+                    }
+                }
+
+                Section("Additional Info") {
+                    TextField("Lot Number", text: $lotNumber)
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Edit Purchase")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveChanges()
+                    }
+                    .disabled(quantity < 1 || (Double(pricePerUnit) ?? 0) <= 0)
+                }
+            }
+            .onAppear {
+                selectedItem = purchase.item
+                selectedVendor = purchase.vendor
+                date = purchase.date
+                quantity = purchase.quantity
+                pricePerUnit = String(format: "%.2f", purchase.pricePerUnit)
+                hasExpirationDate = purchase.expirationDate != nil
+                expirationDate = purchase.expirationDate ?? Calendar.current.date(byAdding: .month, value: 6, to: Date())!
+                lotNumber = purchase.lotNumber
+                notes = purchase.notes
             }
         }
-        .padding(.vertical, 4)
+        #if os(macOS)
+        .frame(minWidth: 450, minHeight: 450)
+        #endif
+    }
+
+    private func saveChanges() {
+        purchase.vendor = selectedVendor
+        purchase.date = date
+        purchase.quantity = quantity
+        purchase.pricePerUnit = Double(pricePerUnit) ?? 0
+        purchase.expirationDate = hasExpirationDate ? expirationDate : nil
+        purchase.lotNumber = lotNumber
+        purchase.notes = notes
+        dismiss()
     }
 }
 
