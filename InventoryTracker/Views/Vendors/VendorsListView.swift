@@ -376,11 +376,23 @@ struct VendorRowView: View {
 struct VendorDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
+    @Query(filter: #Predicate<Item> { !$0.isDeleted }) private var allItems: [Item]
     @Bindable var vendor: Vendor
 
     @State private var showingEditVendor = false
     @State private var showingCallConfirmation = false
     @FocusState private var isNotesFocused: Bool
+
+    // Items where this vendor has the best price
+    private var bestPriceItems: [(item: Item, price: Double)] {
+        allItems.compactMap { item in
+            guard let bestPurchase = item.lowestPricePurchase,
+                  bestPurchase.vendor?.id == vendor.id else {
+                return nil
+            }
+            return (item: item, price: bestPurchase.pricePerUnit)
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -390,6 +402,11 @@ struct VendorDetailView: View {
 
                 // Stats Grid
                 statsGrid
+
+                // Best Prices Card
+                if !bestPriceItems.isEmpty {
+                    bestPricesCard
+                }
 
                 // Contact Card
                 if hasContactInfo {
@@ -490,6 +507,43 @@ struct VendorDetailView: View {
                 color: .indigo
             )
         }
+    }
+
+    // MARK: - Best Prices Card
+    private var bestPricesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Best Prices", systemImage: "star.fill")
+                .font(.headline)
+                .foregroundStyle(.yellow)
+
+            VStack(spacing: 8) {
+                ForEach(bestPriceItems, id: \.item.id) { itemPrice in
+                    Button {
+                        openWindow(value: ItemWindowID(id: itemPrice.item.id))
+                    } label: {
+                        HStack {
+                            Text(itemPrice.item.name)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text(itemPrice.price, format: .currency(code: "USD"))
+                                .font(.subheadline)
+                                .foregroundStyle(.green)
+                        }
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if itemPrice.item.id != bestPriceItems.last?.item.id {
+                        Divider()
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Contact Card

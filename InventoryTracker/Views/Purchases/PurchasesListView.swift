@@ -183,8 +183,12 @@ struct PurchasesListView: View {
     }
 
     // Summary calculations
-    private var totalSpent: Double {
-        filteredPurchases.reduce(0) { $0 + $1.totalCost }
+    private var spentLastMonth: Double {
+        let calendar = Calendar.current
+        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date())!
+        return filteredPurchases
+            .filter { $0.date >= monthAgo }
+            .reduce(0) { $0 + $1.totalCost }
     }
 
     private var expiringSoonCount: Int {
@@ -319,8 +323,8 @@ struct PurchasesListView: View {
             )
 
             SummaryStatView(
-                title: "Total Spent",
-                value: totalSpent.formatted(.currency(code: "USD")),
+                title: "Spent Last Month",
+                value: spentLastMonth.formatted(.currency(code: "USD")),
                 icon: "dollarsign.circle.fill",
                 color: .green
             )
@@ -425,7 +429,7 @@ struct SummaryStatView: View {
             Text(value)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
             Text(title)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

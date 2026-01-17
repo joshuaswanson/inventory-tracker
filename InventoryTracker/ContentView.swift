@@ -61,8 +61,10 @@ struct ContentView: View {
                         .tag(AppTab.usage)
                 }
 
-                Label(AppTab.recentlyDeleted.rawValue, systemImage: AppTab.recentlyDeleted.icon)
-                    .tag(AppTab.recentlyDeleted)
+                Section("Utilities") {
+                    Label(AppTab.recentlyDeleted.rawValue, systemImage: AppTab.recentlyDeleted.icon)
+                        .tag(AppTab.recentlyDeleted)
+                }
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
         } detail: {
