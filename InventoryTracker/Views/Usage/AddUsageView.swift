@@ -118,6 +118,82 @@ struct AddUsageView: View {
     }
 }
 
+struct EditUsageView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var usage: Usage
+
+    @State private var usageDate = Date()
+    @State private var quantity = 1
+    @State private var isEstimate = true
+    @State private var notes = ""
+
+    var isFormValid: Bool {
+        quantity > 0
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let item = usage.item {
+                    Section("Item") {
+                        Text(item.name)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Usage Details") {
+                    DatePicker("Date", selection: $usageDate, displayedComponents: .date)
+
+                    Stepper("Quantity Used: \(quantity)", value: $quantity, in: 1...10000)
+
+                    Toggle("This is an estimate", isOn: $isEstimate)
+                }
+
+                Section("Notes") {
+                    TextField("Notes (Optional)", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Edit Usage")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveChanges()
+                    }
+                    .disabled(!isFormValid)
+                }
+            }
+            .onAppear {
+                usageDate = usage.date
+                quantity = usage.quantity
+                isEstimate = usage.isEstimate
+                notes = usage.notes
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 400, minHeight: 350)
+        .padding()
+        #endif
+    }
+
+    private func saveChanges() {
+        usage.date = usageDate
+        usage.quantity = quantity
+        usage.isEstimate = isEstimate
+        usage.notes = notes
+        dismiss()
+    }
+}
+
 #Preview {
     AddUsageView()
         .modelContainer(for: [Item.self, Vendor.self, Purchase.self, Usage.self], inMemory: true)
