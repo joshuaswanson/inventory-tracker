@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import PhotosUI
+import Charts
 
 struct ItemDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -22,11 +23,62 @@ struct ItemDetailView: View {
         return .yellow
     }
 
+    private var weeklyActivityData: [WeeklyActivity] {
+        let calendar = Calendar.current
+        let today = Date()
+
+        // Get start of 6 weeks ago
+        guard let sixWeeksAgo = calendar.date(byAdding: .weekOfYear, value: -5, to: today) else {
+            return []
+        }
+        let startOfPeriod = calendar.startOfWeek(for: sixWeeksAgo)
+
+        // Create week buckets
+        var weekBuckets: [Date: (purchases: Int, usage: Int)] = [:]
+
+        // Initialize all 6 weeks with zeros
+        for weekOffset in 0..<6 {
+            if let weekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: startOfPeriod) {
+                let normalizedWeekStart = calendar.startOfWeek(for: weekStart)
+                weekBuckets[normalizedWeekStart] = (purchases: 0, usage: 0)
+            }
+        }
+
+        // Aggregate purchases by week
+        for purchase in item.purchases where purchase.date >= startOfPeriod {
+            let weekStart = calendar.startOfWeek(for: purchase.date)
+            var bucket = weekBuckets[weekStart] ?? (purchases: 0, usage: 0)
+            bucket.purchases += purchase.quantity
+            weekBuckets[weekStart] = bucket
+        }
+
+        // Aggregate usage by week
+        for usage in item.usageRecords where usage.date >= startOfPeriod {
+            let weekStart = calendar.startOfWeek(for: usage.date)
+            var bucket = weekBuckets[weekStart] ?? (purchases: 0, usage: 0)
+            bucket.usage += usage.quantity
+            weekBuckets[weekStart] = bucket
+        }
+
+        // Convert to array and sort by date
+        return weekBuckets.map { date, values in
+            WeeklyActivity(weekStart: date, purchases: values.purchases, usage: values.usage)
+        }
+        .sorted { $0.weekStart < $1.weekStart }
+    }
+
+    private var hasActivityData: Bool {
+        weeklyActivityData.contains { $0.purchases > 0 || $0.usage > 0 }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
                 // Hero Card - Inventory Status
                 heroCard
+
+                // Activity Chart
+                activityChart
 
                 // Stats Grid
                 statsGrid
@@ -140,6 +192,103 @@ struct ItemDetailView: View {
         .padding(20)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Activity Chart
+    private var activityChart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Activity", systemImage: "chart.bar.fill")
+                .font(.headline)
+                .foregroundStyle(.teal)
+
+            if hasActivityData {
+                Chart {
+                    ForEach(weeklyActivityData) { week in
+                        // Purchases (positive, above x-axis)
+                        BarMark(
+                            x: .value("Week", week.weekStart, unit: .weekOfYear),
+                            y: .value("Quantity", week.purchases)
+                        )
+                        .foregroundStyle(Color.green.gradient)
+
+                        // Usage (negative, below x-axis)
+                        BarMark(
+                            x: .value("Week", week.weekStart, unit: .weekOfYear),
+                            y: .value("Quantity", -week.usage)
+                        )
+                        .foregroundStyle(Color.red.gradient)
+                    }
+
+                    // Zero line
+                    RuleMark(y: .value("Zero", 0))
+                        .lineStyle(StrokeStyle(lineWidth: 1))
+                        .foregroundStyle(Color.secondary.opacity(0.5))
+                }
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .weekOfYear)) { value in
+                        AxisGridLine()
+                        AxisValueLabel(centered: true) {
+                            if let date = value.as(Date.self) {
+                                let calendar = Calendar.current
+                                let endOfWeek = calendar.date(byAdding: .day, value: 6, to: date) ?? date
+                                let sameMonth = calendar.component(.month, from: date) == calendar.component(.month, from: endOfWeek)
+                                let startFormat = date.formatted(.dateTime.month(.abbreviated).day())
+                                let endFormat = sameMonth
+                                    ? endOfWeek.formatted(.dateTime.day())
+                                    : endOfWeek.formatted(.dateTime.month(.abbreviated).day())
+                                Text("\(startFormat) - \(endFormat)")
+                                    .font(.system(size: 9))
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisGridLine()
+                        AxisValueLabel {
+                            if let intValue = value.as(Int.self) {
+                                Text("\(abs(intValue))")
+                            }
+                        }
+                    }
+                }
+                .frame(height: 180)
+
+                // Legend
+                HStack(spacing: 20) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.green.gradient)
+                            .frame(width: 10, height: 10)
+                        Text("Purchased")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.red.gradient)
+                            .frame(width: 10, height: 10)
+                        Text("Used")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("Last 6 weeks")
+                        .font(.footnote)
+                        .foregroundStyle(.tertiary)
+                }
+            } else {
+                Text("No activity in the last 6 weeks")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var stockIndicator: some View {
@@ -472,6 +621,22 @@ struct StatCard: View {
         .padding()
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - Weekly Activity Data
+struct WeeklyActivity: Identifiable {
+    let id = UUID()
+    let weekStart: Date
+    let purchases: Int
+    let usage: Int
+}
+
+// MARK: - Calendar Extension
+extension Calendar {
+    func startOfWeek(for date: Date) -> Date {
+        let components = dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return self.date(from: components) ?? date
     }
 }
 
