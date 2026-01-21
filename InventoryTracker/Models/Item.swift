@@ -49,7 +49,7 @@ final class Item {
     var currentInventory: Int {
         let totalPurchased = purchases.reduce(0) { $0 + $1.quantity }
         let totalUsed = usageRecords.reduce(0) { $0 + $1.quantity }
-        return totalPurchased - totalUsed
+        return max(0, totalPurchased - totalUsed)
     }
 
     var needsReorder: Bool {
