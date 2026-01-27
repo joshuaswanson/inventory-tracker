@@ -1,6 +1,6 @@
-# Swanson DDS Inventory Tracker
+# Inventory Tracker
 
-A SwiftUI inventory tracking app for macOS, iPadOS, and iPhone.
+An inventory tracking app for macOS (currently), as well as iPadOS and iOS (soon).
 
 ## Features
 
@@ -28,3 +28,7 @@ A SwiftUI inventory tracking app for macOS, iPadOS, and iPhone.
 1. Open `InventoryTracker/InventoryTracker.xcodeproj` in Xcode
 2. Select your target device
 3. Build and run (Cmd+R)
+
+## Dedication
+
+Built for James Swanson DDS. Dedicated to my mother who has supported me all these years. I can only hope this app makes her life slightly easier.
