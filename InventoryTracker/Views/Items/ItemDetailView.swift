@@ -86,8 +86,10 @@ struct ItemDetailView: View {
                 vendorsCard
 
                 // Recent Activity
-                recentPurchasesCard
-                recentUsageCard
+                HStack(alignment: .top, spacing: 12) {
+                    recentPurchasesCard
+                    recentUsageCard
+                }
 
                 // Notes
                 notesCard
@@ -253,24 +255,6 @@ struct ItemDetailView: View {
                         }
                     }
                 }
-                .chartOverlay { proxy in
-                    GeometryReader { geometry in
-                        if avgWeeklyUsage > 0,
-                           let yPosition = proxy.position(forY: -avgWeeklyUsage) {
-                            let lineY = yPosition
-                            Path { path in
-                                path.move(to: CGPoint(x: 0, y: lineY))
-                                path.addLine(to: CGPoint(x: geometry.size.width, y: lineY))
-                            }
-                            .stroke(.blue.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
-
-                            Text(String(format: "~%.1f/day", avgDailyUsage))
-                                .font(.system(size: 9))
-                                .foregroundStyle(.blue)
-                                .position(x: 35, y: lineY - 8)
-                        }
-                    }
-                }
                 .frame(height: chartHeight)
 
                 HStack(spacing: 20) {
@@ -290,17 +274,13 @@ struct ItemDetailView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
-                    if avgWeeklyUsage > 0 {
-                        HStack(spacing: 4) {
-                            Rectangle()
-                                .fill(.blue.opacity(0.6))
-                                .frame(width: 12, height: 1)
-                            Text("Avg usage")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
                     Spacer()
+                    if avgDailyUsage > 0 {
+                        Text(String(format: "~%.1f/day avg", avgDailyUsage))
+                            .font(.footnote)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.blue)
+                    }
                     Text("Last \(weekCount) weeks")
                         .font(.footnote)
                         .foregroundStyle(.tertiary)
