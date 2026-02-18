@@ -190,8 +190,9 @@ struct ItemDetailView: View {
     private func activityChart(containerWidth: CGFloat) -> some View {
         // Compute week count from available width
         // containerWidth is the full view width; subtract padding (32), card padding (32), Y axis (~40)
+        let chartHeight: CGFloat = 150
         let plotWidth = containerWidth - 104
-        let weekCount = max(4, min(26, Int(plotWidth / 35)))
+        let weekCount = max(4, min(26, Int(plotWidth / (chartHeight * 0.55))))
         let data = weeklyActivityData(weekCount: weekCount)
         let hasData = data.contains { $0.purchases > 0 || $0.usage > 0 }
         let weeksWithUsage = data.filter { $0.usage > 0 }
@@ -270,7 +271,7 @@ struct ItemDetailView: View {
                         }
                     }
                 }
-                .frame(height: 180)
+                .frame(height: chartHeight)
 
                 HStack(spacing: 20) {
                     HStack(spacing: 6) {
