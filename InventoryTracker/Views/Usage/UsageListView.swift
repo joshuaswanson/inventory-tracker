@@ -54,7 +54,10 @@ struct UsageListView: View {
         let weekAgo = calendar.date(byAdding: .day, value: -7, to: today)!
         let monthAgo = calendar.date(byAdding: .month, value: -1, to: today)!
 
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
         var todayUsage: [Usage] = []
+        var yesterdayUsage: [Usage] = []
         var thisWeekUsage: [Usage] = []
         var thisMonthUsage: [Usage] = []
         var olderUsage: [Usage] = []
@@ -63,6 +66,8 @@ struct UsageListView: View {
             let usageDate = calendar.startOfDay(for: usage.date)
             if usageDate >= today {
                 todayUsage.append(usage)
+            } else if usageDate >= yesterday {
+                yesterdayUsage.append(usage)
             } else if usageDate >= weekAgo {
                 thisWeekUsage.append(usage)
             } else if usageDate >= monthAgo {
@@ -79,9 +84,11 @@ struct UsageListView: View {
             if !olderUsage.isEmpty { result.append(("Earlier", olderUsage)) }
             if !thisMonthUsage.isEmpty { result.append(("This Month", thisMonthUsage)) }
             if !thisWeekUsage.isEmpty { result.append(("This Week", thisWeekUsage)) }
+            if !yesterdayUsage.isEmpty { result.append(("Yesterday", yesterdayUsage)) }
             if !todayUsage.isEmpty { result.append(("Today", todayUsage)) }
         } else {
             if !todayUsage.isEmpty { result.append(("Today", todayUsage)) }
+            if !yesterdayUsage.isEmpty { result.append(("Yesterday", yesterdayUsage)) }
             if !thisWeekUsage.isEmpty { result.append(("This Week", thisWeekUsage)) }
             if !thisMonthUsage.isEmpty { result.append(("This Month", thisMonthUsage)) }
             if !olderUsage.isEmpty { result.append(("Earlier", olderUsage)) }
@@ -360,17 +367,8 @@ struct UsageCardView: View {
     let usage: Usage
     var isHighlighted: Bool = false
 
-    private var accentColor: Color {
-        usage.isEstimate ? .teal : .blue
-    }
-
     var body: some View {
         HStack(spacing: 0) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(accentColor.gradient)
-                .frame(width: 4)
-                .padding(.trailing, 10)
-
             Text(usage.date, format: .dateTime.month(.abbreviated).day())
                 .font(.body)
                 .monospacedDigit()
@@ -420,12 +418,12 @@ struct UsageCardView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
-        .background(isHighlighted ? accentColor.opacity(0.1) : Color.clear)
+        .background(isHighlighted ? Color.accentColor.opacity(0.1) : Color.clear)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(accentColor.opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
+                .strokeBorder(Color.accentColor.opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
         )
     }
 }
