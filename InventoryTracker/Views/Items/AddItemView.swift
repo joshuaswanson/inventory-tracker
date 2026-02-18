@@ -110,7 +110,6 @@ struct AddItemView: View {
         }
         #if os(macOS)
         .frame(minWidth: 400, minHeight: 350)
-        .padding()
         .onTapGesture {
             focusedField = false
         }

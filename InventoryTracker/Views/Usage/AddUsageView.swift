@@ -98,7 +98,6 @@ struct AddUsageView: View {
         }
         #if os(macOS)
         .frame(minWidth: 450, minHeight: 450)
-        .padding()
         #endif
     }
 
@@ -181,7 +180,6 @@ struct EditUsageView: View {
         }
         #if os(macOS)
         .frame(minWidth: 400, minHeight: 350)
-        .padding()
         #endif
     }
 
