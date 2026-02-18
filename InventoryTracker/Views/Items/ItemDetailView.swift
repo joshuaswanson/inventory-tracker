@@ -10,7 +10,6 @@ struct ItemDetailView: View {
     @State private var showingEditItem = false
     @State private var showingAddPurchase = false
     @State private var showingAddUsage = false
-    @State private var chartAreaWidth: CGFloat = 0
     @FocusState private var isNotesFocused: Bool
 
     private var stockPercentage: Double {
@@ -22,12 +21,6 @@ struct ItemDetailView: View {
         if item.needsReorder { return .orange }
         if stockPercentage > 0.5 { return .green }
         return .yellow
-    }
-
-    private var weekCount: Int {
-        guard chartAreaWidth > 0 else { return 8 }
-        let plotWidth = chartAreaWidth - 72
-        return max(4, min(26, Int(plotWidth / 35)))
     }
 
     private func weeklyActivityData(weekCount: Int) -> [WeeklyActivity] {
@@ -69,13 +62,14 @@ struct ItemDetailView: View {
     }
 
     var body: some View {
+        GeometryReader { outerGeometry in
         ScrollView {
             VStack(spacing: 12) {
                 // Hero Card - Inventory Status
                 heroCard
 
                 // Activity Chart
-                activityChart
+                activityChart(containerWidth: outerGeometry.size.width)
 
                 // Pricing & Expiration Row
                 HStack(spacing: 12) {
@@ -100,6 +94,7 @@ struct ItemDetailView: View {
             }
             .padding()
         }
+        } // GeometryReader
         .contentShape(Rectangle())
         .onTapGesture {
             isNotesFocused = false
@@ -192,7 +187,11 @@ struct ItemDetailView: View {
     }
 
     // MARK: - Activity Chart
-    private var activityChart: some View {
+    private func activityChart(containerWidth: CGFloat) -> some View {
+        // Compute week count from available width
+        // containerWidth is the full view width; subtract padding (32), card padding (32), Y axis (~40)
+        let plotWidth = containerWidth - 104
+        let weekCount = max(4, min(26, Int(plotWidth / 35)))
         let data = weeklyActivityData(weekCount: weekCount)
         let hasData = data.contains { $0.purchases > 0 || $0.usage > 0 }
         let weeksWithUsage = data.filter { $0.usage > 0 }
@@ -224,16 +223,15 @@ struct ItemDetailView: View {
                     RuleMark(y: .value("Quantity", 0.0))
                         .lineStyle(StrokeStyle(lineWidth: 1))
                         .foregroundStyle(Color.secondary.opacity(0.5))
-
-                    if avgWeeklyUsage > 0 {
-                        RuleMark(y: .value("Quantity", -avgWeeklyUsage))
-                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 3]))
-                            .foregroundStyle(.blue.opacity(0.6))
-                            .annotation(position: .top, alignment: .leading) {
-                                Text(String(format: "~%.1f/day", avgDailyUsage))
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.blue)
+                }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisGridLine()
+                        AxisValueLabel {
+                            if let doubleValue = value.as(Double.self) {
+                                Text("\(Int(abs(doubleValue)))")
                             }
+                        }
                     }
                 }
                 .chartXAxis {
@@ -254,13 +252,21 @@ struct ItemDetailView: View {
                         }
                     }
                 }
-                .chartYAxis {
-                    AxisMarks { value in
-                        AxisGridLine()
-                        AxisValueLabel {
-                            if let doubleValue = value.as(Double.self) {
-                                Text("\(Int(abs(doubleValue)))")
+                .chartOverlay { proxy in
+                    GeometryReader { geometry in
+                        if avgWeeklyUsage > 0,
+                           let yPosition = proxy.position(forY: -avgWeeklyUsage) {
+                            let lineY = yPosition
+                            Path { path in
+                                path.move(to: CGPoint(x: 0, y: lineY))
+                                path.addLine(to: CGPoint(x: geometry.size.width, y: lineY))
                             }
+                            .stroke(.blue.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+
+                            Text(String(format: "~%.1f/day", avgDailyUsage))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.blue)
+                                .position(x: 35, y: lineY - 8)
                         }
                     }
                 }
@@ -283,7 +289,7 @@ struct ItemDetailView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
-                    if item.usageRatePerDay > 0 {
+                    if avgWeeklyUsage > 0 {
                         HStack(spacing: 4) {
                             Rectangle()
                                 .fill(.blue.opacity(0.6))
@@ -309,12 +315,6 @@ struct ItemDetailView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.regularMaterial)
-        .background(
-            GeometryReader { proxy in
-                Color.clear.preference(key: ChartWidthKey.self, value: proxy.size.width)
-            }
-        )
-        .onPreferenceChange(ChartWidthKey.self) { chartAreaWidth = $0 }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -697,14 +697,6 @@ struct WeeklyActivity: Identifiable {
     let weekStart: Date
     let purchases: Int
     let usage: Int
-}
-
-// MARK: - Chart Width Preference Key
-private struct ChartWidthKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
 }
 
 // MARK: - Calendar Extension
