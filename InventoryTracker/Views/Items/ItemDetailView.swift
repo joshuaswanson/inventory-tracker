@@ -10,6 +10,7 @@ struct ItemDetailView: View {
     @State private var showingEditItem = false
     @State private var showingAddPurchase = false
     @State private var showingAddUsage = false
+    @State private var chartAreaWidth: CGFloat = 0
     @FocusState private var isNotesFocused: Bool
 
     private var stockPercentage: Double {
@@ -23,28 +24,30 @@ struct ItemDetailView: View {
         return .yellow
     }
 
-    private var weeklyActivityData: [WeeklyActivity] {
+    private var weekCount: Int {
+        guard chartAreaWidth > 0 else { return 8 }
+        let plotWidth = chartAreaWidth - 72
+        return max(4, min(26, Int(plotWidth / 35)))
+    }
+
+    private func weeklyActivityData(weekCount: Int) -> [WeeklyActivity] {
         let calendar = Calendar.current
         let today = Date()
 
-        // Get start of 6 weeks ago
-        guard let sixWeeksAgo = calendar.date(byAdding: .weekOfYear, value: -5, to: today) else {
+        guard let weeksAgo = calendar.date(byAdding: .weekOfYear, value: -(weekCount - 1), to: today) else {
             return []
         }
-        let startOfPeriod = calendar.startOfWeek(for: sixWeeksAgo)
+        let startOfPeriod = calendar.startOfWeek(for: weeksAgo)
 
-        // Create week buckets
         var weekBuckets: [Date: (purchases: Int, usage: Int)] = [:]
 
-        // Initialize all 6 weeks with zeros
-        for weekOffset in 0..<6 {
+        for weekOffset in 0..<weekCount {
             if let weekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: startOfPeriod) {
                 let normalizedWeekStart = calendar.startOfWeek(for: weekStart)
                 weekBuckets[normalizedWeekStart] = (purchases: 0, usage: 0)
             }
         }
 
-        // Aggregate purchases by week
         for purchase in item.purchases where purchase.date >= startOfPeriod {
             let weekStart = calendar.startOfWeek(for: purchase.date)
             var bucket = weekBuckets[weekStart] ?? (purchases: 0, usage: 0)
@@ -52,7 +55,6 @@ struct ItemDetailView: View {
             weekBuckets[weekStart] = bucket
         }
 
-        // Aggregate usage by week
         for usage in item.usageRecords where usage.date >= startOfPeriod {
             let weekStart = calendar.startOfWeek(for: usage.date)
             var bucket = weekBuckets[weekStart] ?? (purchases: 0, usage: 0)
@@ -60,15 +62,10 @@ struct ItemDetailView: View {
             weekBuckets[weekStart] = bucket
         }
 
-        // Convert to array and sort by date
         return weekBuckets.map { date, values in
             WeeklyActivity(weekStart: date, purchases: values.purchases, usage: values.usage)
         }
         .sorted { $0.weekStart < $1.weekStart }
-    }
-
-    private var hasActivityData: Bool {
-        weeklyActivityData.contains { $0.purchases > 0 || $0.usage > 0 }
     }
 
     var body: some View {
@@ -80,9 +77,6 @@ struct ItemDetailView: View {
                 // Activity Chart
                 activityChart
 
-                // Stats Grid
-                statsGrid
-
                 // Pricing & Expiration Row
                 HStack(spacing: 12) {
                     if item.lowestPricePaid != nil || item.averagePricePaid != nil {
@@ -93,6 +87,9 @@ struct ItemDetailView: View {
                         expirationCard
                     }
                 }
+
+                // Vendors
+                vendorsCard
 
                 // Recent Activity
                 recentPurchasesCard
@@ -196,33 +193,48 @@ struct ItemDetailView: View {
 
     // MARK: - Activity Chart
     private var activityChart: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let data = weeklyActivityData(weekCount: weekCount)
+        let hasData = data.contains { $0.purchases > 0 || $0.usage > 0 }
+        let weeksWithUsage = data.filter { $0.usage > 0 }
+        let avgWeeklyUsage = weeksWithUsage.isEmpty ? 0.0
+            : Double(weeksWithUsage.reduce(0) { $0 + $1.usage }) / Double(weeksWithUsage.count)
+        let avgDailyUsage = avgWeeklyUsage / 7
+
+        return VStack(alignment: .leading, spacing: 12) {
             Label("Activity", systemImage: "chart.bar.fill")
                 .font(.headline)
                 .foregroundStyle(.teal)
 
-            if hasActivityData {
+            if hasData {
                 Chart {
-                    ForEach(weeklyActivityData) { week in
-                        // Purchases (positive, above x-axis)
+                    ForEach(data) { week in
                         BarMark(
                             x: .value("Week", week.weekStart, unit: .weekOfYear),
-                            y: .value("Quantity", week.purchases)
+                            y: .value("Quantity", Double(week.purchases))
                         )
                         .foregroundStyle(Color.green.gradient)
 
-                        // Usage (negative, below x-axis)
                         BarMark(
                             x: .value("Week", week.weekStart, unit: .weekOfYear),
-                            y: .value("Quantity", -week.usage)
+                            y: .value("Quantity", Double(-week.usage))
                         )
                         .foregroundStyle(Color.red.gradient)
                     }
 
-                    // Zero line
-                    RuleMark(y: .value("Zero", 0))
+                    RuleMark(y: .value("Quantity", 0.0))
                         .lineStyle(StrokeStyle(lineWidth: 1))
                         .foregroundStyle(Color.secondary.opacity(0.5))
+
+                    if avgWeeklyUsage > 0 {
+                        RuleMark(y: .value("Quantity", -avgWeeklyUsage))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                            .foregroundStyle(.blue.opacity(0.6))
+                            .annotation(position: .top, alignment: .leading) {
+                                Text(String(format: "~%.1f/day", avgDailyUsage))
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.blue)
+                            }
+                    }
                 }
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .weekOfYear)) { value in
@@ -246,15 +258,14 @@ struct ItemDetailView: View {
                     AxisMarks { value in
                         AxisGridLine()
                         AxisValueLabel {
-                            if let intValue = value.as(Int.self) {
-                                Text("\(abs(intValue))")
+                            if let doubleValue = value.as(Double.self) {
+                                Text("\(Int(abs(doubleValue)))")
                             }
                         }
                     }
                 }
                 .frame(height: 180)
 
-                // Legend
                 HStack(spacing: 20) {
                     HStack(spacing: 6) {
                         Circle()
@@ -272,13 +283,23 @@ struct ItemDetailView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
+                    if item.usageRatePerDay > 0 {
+                        HStack(spacing: 4) {
+                            Rectangle()
+                                .fill(.blue.opacity(0.6))
+                                .frame(width: 12, height: 1)
+                            Text("Avg usage")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                     Spacer()
-                    Text("Last 6 weeks")
+                    Text("Last \(weekCount) weeks")
                         .font(.footnote)
                         .foregroundStyle(.tertiary)
                 }
             } else {
-                Text("No activity in the last 6 weeks")
+                Text("No recent activity")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -288,6 +309,12 @@ struct ItemDetailView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.regularMaterial)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ChartWidthKey.self, value: proxy.size.width)
+            }
+        )
+        .onPreferenceChange(ChartWidthKey.self) { chartAreaWidth = $0 }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -305,35 +332,6 @@ struct ItemDetailView: View {
                 .font(.footnote)
                 .fontWeight(.medium)
                 .foregroundStyle(stockColor)
-        }
-    }
-
-    // MARK: - Stats Grid
-    private var statsGrid: some View {
-        HStack(spacing: 12) {
-            StatCard(
-                title: "Daily Usage",
-                value: String(format: "%.1f", item.usageRatePerDay),
-                unit: item.unit.abbreviation + "/day",
-                icon: "chart.line.downtrend.xyaxis",
-                color: .blue
-            )
-
-            StatCard(
-                title: "Purchases",
-                value: "\(item.purchases.count)",
-                unit: "total",
-                icon: "cart.fill",
-                color: .purple
-            )
-
-            StatCard(
-                title: "Usage Records",
-                value: "\(item.usageRecords.count)",
-                unit: "total",
-                icon: "list.bullet.clipboard",
-                color: .indigo
-            )
         }
     }
 
@@ -437,6 +435,65 @@ struct ItemDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
+    // MARK: - Vendors Card
+    private var vendorsCard: some View {
+        let uniqueVendors: [Vendor] = {
+            var seenIDs = Set<UUID>()
+            return item.purchases
+                .compactMap { $0.vendor }
+                .filter { seenIDs.insert($0.id).inserted }
+                .sorted { $0.name < $1.name }
+        }()
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Label("Vendors", systemImage: "building.2.fill")
+                .font(.headline)
+                .foregroundStyle(.orange)
+
+            if uniqueVendors.isEmpty {
+                Text("No vendors yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(uniqueVendors, id: \.id) { vendor in
+                        let vendorPurchases = vendor.purchasesForItem(item)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(vendor.name)
+                                    .font(.subheadline)
+                                Text("\(vendorPurchases.count) purchase\(vendorPurchases.count == 1 ? "" : "s")")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if let bestPrice = vendor.lowestPriceForItem(item) {
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text(bestPrice, format: .currency(code: "USD"))
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Text("best price")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        if vendor.id != uniqueVendors.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
     // MARK: - Recent Purchases Card
     private var recentPurchasesCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -444,6 +501,11 @@ struct ItemDetailView: View {
                 Label("Recent Purchases", systemImage: "cart.fill")
                     .font(.headline)
                     .foregroundStyle(.purple)
+                if !item.purchases.isEmpty {
+                    Text("\(item.purchases.count) total")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button(action: { showingAddPurchase = true }) {
                     Image(systemName: "plus.circle.fill")
@@ -503,6 +565,11 @@ struct ItemDetailView: View {
                 Label("Recent Usage", systemImage: "chart.line.downtrend.xyaxis")
                     .font(.headline)
                     .foregroundStyle(.blue)
+                if !item.usageRecords.isEmpty {
+                    Text("\(item.usageRecords.count) total")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button(action: { showingAddUsage = true }) {
                     Image(systemName: "plus.circle.fill")
@@ -632,6 +699,14 @@ struct WeeklyActivity: Identifiable {
     let usage: Int
 }
 
+// MARK: - Chart Width Preference Key
+private struct ChartWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 // MARK: - Calendar Extension
 extension Calendar {
     func startOfWeek(for date: Date) -> Date {
@@ -754,7 +829,6 @@ struct EditItemView: View {
         }
         #if os(macOS)
         .frame(minWidth: 400, minHeight: 350)
-        .padding()
         #endif
     }
 
