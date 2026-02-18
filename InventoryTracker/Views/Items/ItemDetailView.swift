@@ -192,7 +192,7 @@ struct ItemDetailView: View {
         // containerWidth is the full view width; subtract padding (32), card padding (32), Y axis (~40)
         let chartHeight: CGFloat = 150
         let plotWidth = containerWidth - 104
-        let weekCount = max(4, min(26, Int(plotWidth / (chartHeight * 0.55))))
+        let weekCount = max(4, min(26, Int(plotWidth / (chartHeight * 0.38))))
         let data = weeklyActivityData(weekCount: weekCount)
         let hasData = data.contains { $0.purchases > 0 || $0.usage > 0 }
         let weeksWithUsage = data.filter { $0.usage > 0 }
