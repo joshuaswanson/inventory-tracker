@@ -361,7 +361,7 @@ struct DashboardView: View {
                 icon: item.icon,
                 color: item.color,
                 size: size,
-                items: vendors.map { WidgetItem(name: $0.name, detail: $0.phone ?? "", id: $0.id) },
+                items: vendors.map { WidgetItem(name: $0.name, detail: $0.phone, id: $0.id) },
                 isPreview: isPreview,
                 onItemTap: { id in openWindow(value: VendorWindowID(id: id)) },
                 onMoreTap: { selectedTab = .vendors }
