@@ -146,7 +146,10 @@ struct PurchasesListView: View {
         let weekAgo = calendar.date(byAdding: .day, value: -7, to: today)!
         let monthAgo = calendar.date(byAdding: .month, value: -1, to: today)!
 
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
         var todayPurchases: [Purchase] = []
+        var yesterdayPurchases: [Purchase] = []
         var thisWeekPurchases: [Purchase] = []
         var thisMonthPurchases: [Purchase] = []
         var olderPurchases: [Purchase] = []
@@ -155,6 +158,8 @@ struct PurchasesListView: View {
             let purchaseDate = calendar.startOfDay(for: purchase.date)
             if purchaseDate >= today {
                 todayPurchases.append(purchase)
+            } else if purchaseDate >= yesterday {
+                yesterdayPurchases.append(purchase)
             } else if purchaseDate >= weekAgo {
                 thisWeekPurchases.append(purchase)
             } else if purchaseDate >= monthAgo {
@@ -171,9 +176,11 @@ struct PurchasesListView: View {
             if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
             if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
             if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
+            if !yesterdayPurchases.isEmpty { result.append(("Yesterday", yesterdayPurchases)) }
             if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
         } else {
             if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
+            if !yesterdayPurchases.isEmpty { result.append(("Yesterday", yesterdayPurchases)) }
             if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
             if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
             if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
