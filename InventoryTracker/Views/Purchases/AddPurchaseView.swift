@@ -175,7 +175,6 @@ struct AddPurchaseView: View {
         }
         #if os(macOS)
         .frame(minWidth: 450, minHeight: 500)
-        .padding()
         #endif
     }
 
