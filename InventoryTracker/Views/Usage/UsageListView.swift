@@ -149,7 +149,7 @@ struct UsageListView: View {
                             LazyVStack(spacing: 20, pinnedViews: .sectionHeaders) {
                                 ForEach(groupedUsage, id: \.0) { section, sectionUsage in
                                     Section {
-                                        VStack(spacing: 10) {
+                                        VStack(spacing: 4) {
                                             ForEach(sectionUsage) { usage in
                                                 UsageCardView(usage: usage, isHighlighted: contextMenuUsageId == usage.id)
                                                     .onRightClick {
@@ -365,113 +365,66 @@ struct UsageCardView: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            // Left accent bar - blue for actual, teal for estimate
-            RoundedRectangle(cornerRadius: 3)
+        HStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 2)
                 .fill(accentColor.gradient)
-                .frame(width: 5)
+                .frame(width: 4)
+                .padding(.trailing, 10)
 
-            VStack(alignment: .leading, spacing: 10) {
-                // Top row: Item name and quantity
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        if let item = usage.item {
-                            HStack(spacing: 8) {
-                                Text(item.name)
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                    .lineLimit(1)
+            Text(usage.date, format: .dateTime.month(.abbreviated).day())
+                .font(.body)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 60, alignment: .leading)
 
-                                if item.isPerishable {
-                                    Image(systemName: "leaf.fill")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.green)
-                                }
-                            }
-
-                            // Current inventory hint
-                            HStack(spacing: 5) {
-                                Image(systemName: "shippingbox")
-                                    .font(.caption)
-                                Text("\(item.currentInventory) \(item.unit.abbreviation) remaining")
-                            }
-                            .font(.body)
-                            .foregroundStyle(item.needsReorder ? .orange : .secondary)
-                        } else {
-                            Text("Unknown Item")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    // Quantity badge
-                    VStack(alignment: .trailing, spacing: 4) {
-                        if let item = usage.item {
-                            Text("-\(usage.quantity)")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundStyle(.red)
-
-                            Text(item.unit.abbreviation)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+            VStack(alignment: .leading, spacing: 2) {
+                if let item = usage.item {
+                    Text(item.name)
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                } else {
+                    Text("Unknown Item")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
                 }
-
-                // Divider
-                Divider()
-
-                // Bottom row: Date and estimate indicator
-                HStack {
-                    // Date
-                    HStack(spacing: 5) {
-                        Image(systemName: "calendar")
+                HStack(spacing: 8) {
+                    if let item = usage.item {
+                        Text("\(item.currentInventory) \(item.unit.abbreviation) left")
                             .font(.subheadline)
-                        Text(usage.date, style: .date)
+                            .foregroundStyle(item.needsReorder ? .orange : .secondary)
                     }
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    // Estimate/Actual badge
-                    HStack(spacing: 5) {
-                        Image(systemName: usage.isEstimate ? "sparkle" : "checkmark.circle.fill")
-                        Text(usage.isEstimate ? "Estimate" : "Actual")
-                    }
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(usage.isEstimate ? .teal : .blue)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background((usage.isEstimate ? Color.teal : Color.blue).opacity(0.1))
-                    .clipShape(Capsule())
-                }
-
-                // Notes if present
-                if !usage.notes.isEmpty {
-                    HStack(alignment: .top, spacing: 5) {
-                        Image(systemName: "note.text")
+                    if usage.isEstimate {
+                        Text("Est.")
                             .font(.caption)
-                        Text(usage.notes)
-                            .lineLimit(2)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.teal)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.teal.opacity(0.1))
+                            .clipShape(Capsule())
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
                 }
             }
-            .padding(.vertical, 6)
+
+            Spacer()
+
+            if let item = usage.item {
+                Text("-\(usage.quantity) \(item.unit.abbreviation)")
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.red)
+                    .frame(width: 85, alignment: .trailing)
+            }
         }
-        .padding(16)
-        .frame(maxWidth: 700)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
         .background(isHighlighted ? accentColor.opacity(0.1) : Color.clear)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(accentColor.opacity(isHighlighted ? 0.6 : 0), lineWidth: 2)
         )
     }
