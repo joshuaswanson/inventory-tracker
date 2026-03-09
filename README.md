@@ -28,7 +28,3 @@ An inventory tracking app for macOS (currently), as well as iPadOS and iOS (soon
 1. Open `InventoryTracker/InventoryTracker.xcodeproj` in Xcode
 2. Select your target device
 3. Build and run (Cmd+R)
-
-
-
-
