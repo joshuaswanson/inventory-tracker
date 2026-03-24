@@ -1,229 +1,129 @@
 import SwiftUI
 import SwiftData
 
-enum ItemSortOption: String, CaseIterable {
-    case manual = "Manual"
-    case alphabetical = "Alphabetical"
-    case inventoryLevel = "Inventory Level"
-    case reorderStatus = "Reorder Status"
-}
-
 struct ItemsListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.openWindow) private var openWindow
-    @Query(filter: #Predicate<Item> { !$0.isDeleted }, sort: \Item.sortOrder) private var items: [Item]
+    @Query(filter: #Predicate<Item> { !$0.isDeleted }, sort: \Item.name) private var items: [Item]
 
-    @Binding var showLowStockFilter: Bool
-
+    @State private var selectedItemID: Item.ID?
     @State private var showingAddItem = false
-    @State private var searchText = ""
-    @State private var showingOnlyLowStock = false
-    @State private var selectedItems: Set<Item.ID> = []
     @State private var itemToEdit: Item?
-    @State private var itemForPurchase: Item?
-    @State private var itemForUsage: Item?
-    @State private var sortOption: ItemSortOption = .manual
+    @State private var searchText = ""
+    @State private var showLowStockOnly = false
 
-    var filteredItems: [Item] {
+    private var filteredItems: [Item] {
         var result = items
-
-        if showingOnlyLowStock {
+        if showLowStockOnly {
             result = result.filter { $0.needsReorder }
         }
-
         if !searchText.isEmpty {
             result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
-
-        // Apply sorting
-        switch sortOption {
-        case .manual:
-            result.sort { $0.sortOrder < $1.sortOrder }
-        case .alphabetical:
-            result.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        case .inventoryLevel:
-            result.sort { $0.currentInventory < $1.currentInventory }
-        case .reorderStatus:
-            result.sort { ($0.needsReorder ? 0 : 1) < ($1.needsReorder ? 0 : 1) }
-        }
-
         return result
-    }
-
-    var pinnedItems: [Item] {
-        filteredItems.filter { $0.isPinned }
-    }
-
-    var unpinnedItems: [Item] {
-        filteredItems.filter { !$0.isPinned }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider()
             HStack(spacing: 0) {
-                // Left: Item list
+                // Table
                 VStack(spacing: 0) {
-                if filteredItems.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Items", systemImage: "shippingbox")
-                    } description: {
-                        Text("Add items to start tracking your inventory.")
-                    }
-                    .frame(maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .contextMenu {
-                        Button {
-                            showingAddItem = true
-                        } label: {
-                            Label("Add Item", systemImage: "plus")
-                        }
-                    }
-                } else {
-                    List(selection: $selectedItems) {
-                        if pinnedItems.isEmpty {
-                            ForEach(unpinnedItems) { item in
-                                itemRow(for: item)
-                            }
-                            .onMove(perform: moveItems)
-                        } else {
-                            Section("Pinned") {
-                                ForEach(pinnedItems) { item in
-                                    itemRow(for: item)
+                    Table(filteredItems, selection: $selectedItemID) {
+                        TableColumn("Item") { item in
+                            HStack(spacing: 6) {
+                                if item.needsReorder {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.orange)
+                                        .font(.caption)
                                 }
-                            }
-
-                            Section("Items") {
-                                ForEach(unpinnedItems) { item in
-                                    itemRow(for: item)
-                                }
-                                .onMove(perform: moveItems)
+                                Text(item.name)
+                                    .lineLimit(1)
                             }
                         }
-                    }
-                    .listStyle(.inset(alternatesRowBackgrounds: false))
-                    .animation(.default, value: pinnedItems.map(\.id))
-                    .animation(.default, value: unpinnedItems.map(\.id))
-                    .contextMenu {
-                        Button {
-                            showingAddItem = true
-                        } label: {
-                            Label("Add Item", systemImage: "plus")
-                        }
-                    }
-                }
-            }
-            .frame(width: 300)
-            .searchable(text: $searchText, placement: .sidebar, prompt: "Search items")
-            .toolbar {
-                ToolbarItem(id: "add", placement: .primaryAction) {
-                    Button(action: { showingAddItem = true }) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                    .help("Add item")
-                }
+                        .width(min: 120, ideal: 180)
 
-                ToolbarItem(id: "filter", placement: .secondaryAction) {
-                    Menu {
-                        Button {
-                            showingOnlyLowStock = false
-                        } label: {
-                            if !showingOnlyLowStock {
-                                Label("All Items", systemImage: "checkmark")
+                        TableColumn("Stock") { item in
+                            Text("\(item.currentInventory)")
+                                .foregroundStyle(item.needsReorder ? .orange : .primary)
+                                .fontWeight(item.needsReorder ? .semibold : .regular)
+                        }
+                        .width(50)
+
+                        TableColumn("Unit") { item in
+                            Text(item.unit.abbreviation)
+                                .foregroundStyle(.secondary)
+                        }
+                        .width(40)
+
+                        TableColumn("Reorder At") { item in
+                            Text("\(item.reorderLevel)")
+                                .foregroundStyle(.secondary)
+                        }
+                        .width(70)
+
+                        TableColumn("Location") { item in
+                            Text(item.storageLocation.isEmpty ? "-" : item.storageLocation)
+                                .foregroundStyle(item.storageLocation.isEmpty ? .tertiary : .secondary)
+                                .lineLimit(1)
+                        }
+                        .width(min: 80, ideal: 120)
+
+                        TableColumn("Best Price") { item in
+                            if let price = item.lowestPricePaid {
+                                Text(price, format: .currency(code: "USD"))
+                                    .foregroundStyle(.green)
                             } else {
-                                Text("All Items")
+                                Text("-")
+                                    .foregroundStyle(.tertiary)
                             }
                         }
-                        Button {
-                            showingOnlyLowStock = true
-                        } label: {
-                            if showingOnlyLowStock {
-                                Label("Low Stock Only", systemImage: "checkmark")
-                            } else {
-                                Text("Low Stock Only")
-                            }
-                        }
-
-                        Divider()
-
-                        Menu("Sort By") {
-                            ForEach(ItemSortOption.allCases, id: \.self) { option in
-                                Button {
-                                    sortOption = option
-                                } label: {
-                                    if sortOption == option {
-                                        Label(option.rawValue, systemImage: "checkmark")
-                                    } else {
-                                        Text(option.rawValue)
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Label("Filter", systemImage: "line.3.horizontal.decrease")
+                        .width(75)
                     }
-                    .menuIndicator(.hidden)
-                    .help("Filter and sort items")
-                }
-
-                if selectedItems.count == 1, let itemId = selectedItems.first, let item = items.first(where: { $0.id == itemId }) {
-                    ToolbarItem(id: "edit", placement: .secondaryAction) {
-                        Button("Edit") {
-                            itemToEdit = item
+                    .contextMenu(forSelectionType: Item.ID.self) { ids in
+                        if let id = ids.first, let item = items.first(where: { $0.id == id }) {
+                            Button("Edit") { itemToEdit = item }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                item.isDeleted = true
+                                item.deletedAt = Date()
+                                if selectedItemID == id { selectedItemID = nil }
+                            }
                         }
-                        .help("Edit item")
                     }
                 }
+                .frame(minWidth: 350)
 
-                if !selectedItems.isEmpty {
-                    ToolbarItem(id: "delete", placement: .secondaryAction) {
-                        Button(role: .destructive) {
-                            for itemId in selectedItems {
-                                if let item = items.first(where: { $0.id == itemId }) {
-                                    item.isDeleted = true
-                                    item.deletedAt = Date()
-                                }
-                            }
-                            selectedItems.removeAll()
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                Divider()
+
+                // Detail
+                Group {
+                    if let id = selectedItemID, let item = items.first(where: { $0.id == id }) {
+                        ItemDetailView(item: item)
+                    } else {
+                        ContentUnavailableView {
+                            Label("No Item Selected", systemImage: "shippingbox")
+                        } description: {
+                            Text("Select an item from the table to view details.")
                         }
-                        .help("Delete selected items")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                }
+                .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .searchable(text: $searchText, prompt: "Search items")
+        .navigationTitle("Items")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showingAddItem = true }) {
+                    Label("Add Item", systemImage: "plus")
                 }
             }
 
-            Divider()
-
-            // Right: Detail view - always present to prevent snapping
-            Group {
-                if selectedItems.count == 1, let itemId = selectedItems.first, let item = items.first(where: { $0.id == itemId }) {
-                    ItemDetailView(item: item)
-                } else if selectedItems.count > 1 {
-                    ContentUnavailableView {
-                        Label("\(selectedItems.count) Items Selected", systemImage: "shippingbox")
-                    } description: {
-                        Text("Press Delete to remove selected items.")
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ContentUnavailableView {
-                        Label("No Item Selected", systemImage: "shippingbox")
-                    } description: {
-                        Text("Select an item from the list to view details.")
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .contextMenu {
-                        Button {
-                            showingAddItem = true
-                        } label: {
-                            Label("Add Item", systemImage: "plus")
-                        }
-                    }
+            ToolbarItem(placement: .secondaryAction) {
+                Toggle(isOn: $showLowStockOnly) {
+                    Label("Low Stock", systemImage: "exclamationmark.triangle")
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .help("Show only items below reorder level")
             }
         }
         .sheet(isPresented: $showingAddItem) {
@@ -232,190 +132,10 @@ struct ItemsListView: View {
         .sheet(item: $itemToEdit) { item in
             EditItemView(item: item)
         }
-        .sheet(item: $itemForPurchase) { item in
-            AddPurchaseView(preselectedItem: item)
-        }
-        .sheet(item: $itemForUsage) { item in
-            AddUsageView(preselectedItem: item)
-        }
-        .navigationTitle("Items")
-        .onChange(of: showLowStockFilter) { _, newValue in
-            if newValue {
-                showingOnlyLowStock = true
-                showLowStockFilter = false
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func itemRow(for item: Item) -> some View {
-        ItemRowView(item: item)
-            .tag(item)
-            .onDoubleClick {
-                openWindow(value: ItemWindowID(id: item.id))
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button(role: .destructive) {
-                    item.isDeleted = true
-                    item.deletedAt = Date()
-                    selectedItems.remove(item.id)
-                } label: {
-                    Image(systemName: "trash")
-                }
-            }
-            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                Button {
-                    item.isPinned.toggle()
-                } label: {
-                    Image(systemName: item.isPinned ? "pin.slash.fill" : "pin.fill")
-                }
-                .tint(.orange)
-            }
-            .contextMenu {
-                let selectedItemsList = items.filter { selectedItems.contains($0.id) }
-                let isMultiSelect = selectedItems.contains(item.id) && selectedItems.count > 1
-                let itemsToActOn = isMultiSelect ? selectedItemsList : [item]
-
-                Button {
-                    for actItem in itemsToActOn {
-                        openWindow(value: ItemWindowID(id: actItem.id))
-                    }
-                } label: {
-                    Label(isMultiSelect ? "Open in New Windows" : "Open in New Window", systemImage: "macwindow.badge.plus")
-                }
-
-                Button {
-                    let shouldPin = itemsToActOn.contains { !$0.isPinned }
-                    for actItem in itemsToActOn {
-                        actItem.isPinned = shouldPin
-                    }
-                } label: {
-                    let allPinned = itemsToActOn.allSatisfy { $0.isPinned }
-                    Label(allPinned ? (isMultiSelect ? "Unpin All" : "Unpin") : (isMultiSelect ? "Pin All" : "Pin"),
-                          systemImage: allPinned ? "pin.slash" : "pin")
-                }
-
-                if !isMultiSelect {
-                    Button {
-                        selectedItems = [item.id]
-                        itemToEdit = item
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-
-                    Divider()
-
-                    Button {
-                        itemForPurchase = item
-                    } label: {
-                        Label("Add Recent Purchase", systemImage: "cart.badge.plus")
-                    }
-
-                    Button {
-                        itemForUsage = item
-                    } label: {
-                        Label("Add Recent Usage", systemImage: "minus.circle")
-                    }
-                }
-
-                Divider()
-
-                Button(role: .destructive) {
-                    for actItem in itemsToActOn {
-                        actItem.isDeleted = true
-                        actItem.deletedAt = Date()
-                        selectedItems.remove(actItem.id)
-                    }
-                } label: {
-                    Label(isMultiSelect ? "Delete All" : "Delete", systemImage: "trash")
-                }
-            }
-    }
-
-    private func handleItemDoubleClick(_ item: Item) {
-        openWindow(value: ItemWindowID(id: item.id))
-    }
-
-    private func deleteItems(at offsets: IndexSet) {
-        for index in offsets {
-            let item = filteredItems[index]
-            modelContext.delete(item)
-        }
-    }
-
-    private func moveItems(from source: IndexSet, to destination: Int) {
-        // Switch to manual sort if needed and adopt current order
-        if sortOption != .manual {
-            // First, set sortOrder based on current filtered order
-            for (index, item) in unpinnedItems.enumerated() {
-                item.sortOrder = index
-            }
-            sortOption = .manual
-        }
-
-        // Now perform the move
-        var reorderedItems = unpinnedItems
-        reorderedItems.move(fromOffsets: source, toOffset: destination)
-        for (index, item) in reorderedItems.enumerated() {
-            item.sortOrder = index
-        }
-    }
-}
-
-struct ItemRowView: View {
-    let item: Item
-
-    var body: some View {
-        HStack(spacing: 12) {
-            if let imageData = item.imageData, let nsImage = NSImage(data: imageData) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 40, height: 40)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(item.name)
-                        .font(.headline)
-                        .lineLimit(1)
-
-                    if item.isPerishable {
-                        Image(systemName: "leaf.fill")
-                            .foregroundStyle(.green)
-                            .font(.subheadline)
-                    }
-                }
-
-                HStack(spacing: 4) {
-                    Text("\(item.currentInventory) \(item.unit.abbreviation) in stock")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    if !item.storageLocation.isEmpty {
-                        Text("  \(item.storageLocation)")
-                            .font(.subheadline)
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-
-            Spacer()
-
-            if item.needsReorder {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-            }
-        }
-        .padding(.vertical, 8)
-        .padding(.leading, 12)
-        .padding(.trailing, 4)
     }
 }
 
 #Preview {
-    @Previewable @State var showLowStock = false
-    ItemsListView(showLowStockFilter: $showLowStock)
+    ItemsListView()
         .modelContainer(for: [Item.self, Vendor.self, Purchase.self, Usage.self], inMemory: true)
 }

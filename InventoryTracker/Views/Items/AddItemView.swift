@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import PhotosUI
 
 struct AddItemView: View {
     @Environment(\.modelContext) private var modelContext
@@ -12,57 +11,12 @@ struct AddItemView: View {
     @State private var isPerishable = false
     @State private var storageLocation = ""
     @State private var notes = ""
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var imageData: Data?
-    @FocusState private var focusedField: Bool
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Image") {
-                    HStack {
-                        if let imageData, let nsImage = NSImage(data: imageData) {
-                            Image(nsImage: nsImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 80, height: 80)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        } else {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.secondary.opacity(0.2))
-                                .frame(width: 80, height: 80)
-                                .overlay {
-                                    Image(systemName: "photo")
-                                        .font(.title)
-                                        .foregroundStyle(.secondary)
-                                }
-                        }
-
-                        Spacer()
-
-                        VStack(alignment: .trailing, spacing: 8) {
-                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                                Label("Select Photo", systemImage: "photo.on.rectangle")
-                            }
-                            .buttonStyle(.bordered)
-
-                            if imageData != nil {
-                                Button(role: .destructive) {
-                                    imageData = nil
-                                    selectedPhoto = nil
-                                } label: {
-                                    Label("Remove", systemImage: "trash")
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
                 Section("Item Details") {
                     TextField("Item Name", text: $name)
-                        .focused($focusedField)
 
                     Picker("Unit of Measure", selection: $selectedUnit) {
                         ForEach(UnitOfMeasure.allCases) { unit in
@@ -71,7 +25,6 @@ struct AddItemView: View {
                     }
 
                     Stepper("Reorder Level: \(reorderLevel)", value: $reorderLevel, in: 0...1000)
-
                     Toggle("Perishable Item", isOn: $isPerishable)
                 }
 
@@ -82,42 +35,24 @@ struct AddItemView: View {
                 Section("Notes (Optional)") {
                     TextEditor(text: $notes)
                         .font(.body)
-                        .frame(minHeight: 100)
+                        .frame(minHeight: 80)
                         .scrollContentBackground(.hidden)
-                        .focused($focusedField)
-                }
-            }
-            .onChange(of: selectedPhoto) { _, newValue in
-                Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self) {
-                        imageData = data
-                    }
                 }
             }
             .formStyle(.grouped)
-                        .navigationTitle("Add Item")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
+            .navigationTitle("Add Item")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        addItem()
-                    }
+                    Button("Add") { addItem() }
                     .disabled(name.isEmpty)
                 }
             }
         }
         #if os(macOS)
         .frame(minWidth: 400, minHeight: 350)
-        .onTapGesture {
-            focusedField = false
-        }
         #endif
     }
 
@@ -128,8 +63,7 @@ struct AddItemView: View {
             reorderLevel: reorderLevel,
             isPerishable: isPerishable,
             notes: notes,
-            storageLocation: storageLocation,
-            imageData: imageData
+            storageLocation: storageLocation
         )
         modelContext.insert(item)
         dismiss()

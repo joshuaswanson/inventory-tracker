@@ -23,21 +23,14 @@
 		A1000014001 /* AddPurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000014000 /* AddPurchaseView.swift */; };
 		A1000015001 /* UsageListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000 /* UsageListView.swift */; };
 		A1000016001 /* AddUsageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000016000 /* AddUsageView.swift */; };
-		A1000017001 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000017000 /* DashboardView.swift */; };
-		A1000018001 /* ReorderAlertsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000018000 /* ReorderAlertsView.swift */; };
-		A1000019001 /* PriceAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000019000 /* PriceAnalyticsView.swift */; };
-		A1000020001 /* ExpirationTrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020000 /* ExpirationTrackingView.swift */; };
+
 		A1000021001 /* InventoryCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000021000 /* InventoryCalculator.swift */; };
 		A1000022001 /* UnitOfMeasure.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000022000 /* UnitOfMeasure.swift */; };
-		A1000023001 /* ItemWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000023000 /* ItemWindowView.swift */; };
-		A1000024001 /* VendorWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000024000 /* VendorWindowView.swift */; };
-		A1000025001 /* RecentlyDeletedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000 /* RecentlyDeletedView.swift */; };
+
 		A1000026001 /* PhoneFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026000 /* PhoneFormatter.swift */; };
-		A1000027001 /* DoubleClickHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000 /* DoubleClickHandler.swift */; };
-		A1000028001 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000028000 /* DuplicatesView.swift */; };
+
 		A1000029001 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000029000 /* SampleData.swift */; };
-		A1000030001 /* DateGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000030000 /* DateGrouping.swift */; };
-		A1000031001 /* DashboardWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000031000 /* DashboardWidgets.swift */; };
+
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,21 +51,14 @@
 		A1000014000 /* AddPurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPurchaseView.swift; sourceTree = "<group>"; };
 		A1000015000 /* UsageListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageListView.swift; sourceTree = "<group>"; };
 		A1000016000 /* AddUsageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddUsageView.swift; sourceTree = "<group>"; };
-		A1000017000 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
-		A1000018000 /* ReorderAlertsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReorderAlertsView.swift; sourceTree = "<group>"; };
-		A1000019000 /* PriceAnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAnalyticsView.swift; sourceTree = "<group>"; };
-		A1000020000 /* ExpirationTrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpirationTrackingView.swift; sourceTree = "<group>"; };
+
 		A1000021000 /* InventoryCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryCalculator.swift; sourceTree = "<group>"; };
 		A1000022000 /* UnitOfMeasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitOfMeasure.swift; sourceTree = "<group>"; };
-		A1000023000 /* ItemWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemWindowView.swift; sourceTree = "<group>"; };
-		A1000024000 /* VendorWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorWindowView.swift; sourceTree = "<group>"; };
-		A1000025000 /* RecentlyDeletedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentlyDeletedView.swift; sourceTree = "<group>"; };
+
 		A1000026000 /* PhoneFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneFormatter.swift; sourceTree = "<group>"; };
-		A1000027000 /* DoubleClickHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoubleClickHandler.swift; sourceTree = "<group>"; };
-		A1000028000 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
+
 		A1000029000 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
-		A1000030000 /* DateGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateGrouping.swift; sourceTree = "<group>"; };
-		A1000031000 /* DashboardWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWidgets.swift; sourceTree = "<group>"; };
+
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,9 +121,6 @@
 				A1000000010 /* Vendors */,
 				A1000000011 /* Purchases */,
 				A1000000012 /* Usage */,
-				A1000000014 /* Dashboard */,
-				A1000028000 /* DuplicatesView.swift */,
-				A1000025000 /* RecentlyDeletedView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -148,7 +131,6 @@
 				A1000008000 /* ItemsListView.swift */,
 				A1000009000 /* ItemDetailView.swift */,
 				A1000010000 /* AddItemView.swift */,
-				A1000023000 /* ItemWindowView.swift */,
 			);
 			path = Items;
 			sourceTree = "<group>";
@@ -158,7 +140,6 @@
 			children = (
 				A1000011000 /* VendorsListView.swift */,
 				A1000012000 /* AddVendorView.swift */,
-				A1000024000 /* VendorWindowView.swift */,
 			);
 			path = Vendors;
 			sourceTree = "<group>";
@@ -186,24 +167,11 @@
 			children = (
 				A1000021000 /* InventoryCalculator.swift */,
 				A1000026000 /* PhoneFormatter.swift */,
-				A1000027000 /* DoubleClickHandler.swift */,
-				A1000030000 /* DateGrouping.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
 		};
-		A1000000014 /* Dashboard */ = {
-			isa = PBXGroup;
-			children = (
-				A1000017000 /* DashboardView.swift */,
-				A1000031000 /* DashboardWidgets.swift */,
-				A1000018000 /* ReorderAlertsView.swift */,
-				A1000019000 /* PriceAnalyticsView.swift */,
-				A1000020000 /* ExpirationTrackingView.swift */,
-			);
-			path = Dashboard;
-			sourceTree = "<group>";
-		};
+
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -288,21 +256,18 @@
 				A1000014001 /* AddPurchaseView.swift in Sources */,
 				A1000015001 /* UsageListView.swift in Sources */,
 				A1000016001 /* AddUsageView.swift in Sources */,
-				A1000017001 /* DashboardView.swift in Sources */,
-				A1000018001 /* ReorderAlertsView.swift in Sources */,
-				A1000019001 /* PriceAnalyticsView.swift in Sources */,
-				A1000020001 /* ExpirationTrackingView.swift in Sources */,
+
+
 				A1000021001 /* InventoryCalculator.swift in Sources */,
 				A1000022001 /* UnitOfMeasure.swift in Sources */,
-				A1000023001 /* ItemWindowView.swift in Sources */,
-				A1000024001 /* VendorWindowView.swift in Sources */,
-				A1000025001 /* RecentlyDeletedView.swift in Sources */,
+
+
 				A1000026001 /* PhoneFormatter.swift in Sources */,
-				A1000027001 /* DoubleClickHandler.swift in Sources */,
-				A1000028001 /* DuplicatesView.swift in Sources */,
+
+
 				A1000029001 /* SampleData.swift in Sources */,
-				A1000030001 /* DateGrouping.swift in Sources */,
-				A1000031001 /* DashboardWidgets.swift in Sources */,
+
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

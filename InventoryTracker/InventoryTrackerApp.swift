@@ -2,15 +2,6 @@ import SwiftUI
 import SwiftData
 import os
 
-// Wrapper types to distinguish between Item and Vendor windows
-struct ItemWindowID: Hashable, Codable {
-    let id: UUID
-}
-
-struct VendorWindowID: Hashable, Codable {
-    let id: UUID
-}
-
 @main
 struct InventoryTrackerApp: App {
     var sharedModelContainer: ModelContainer = {
@@ -35,7 +26,7 @@ struct InventoryTrackerApp: App {
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
-        .defaultSize(width: 900, height: 600)
+        .defaultSize(width: 1000, height: 600)
         .commands {
             CommandMenu("Developer") {
                 Button("Reset to Sample Data") {
@@ -49,24 +40,6 @@ struct InventoryTrackerApp: App {
             }
         }
         #endif
-
-        #if os(macOS)
-        WindowGroup("Item", for: ItemWindowID.self) { $windowID in
-            if let windowID {
-                ItemWindowView(itemID: windowID.id)
-                    .modelContainer(sharedModelContainer)
-            }
-        }
-        .defaultSize(width: 600, height: 500)
-
-        WindowGroup("Vendor", for: VendorWindowID.self) { $windowID in
-            if let windowID {
-                VendorWindowView(vendorID: windowID.id)
-                    .modelContainer(sharedModelContainer)
-            }
-        }
-        .defaultSize(width: 600, height: 500)
-        #endif
     }
 
     @MainActor
@@ -74,24 +47,16 @@ struct InventoryTrackerApp: App {
         let context = sharedModelContainer.mainContext
         do {
             let usages = try context.fetch(FetchDescriptor<Usage>())
-            for usage in usages {
-                context.delete(usage)
-            }
+            for usage in usages { context.delete(usage) }
 
             let purchases = try context.fetch(FetchDescriptor<Purchase>())
-            for purchase in purchases {
-                context.delete(purchase)
-            }
+            for purchase in purchases { context.delete(purchase) }
 
             let items = try context.fetch(FetchDescriptor<Item>())
-            for item in items {
-                context.delete(item)
-            }
+            for item in items { context.delete(item) }
 
             let vendors = try context.fetch(FetchDescriptor<Vendor>())
-            for vendor in vendors {
-                context.delete(vendor)
-            }
+            for vendor in vendors { context.delete(vendor) }
 
             try context.save()
         } catch {
