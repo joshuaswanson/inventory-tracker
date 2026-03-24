@@ -13,6 +13,8 @@ struct ItemsListView: View {
     @Environment(\.openWindow) private var openWindow
     @Query(filter: #Predicate<Item> { !$0.isDeleted }, sort: \Item.sortOrder) private var items: [Item]
 
+    @Binding var showLowStockFilter: Bool
+
     @State private var showingAddItem = false
     @State private var searchText = ""
     @State private var showingOnlyLowStock = false
@@ -237,6 +239,12 @@ struct ItemsListView: View {
             AddUsageView(preselectedItem: item)
         }
         .navigationTitle("Items")
+        .onChange(of: showLowStockFilter) { _, newValue in
+            if newValue {
+                showingOnlyLowStock = true
+                showLowStockFilter = false
+            }
+        }
     }
 
     @ViewBuilder
@@ -399,6 +407,7 @@ struct ItemRowView: View {
 }
 
 #Preview {
-    ItemsListView()
+    @Previewable @State var showLowStock = false
+    ItemsListView(showLowStockFilter: $showLowStock)
         .modelContainer(for: [Item.self, Vendor.self, Purchase.self, Usage.self], inMemory: true)
 }

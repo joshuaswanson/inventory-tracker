@@ -87,6 +87,7 @@ struct GridCell: Equatable {
 
 struct DashboardView: View {
     @Binding var selectedTab: ContentView.AppTab
+    @Binding var showLowStockFilter: Bool
     @Environment(\.openWindow) private var openWindow
     @Query private var items: [Item]
     @Query(sort: \Purchase.date, order: .reverse) private var purchases: [Purchase]
@@ -237,6 +238,9 @@ struct DashboardView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 if currentSize == .small, let tab = targetTab(for: item) {
+                    if item == .lowStock {
+                        showLowStockFilter = true
+                    }
                     selectedTab = tab
                 }
             }
@@ -438,6 +442,7 @@ struct DashboardView: View {
 
 #Preview {
     @Previewable @State var selectedTab: ContentView.AppTab = .dashboard
-    DashboardView(selectedTab: $selectedTab)
+    @Previewable @State var showLowStock = false
+    DashboardView(selectedTab: $selectedTab, showLowStockFilter: $showLowStock)
         .modelContainer(for: [Item.self, Vendor.self, Purchase.self, Usage.self], inMemory: true)
 }

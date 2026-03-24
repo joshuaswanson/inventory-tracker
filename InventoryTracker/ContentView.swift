@@ -5,6 +5,7 @@ struct ContentView: View {
     @Query(filter: #Predicate<Item> { !$0.isDeleted }) private var items: [Item]
     @Query(filter: #Predicate<Vendor> { !$0.isDeleted }) private var vendors: [Vendor]
     @State private var selectedTab: AppTab = .dashboard
+    @State private var showLowStockFilter = false
 
     enum AppTab: String, CaseIterable, Identifiable {
         case dashboard = "Dashboard"
@@ -98,9 +99,9 @@ struct ContentView: View {
     private func selectedView(for tab: AppTab) -> some View {
         switch tab {
         case .dashboard:
-            DashboardView(selectedTab: $selectedTab)
+            DashboardView(selectedTab: $selectedTab, showLowStockFilter: $showLowStockFilter)
         case .items:
-            ItemsListView()
+            ItemsListView(showLowStockFilter: $showLowStockFilter)
         case .purchases:
             PurchasesListView()
         case .usage:
