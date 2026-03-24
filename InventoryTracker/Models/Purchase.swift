@@ -10,7 +10,6 @@ final class Purchase {
     var lotNumber: String
     var expirationDate: Date?
     var notes: String
-    var usedQuantity: Int
 
     var item: Item?
     var vendor: Vendor?
@@ -34,7 +33,6 @@ final class Purchase {
         self.lotNumber = lotNumber
         self.expirationDate = expirationDate
         self.notes = notes
-        self.usedQuantity = 0
     }
 
     var totalCost: Double {
@@ -42,7 +40,7 @@ final class Purchase {
     }
 
     var remainingQuantity: Int {
-        quantity - usedQuantity
+        quantity
     }
 
     var isExpired: Bool {
