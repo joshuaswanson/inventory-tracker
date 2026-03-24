@@ -305,7 +305,7 @@ struct ItemDetailView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(12)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
