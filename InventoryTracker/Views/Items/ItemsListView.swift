@@ -388,9 +388,17 @@ struct ItemRowView: View {
                     }
                 }
 
-                Text("\(item.currentInventory) \(item.unit.abbreviation) in stock")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text("\(item.currentInventory) \(item.unit.abbreviation) in stock")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if !item.storageLocation.isEmpty {
+                        Text("  \(item.storageLocation)")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                }
             }
 
             Spacer()

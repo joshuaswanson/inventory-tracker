@@ -9,6 +9,7 @@ final class Item {
     var reorderLevel: Int
     var isPerishable: Bool
     var notes: String
+    var storageLocation: String
     var createdAt: Date
     var sortOrder: Int = 0
     var isPinned: Bool = false
@@ -28,6 +29,7 @@ final class Item {
         reorderLevel: Int = 10,
         isPerishable: Bool = false,
         notes: String = "",
+        storageLocation: String = "",
         sortOrder: Int = 0,
         imageData: Data? = nil
     ) {
@@ -37,6 +39,7 @@ final class Item {
         self.reorderLevel = reorderLevel
         self.isPerishable = isPerishable
         self.notes = notes
+        self.storageLocation = storageLocation
         self.createdAt = Date()
         self.sortOrder = sortOrder
         self.imageData = imageData

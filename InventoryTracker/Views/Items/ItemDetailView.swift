@@ -150,6 +150,11 @@ struct ItemDetailView: View {
                             .font(.title2)
                             .foregroundStyle(.secondary)
                     }
+                    if !item.storageLocation.isEmpty {
+                        Label(item.storageLocation, systemImage: "mappin.and.ellipse")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 stockIndicator
@@ -699,6 +704,7 @@ struct EditItemView: View {
     @State private var selectedUnit: UnitOfMeasure = .each
     @State private var reorderLevel: Int = 10
     @State private var isPerishable: Bool = false
+    @State private var storageLocation: String = ""
     @State private var notes: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var imageData: Data?
@@ -761,6 +767,10 @@ struct EditItemView: View {
                     Toggle("Perishable Item", isOn: $isPerishable)
                 }
 
+                Section("Storage Location") {
+                    TextField("e.g., Supply Room A, Cabinet 3", text: $storageLocation)
+                }
+
                 Section("Notes") {
                     TextEditor(text: $notes)
                         .font(.body)
@@ -798,6 +808,7 @@ struct EditItemView: View {
                 selectedUnit = item.unit
                 reorderLevel = item.reorderLevel
                 isPerishable = item.isPerishable
+                storageLocation = item.storageLocation
                 notes = item.notes
                 imageData = item.imageData
             }
@@ -812,6 +823,7 @@ struct EditItemView: View {
         item.unitOfMeasure = selectedUnit.rawValue
         item.reorderLevel = reorderLevel
         item.isPerishable = isPerishable
+        item.storageLocation = storageLocation
         item.notes = notes
         item.imageData = imageData
         dismiss()

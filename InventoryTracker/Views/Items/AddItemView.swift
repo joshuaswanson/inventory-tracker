@@ -10,6 +10,7 @@ struct AddItemView: View {
     @State private var selectedUnit: UnitOfMeasure = .each
     @State private var reorderLevel = 10
     @State private var isPerishable = false
+    @State private var storageLocation = ""
     @State private var notes = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var imageData: Data?
@@ -74,6 +75,10 @@ struct AddItemView: View {
                     Toggle("Perishable Item", isOn: $isPerishable)
                 }
 
+                Section("Storage Location") {
+                    TextField("e.g., Supply Room A, Cabinet 3", text: $storageLocation)
+                }
+
                 Section("Notes (Optional)") {
                     TextEditor(text: $notes)
                         .font(.body)
@@ -123,6 +128,7 @@ struct AddItemView: View {
             reorderLevel: reorderLevel,
             isPerishable: isPerishable,
             notes: notes,
+            storageLocation: storageLocation,
             imageData: imageData
         )
         modelContext.insert(item)
