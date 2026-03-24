@@ -49,58 +49,13 @@ struct UsageListView: View {
 
     // Group usage by date
     private var groupedUsage: [(String, [Usage])] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let weekAgo = calendar.date(byAdding: .day, value: -7, to: today)!
-        let monthAgo = calendar.date(byAdding: .month, value: -1, to: today)!
-
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-
-        var todayUsage: [Usage] = []
-        var yesterdayUsage: [Usage] = []
-        var thisWeekUsage: [Usage] = []
-        var thisMonthUsage: [Usage] = []
-        var olderUsage: [Usage] = []
-
-        for usage in filteredUsage {
-            let usageDate = calendar.startOfDay(for: usage.date)
-            if usageDate >= today {
-                todayUsage.append(usage)
-            } else if usageDate >= yesterday {
-                yesterdayUsage.append(usage)
-            } else if usageDate >= weekAgo {
-                thisWeekUsage.append(usage)
-            } else if usageDate >= monthAgo {
-                thisMonthUsage.append(usage)
-            } else {
-                olderUsage.append(usage)
-            }
-        }
-
-        var result: [(String, [Usage])] = []
-
-        // Reverse section order when sorting by oldest first
-        if sortOption == .dateOldest {
-            if !olderUsage.isEmpty { result.append(("Earlier", olderUsage)) }
-            if !thisMonthUsage.isEmpty { result.append(("This Month", thisMonthUsage)) }
-            if !thisWeekUsage.isEmpty { result.append(("This Week", thisWeekUsage)) }
-            if !yesterdayUsage.isEmpty { result.append(("Yesterday", yesterdayUsage)) }
-            if !todayUsage.isEmpty { result.append(("Today", todayUsage)) }
-        } else {
-            if !todayUsage.isEmpty { result.append(("Today", todayUsage)) }
-            if !yesterdayUsage.isEmpty { result.append(("Yesterday", yesterdayUsage)) }
-            if !thisWeekUsage.isEmpty { result.append(("This Week", thisWeekUsage)) }
-            if !thisMonthUsage.isEmpty { result.append(("This Month", thisMonthUsage)) }
-            if !olderUsage.isEmpty { result.append(("Earlier", olderUsage)) }
-        }
-
-        return result
+        DateGrouper.group(filteredUsage, by: \.date, oldestFirst: sortOption == .dateOldest)
     }
 
     // Summary calculations
     private var usedLastMonth: Int {
         let calendar = Calendar.current
-        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date())!
+        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date()) ?? Date()
         return filteredUsage
             .filter { $0.date >= monthAgo }
             .reduce(0) { $0 + $1.quantity }

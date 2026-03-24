@@ -141,58 +141,13 @@ struct PurchasesListView: View {
 
     // Group purchases by date
     private var groupedPurchases: [(String, [Purchase])] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let weekAgo = calendar.date(byAdding: .day, value: -7, to: today)!
-        let monthAgo = calendar.date(byAdding: .month, value: -1, to: today)!
-
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-
-        var todayPurchases: [Purchase] = []
-        var yesterdayPurchases: [Purchase] = []
-        var thisWeekPurchases: [Purchase] = []
-        var thisMonthPurchases: [Purchase] = []
-        var olderPurchases: [Purchase] = []
-
-        for purchase in filteredPurchases {
-            let purchaseDate = calendar.startOfDay(for: purchase.date)
-            if purchaseDate >= today {
-                todayPurchases.append(purchase)
-            } else if purchaseDate >= yesterday {
-                yesterdayPurchases.append(purchase)
-            } else if purchaseDate >= weekAgo {
-                thisWeekPurchases.append(purchase)
-            } else if purchaseDate >= monthAgo {
-                thisMonthPurchases.append(purchase)
-            } else {
-                olderPurchases.append(purchase)
-            }
-        }
-
-        var result: [(String, [Purchase])] = []
-
-        // Reverse section order when sorting by oldest first
-        if sortOption == .dateOldest {
-            if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
-            if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
-            if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
-            if !yesterdayPurchases.isEmpty { result.append(("Yesterday", yesterdayPurchases)) }
-            if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
-        } else {
-            if !todayPurchases.isEmpty { result.append(("Today", todayPurchases)) }
-            if !yesterdayPurchases.isEmpty { result.append(("Yesterday", yesterdayPurchases)) }
-            if !thisWeekPurchases.isEmpty { result.append(("This Week", thisWeekPurchases)) }
-            if !thisMonthPurchases.isEmpty { result.append(("This Month", thisMonthPurchases)) }
-            if !olderPurchases.isEmpty { result.append(("Earlier", olderPurchases)) }
-        }
-
-        return result
+        DateGrouper.group(filteredPurchases, by: \.date, oldestFirst: sortOption == .dateOldest)
     }
 
     // Summary calculations
     private var spentLastMonth: Double {
         let calendar = Calendar.current
-        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date())!
+        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date()) ?? Date()
         return filteredPurchases
             .filter { $0.date >= monthAgo }
             .reduce(0) { $0 + $1.totalCost }
@@ -640,7 +595,7 @@ struct EditPurchaseView: View {
                 quantity = purchase.quantity
                 pricePerUnit = String(format: "%.2f", purchase.pricePerUnit)
                 hasExpirationDate = purchase.expirationDate != nil
-                expirationDate = purchase.expirationDate ?? Calendar.current.date(byAdding: .month, value: 6, to: Date())!
+                expirationDate = purchase.expirationDate ?? Calendar.current.date(byAdding: .month, value: 6, to: Date()) ?? Date()
                 lotNumber = purchase.lotNumber
                 notes = purchase.notes
             }
