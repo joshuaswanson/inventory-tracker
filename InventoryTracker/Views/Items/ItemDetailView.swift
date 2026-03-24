@@ -503,8 +503,9 @@ struct ItemDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
             } else {
+                let recentPurchases = Array(item.purchases.sorted { $0.date > $1.date }.prefix(3))
                 VStack(spacing: 8) {
-                    ForEach(item.purchases.sorted { $0.date > $1.date }.prefix(3), id: \.id) { purchase in
+                    ForEach(Array(recentPurchases.enumerated()), id: \.element.id) { index, purchase in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(purchase.date, style: .date)
@@ -526,7 +527,7 @@ struct ItemDetailView: View {
                             }
                         }
                         .padding(.vertical, 4)
-                        if purchase.id != item.purchases.sorted(by: { $0.date > $1.date }).prefix(3).last?.id {
+                        if index < recentPurchases.count - 1 {
                             Divider()
                         }
                     }
@@ -567,8 +568,9 @@ struct ItemDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
             } else {
+                let recentUsage = Array(item.usageRecords.sorted { $0.date > $1.date }.prefix(3))
                 VStack(spacing: 8) {
-                    ForEach(item.usageRecords.sorted { $0.date > $1.date }.prefix(3), id: \.id) { usage in
+                    ForEach(Array(recentUsage.enumerated()), id: \.element.id) { index, usage in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(usage.date, style: .date)
@@ -586,7 +588,7 @@ struct ItemDetailView: View {
                                 .foregroundStyle(.red)
                         }
                         .padding(.vertical, 4)
-                        if usage.id != item.usageRecords.sorted(by: { $0.date > $1.date }).prefix(3).last?.id {
+                        if index < recentUsage.count - 1 {
                             Divider()
                         }
                     }
