@@ -41,7 +41,7 @@ struct VendorsListView: View {
                     }
                     .width(min: 80, ideal: 120)
 
-                    TableColumn("Phone") { (vendor: Vendor) in
+                    TableColumn("Phone", value: \.phone) { vendor in
                         Text(vendor.phone.isEmpty ? "-" : PhoneFormatter.format(vendor.phone))
                             .foregroundStyle(vendor.phone.isEmpty ? .tertiary : .primary)
                     }

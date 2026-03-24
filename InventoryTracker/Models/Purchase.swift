@@ -35,6 +35,14 @@ final class Purchase {
         self.notes = notes
     }
 
+    var itemName: String {
+        item?.name ?? ""
+    }
+
+    var vendorName: String {
+        vendor?.name ?? ""
+    }
+
     var totalCost: Double {
         Double(quantity) * pricePerUnit
     }

@@ -25,4 +25,8 @@ final class Usage {
         self.notes = notes
         self.isEstimate = isEstimate
     }
+
+    var itemName: String {
+        item?.name ?? ""
+    }
 }

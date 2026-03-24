@@ -1,10 +1,6 @@
 import SwiftUI
 import SwiftData
 
-enum PurchaseSortColumn: String {
-    case date, item, vendor, quantity, pricePerUnit, total, expires, lotNumber
-}
-
 struct PurchasesListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Purchase.date, order: .reverse) private var purchases: [Purchase]
@@ -13,8 +9,7 @@ struct PurchasesListView: View {
     @State private var purchaseToEdit: Purchase?
     @State private var searchText = ""
     @State private var selectedPurchaseID: Purchase.ID?
-    @State private var sortColumn: PurchaseSortColumn = .date
-    @State private var sortAscending = false
+    @State private var sortOrder = [KeyPathComparator(\Purchase.date, order: .reverse)]
 
     private var filteredPurchases: [Purchase] {
         var result = purchases
@@ -24,70 +19,31 @@ struct PurchasesListView: View {
                 $0.vendor?.name.localizedCaseInsensitiveContains(searchText) ?? false
             }
         }
-        result.sort { a, b in
-            let cmp: Bool
-            switch sortColumn {
-            case .date: cmp = a.date < b.date
-            case .item: cmp = (a.item?.name ?? "") < (b.item?.name ?? "")
-            case .vendor: cmp = (a.vendor?.name ?? "") < (b.vendor?.name ?? "")
-            case .quantity: cmp = a.quantity < b.quantity
-            case .pricePerUnit: cmp = a.pricePerUnit < b.pricePerUnit
-            case .total: cmp = a.totalCost < b.totalCost
-            case .expires: cmp = (a.expirationDate ?? .distantFuture) < (b.expirationDate ?? .distantFuture)
-            case .lotNumber: cmp = a.lotNumber < b.lotNumber
-            }
-            return sortAscending ? cmp : !cmp
-        }
-        return result
-    }
-
-    private func toggleSort(_ column: PurchaseSortColumn) {
-        if sortColumn == column {
-            sortAscending.toggle()
-        } else {
-            sortColumn = column
-            sortAscending = column != .date
-        }
-    }
-
-    private func headerButton(_ title: String, column: PurchaseSortColumn) -> some View {
-        Button {
-            toggleSort(column)
-        } label: {
-            HStack(spacing: 3) {
-                Text(title)
-                if sortColumn == column {
-                    Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
-                        .font(.caption2)
-                }
-            }
-        }
-        .buttonStyle(.plain)
+        return result.sorted(using: sortOrder)
     }
 
     var body: some View {
         NavigationStack {
-            Table(filteredPurchases, selection: $selectedPurchaseID) {
-                TableColumn("Date") { purchase in
+            Table(filteredPurchases, selection: $selectedPurchaseID, sortOrder: $sortOrder) {
+                TableColumn("Date", value: \.date) { purchase in
                     Text(purchase.date, format: .dateTime.month(.abbreviated).day().year())
                 }
                 .width(min: 90, ideal: 110)
-                .customizationID("date")
 
-                TableColumn("Item") { purchase in
-                    Text(purchase.item?.name ?? "Unknown")
+                TableColumn("Item", value: \.itemName) { purchase in
+                    Text(purchase.itemName)
                         .lineLimit(1)
                 }
                 .width(min: 120, ideal: 180)
 
-                TableColumn("Vendor") { purchase in
-                    Text(purchase.vendor?.name ?? "-")
-                        .foregroundStyle(purchase.vendor == nil ? .tertiary : .primary)
+                TableColumn("Vendor", value: \.vendorName) { purchase in
+                    Text(purchase.vendorName.isEmpty ? "-" : purchase.vendorName)
+                        .foregroundStyle(purchase.vendorName.isEmpty ? .tertiary : .primary)
                         .lineLimit(1)
                 }
                 .width(min: 100, ideal: 140)
 
-                TableColumn("Qty") { purchase in
+                TableColumn("Qty", value: \.quantity) { purchase in
                     if let item = purchase.item {
                         Text("\(purchase.quantity) \(item.unit.abbreviation)")
                     } else {
@@ -96,18 +52,25 @@ struct PurchasesListView: View {
                 }
                 .width(60)
 
-                TableColumn("Price/Unit") { purchase in
+                TableColumn("Price/Unit", value: \.pricePerUnit) { purchase in
                     Text(purchase.pricePerUnit, format: .currency(code: "USD"))
                 }
                 .width(80)
 
-                TableColumn("Total") { purchase in
+                TableColumn("Total", value: \.totalCost) { purchase in
                     Text(purchase.totalCost, format: .currency(code: "USD"))
                         .fontWeight(.medium)
                 }
                 .width(80)
 
-                TableColumn("Expires") { purchase in
+                TableColumn("Lot #", value: \.lotNumber) { purchase in
+                    Text(purchase.lotNumber.isEmpty ? "-" : purchase.lotNumber)
+                        .foregroundStyle(purchase.lotNumber.isEmpty ? .tertiary : .secondary)
+                        .lineLimit(1)
+                }
+                .width(min: 60, ideal: 90)
+
+                TableColumn("Expires") { (purchase: Purchase) in
                     if let expDate = purchase.expirationDate {
                         Text(expDate, format: .dateTime.month(.abbreviated).day())
                             .foregroundStyle(expirationColor(for: purchase))
@@ -117,13 +80,6 @@ struct PurchasesListView: View {
                     }
                 }
                 .width(70)
-
-                TableColumn("Lot #") { purchase in
-                    Text(purchase.lotNumber.isEmpty ? "-" : purchase.lotNumber)
-                        .foregroundStyle(purchase.lotNumber.isEmpty ? .tertiary : .secondary)
-                        .lineLimit(1)
-                }
-                .width(min: 60, ideal: 90)
             }
             .contextMenu(forSelectionType: Purchase.ID.self) { ids in
                 if let id = ids.first, let purchase = purchases.first(where: { $0.id == id }) {
@@ -142,34 +98,6 @@ struct PurchasesListView: View {
                     Button(action: { showingAddPurchase = true }) {
                         Label("Add Purchase", systemImage: "plus")
                     }
-                }
-
-                ToolbarItem(placement: .secondaryAction) {
-                    Menu {
-                        ForEach([
-                            ("Date", PurchaseSortColumn.date),
-                            ("Item", PurchaseSortColumn.item),
-                            ("Vendor", PurchaseSortColumn.vendor),
-                            ("Quantity", PurchaseSortColumn.quantity),
-                            ("Price/Unit", PurchaseSortColumn.pricePerUnit),
-                            ("Total", PurchaseSortColumn.total),
-                            ("Expires", PurchaseSortColumn.expires),
-                        ], id: \.1) { title, column in
-                            Button {
-                                toggleSort(column)
-                            } label: {
-                                HStack {
-                                    Text(title)
-                                    if sortColumn == column {
-                                        Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Label("Sort", systemImage: "arrow.up.arrow.down")
-                    }
-                    .menuIndicator(.hidden)
                 }
             }
             .sheet(isPresented: $showingAddPurchase) {
