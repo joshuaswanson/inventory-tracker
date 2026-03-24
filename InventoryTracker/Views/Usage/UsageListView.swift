@@ -1,6 +1,10 @@
 import SwiftUI
 import SwiftData
 
+enum UsageSortColumn: String {
+    case date, item, quantity, estimate, notes
+}
+
 struct UsageListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Usage.date, order: .reverse) private var usageRecords: [Usage]
@@ -9,7 +13,8 @@ struct UsageListView: View {
     @State private var usageToEdit: Usage?
     @State private var searchText = ""
     @State private var selectedUsageID: Usage.ID?
-    @State private var sortOrder = [KeyPathComparator(\Usage.date, order: .reverse)]
+    @State private var sortColumn: UsageSortColumn = .date
+    @State private var sortAscending = false
 
     private var filteredUsage: [Usage] {
         var result = usageRecords
@@ -18,24 +23,44 @@ struct UsageListView: View {
                 $0.item?.name.localizedCaseInsensitiveContains(searchText) ?? false
             }
         }
-        return result.sorted(using: sortOrder)
+        result.sort { a, b in
+            let cmp: Bool
+            switch sortColumn {
+            case .date: cmp = a.date < b.date
+            case .item: cmp = (a.item?.name ?? "") < (b.item?.name ?? "")
+            case .quantity: cmp = a.quantity < b.quantity
+            case .estimate: cmp = !a.isEstimate && b.isEstimate
+            case .notes: cmp = a.notes < b.notes
+            }
+            return sortAscending ? cmp : !cmp
+        }
+        return result
+    }
+
+    private func toggleSort(_ column: UsageSortColumn) {
+        if sortColumn == column {
+            sortAscending.toggle()
+        } else {
+            sortColumn = column
+            sortAscending = column != .date
+        }
     }
 
     var body: some View {
         NavigationStack {
-            Table(filteredUsage, selection: $selectedUsageID, sortOrder: $sortOrder) {
-                TableColumn("Date", value: \.date) { usage in
+            Table(filteredUsage, selection: $selectedUsageID) {
+                TableColumn("Date") { usage in
                     Text(usage.date, format: .dateTime.month(.abbreviated).day().year())
                 }
                 .width(min: 90, ideal: 110)
 
-                TableColumn("Item") { (usage: Usage) in
+                TableColumn("Item") { usage in
                     Text(usage.item?.name ?? "Unknown")
                         .lineLimit(1)
                 }
                 .width(min: 150, ideal: 220)
 
-                TableColumn("Qty Used", value: \.quantity) { usage in
+                TableColumn("Qty Used") { usage in
                     if let item = usage.item {
                         Text("\(usage.quantity) \(item.unit.abbreviation)")
                             .foregroundStyle(.red)
@@ -46,7 +71,7 @@ struct UsageListView: View {
                 }
                 .width(70)
 
-                TableColumn("Est.") { (usage: Usage) in
+                TableColumn("Est.") { usage in
                     if usage.isEstimate {
                         Image(systemName: "checkmark")
                             .foregroundStyle(.teal)
@@ -54,7 +79,7 @@ struct UsageListView: View {
                 }
                 .width(35)
 
-                TableColumn("Notes", value: \.notes) { usage in
+                TableColumn("Notes") { usage in
                     Text(usage.notes.isEmpty ? "-" : usage.notes)
                         .foregroundStyle(usage.notes.isEmpty ? .tertiary : .secondary)
                         .lineLimit(1)
@@ -78,6 +103,31 @@ struct UsageListView: View {
                     Button(action: { showingAddUsage = true }) {
                         Label("Record Usage", systemImage: "plus")
                     }
+                }
+
+                ToolbarItem(placement: .secondaryAction) {
+                    Menu {
+                        ForEach([
+                            ("Date", UsageSortColumn.date),
+                            ("Item", UsageSortColumn.item),
+                            ("Quantity", UsageSortColumn.quantity),
+                            ("Estimate", UsageSortColumn.estimate),
+                        ], id: \.1) { title, column in
+                            Button {
+                                toggleSort(column)
+                            } label: {
+                                HStack {
+                                    Text(title)
+                                    if sortColumn == column {
+                                        Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
+                    }
+                    .menuIndicator(.hidden)
                 }
             }
             .sheet(isPresented: $showingAddUsage) {
