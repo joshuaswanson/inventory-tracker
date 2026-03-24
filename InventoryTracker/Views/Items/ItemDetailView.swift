@@ -107,7 +107,7 @@ struct ItemDetailView: View {
     private var metricsRow: some View {
         let hasMetrics = item.lowestPricePaid != nil || item.averagePricePaid != nil || item.usageRatePerDay > 0
         if hasMetrics {
-            HStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 if let bestPrice = item.lowestPricePaid {
                     metricCard(
                         title: "Best Price",
@@ -194,7 +194,7 @@ struct ItemDetailView: View {
             }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -251,7 +251,7 @@ struct ItemDetailView: View {
             }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -305,7 +305,7 @@ struct ItemDetailView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(12)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
