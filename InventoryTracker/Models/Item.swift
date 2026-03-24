@@ -53,7 +53,7 @@ final class Item {
     }
 
     var needsReorder: Bool {
-        currentInventory <= reorderLevel
+        currentInventory < reorderLevel
     }
 
     var lowestPricePaid: Double? {
@@ -78,7 +78,7 @@ final class Item {
               let lastDate = sortedRecords.last?.date else { return 0 }
 
         let daysBetween = Calendar.current.dateComponents([.day], from: firstDate, to: lastDate).day ?? 0
-        guard daysBetween > 0 else { return Double(usageRecords.reduce(0) { $0 + $1.quantity }) }
+        guard daysBetween > 0 else { return 0 }
 
         let totalUsed = usageRecords.reduce(0) { $0 + $1.quantity }
         return Double(totalUsed) / Double(daysBetween)
