@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import os
 
 // Wrapper types to distinguish between Item and Vendor windows
 struct ItemWindowID: Hashable, Codable {
@@ -94,7 +95,8 @@ struct InventoryTrackerApp: App {
 
             try context.save()
         } catch {
-            print("Failed to clear data: \(error)")
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "InventoryTracker", category: "data")
+                .error("Failed to clear data: \(error)")
         }
     }
 
