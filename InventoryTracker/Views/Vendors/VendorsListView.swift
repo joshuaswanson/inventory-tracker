@@ -13,50 +13,54 @@ struct VendorsListView: View {
     @State private var vendorToEdit: Vendor?
     @State private var selectedVendorID: Vendor.ID?
     @State private var searchText = ""
+    @State private var sortOrder = [KeyPathComparator(\Vendor.name)]
 
     private var filteredVendors: [Vendor] {
-        guard !searchText.isEmpty else { return vendors }
-        return vendors.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        var result = vendors.map { $0 }
+        if !searchText.isEmpty {
+            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+        return result.sorted(using: sortOrder)
     }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 // Table
-                Table(filteredVendors, selection: $selectedVendorID) {
-                    TableColumn("Name") { vendor in
+                Table(filteredVendors, selection: $selectedVendorID, sortOrder: $sortOrder) {
+                    TableColumn("Name", value: \.name) { vendor in
                         Text(vendor.name)
                             .lineLimit(1)
                     }
                     .width(min: 100, ideal: 150)
 
-                    TableColumn("Contact") { vendor in
+                    TableColumn("Contact", value: \.contactName) { vendor in
                         Text(vendor.contactName.isEmpty ? "-" : vendor.contactName)
                             .foregroundStyle(vendor.contactName.isEmpty ? .tertiary : .primary)
                             .lineLimit(1)
                     }
                     .width(min: 80, ideal: 120)
 
-                    TableColumn("Phone") { vendor in
+                    TableColumn("Phone") { (vendor: Vendor) in
                         Text(vendor.phone.isEmpty ? "-" : PhoneFormatter.format(vendor.phone))
                             .foregroundStyle(vendor.phone.isEmpty ? .tertiary : .primary)
                     }
                     .width(min: 90, ideal: 110)
 
-                    TableColumn("Email") { vendor in
+                    TableColumn("Email", value: \.email) { vendor in
                         Text(vendor.email.isEmpty ? "-" : vendor.email)
                             .foregroundStyle(vendor.email.isEmpty ? .tertiary : .primary)
                             .lineLimit(1)
                     }
                     .width(min: 100, ideal: 150)
 
-                    TableColumn("Orders") { vendor in
+                    TableColumn("Orders") { (vendor: Vendor) in
                         Text("\(vendor.totalPurchases)")
                             .foregroundStyle(.secondary)
                     }
                     .width(50)
 
-                    TableColumn("Total Spent") { vendor in
+                    TableColumn("Total Spent") { (vendor: Vendor) in
                         Text(vendor.totalSpent, format: .currency(code: "USD"))
                             .foregroundStyle(.green)
                     }
@@ -105,7 +109,7 @@ struct VendorsListView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .frame(minWidth: 280, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 220, idealWidth: 280, maxWidth: 350, maxHeight: .infinity)
             }
         }
         .searchable(text: $searchText, prompt: "Search vendors")

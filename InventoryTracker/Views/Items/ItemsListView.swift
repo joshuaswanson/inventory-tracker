@@ -10,6 +10,7 @@ struct ItemsListView: View {
     @State private var itemToEdit: Item?
     @State private var searchText = ""
     @State private var showLowStockOnly = false
+    @State private var sortOrder = [KeyPathComparator(\Item.name)]
 
     private var filteredItems: [Item] {
         var result = items
@@ -19,7 +20,7 @@ struct ItemsListView: View {
         if !searchText.isEmpty {
             result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
-        return result
+        return result.sorted(using: sortOrder)
     }
 
     var body: some View {
@@ -27,8 +28,8 @@ struct ItemsListView: View {
             HStack(spacing: 0) {
                 // Table
                 VStack(spacing: 0) {
-                    Table(filteredItems, selection: $selectedItemID) {
-                        TableColumn("Item") { item in
+                    Table(filteredItems, selection: $selectedItemID, sortOrder: $sortOrder) {
+                        TableColumn("Item", value: \.name) { item in
                             HStack(spacing: 6) {
                                 if item.needsReorder {
                                     Image(systemName: "exclamationmark.triangle.fill")
@@ -41,42 +42,31 @@ struct ItemsListView: View {
                         }
                         .width(min: 120, ideal: 180)
 
-                        TableColumn("Stock") { item in
+                        TableColumn("Stock", value: \.currentInventory) { item in
                             Text("\(item.currentInventory)")
                                 .foregroundStyle(item.needsReorder ? .orange : .primary)
                                 .fontWeight(item.needsReorder ? .semibold : .regular)
                         }
                         .width(50)
 
-                        TableColumn("Unit") { item in
+                        TableColumn("Unit") { (item: Item) in
                             Text(item.unit.abbreviation)
                                 .foregroundStyle(.secondary)
                         }
                         .width(40)
 
-                        TableColumn("Reorder At") { item in
+                        TableColumn("Reorder At", value: \.reorderLevel) { item in
                             Text("\(item.reorderLevel)")
                                 .foregroundStyle(.secondary)
                         }
                         .width(70)
 
-                        TableColumn("Location") { item in
+                        TableColumn("Location", value: \.storageLocation) { item in
                             Text(item.storageLocation.isEmpty ? "-" : item.storageLocation)
                                 .foregroundStyle(item.storageLocation.isEmpty ? .tertiary : .secondary)
                                 .lineLimit(1)
                         }
                         .width(min: 80, ideal: 120)
-
-                        TableColumn("Best Price") { item in
-                            if let price = item.lowestPricePaid {
-                                Text(price, format: .currency(code: "USD"))
-                                    .foregroundStyle(.green)
-                            } else {
-                                Text("-")
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        .width(75)
                     }
                     .contextMenu(forSelectionType: Item.ID.self) { ids in
                         if let id = ids.first, let item = items.first(where: { $0.id == id }) {
@@ -107,7 +97,7 @@ struct ItemsListView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 220, idealWidth: 280, maxWidth: 350, maxHeight: .infinity)
             }
         }
         .searchable(text: $searchText, prompt: "Search items")

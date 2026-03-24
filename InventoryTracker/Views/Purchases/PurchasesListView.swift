@@ -9,37 +9,41 @@ struct PurchasesListView: View {
     @State private var purchaseToEdit: Purchase?
     @State private var searchText = ""
     @State private var selectedPurchaseID: Purchase.ID?
+    @State private var sortOrder = [KeyPathComparator(\Purchase.date, order: .reverse)]
 
     private var filteredPurchases: [Purchase] {
-        guard !searchText.isEmpty else { return purchases }
-        return purchases.filter {
-            $0.item?.name.localizedCaseInsensitiveContains(searchText) ?? false ||
-            $0.vendor?.name.localizedCaseInsensitiveContains(searchText) ?? false
+        var result = purchases
+        if !searchText.isEmpty {
+            result = result.filter {
+                $0.item?.name.localizedCaseInsensitiveContains(searchText) ?? false ||
+                $0.vendor?.name.localizedCaseInsensitiveContains(searchText) ?? false
+            }
         }
+        return result.sorted(using: sortOrder)
     }
 
     var body: some View {
         NavigationStack {
-            Table(filteredPurchases, selection: $selectedPurchaseID) {
-                TableColumn("Date") { purchase in
+            Table(filteredPurchases, selection: $selectedPurchaseID, sortOrder: $sortOrder) {
+                TableColumn("Date", value: \.date) { purchase in
                     Text(purchase.date, format: .dateTime.month(.abbreviated).day().year())
                 }
                 .width(min: 90, ideal: 110)
 
-                TableColumn("Item") { purchase in
+                TableColumn("Item") { (purchase: Purchase) in
                     Text(purchase.item?.name ?? "Unknown")
                         .lineLimit(1)
                 }
                 .width(min: 120, ideal: 180)
 
-                TableColumn("Vendor") { purchase in
+                TableColumn("Vendor") { (purchase: Purchase) in
                     Text(purchase.vendor?.name ?? "-")
                         .foregroundStyle(purchase.vendor == nil ? .tertiary : .primary)
                         .lineLimit(1)
                 }
                 .width(min: 100, ideal: 140)
 
-                TableColumn("Qty") { purchase in
+                TableColumn("Qty", value: \.quantity) { purchase in
                     if let item = purchase.item {
                         Text("\(purchase.quantity) \(item.unit.abbreviation)")
                     } else {
@@ -48,18 +52,18 @@ struct PurchasesListView: View {
                 }
                 .width(60)
 
-                TableColumn("Price/Unit") { purchase in
+                TableColumn("Price/Unit", value: \.pricePerUnit) { purchase in
                     Text(purchase.pricePerUnit, format: .currency(code: "USD"))
                 }
                 .width(80)
 
-                TableColumn("Total") { purchase in
+                TableColumn("Total") { (purchase: Purchase) in
                     Text(purchase.totalCost, format: .currency(code: "USD"))
                         .fontWeight(.medium)
                 }
                 .width(80)
 
-                TableColumn("Expires") { purchase in
+                TableColumn("Expires") { (purchase: Purchase) in
                     if let expDate = purchase.expirationDate {
                         Text(expDate, format: .dateTime.month(.abbreviated).day())
                             .foregroundStyle(expirationColor(for: purchase))
@@ -70,7 +74,7 @@ struct PurchasesListView: View {
                 }
                 .width(70)
 
-                TableColumn("Lot #") { purchase in
+                TableColumn("Lot #", value: \.lotNumber) { purchase in
                     Text(purchase.lotNumber.isEmpty ? "-" : purchase.lotNumber)
                         .foregroundStyle(purchase.lotNumber.isEmpty ? .tertiary : .secondary)
                         .lineLimit(1)

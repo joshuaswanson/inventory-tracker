@@ -9,29 +9,33 @@ struct UsageListView: View {
     @State private var usageToEdit: Usage?
     @State private var searchText = ""
     @State private var selectedUsageID: Usage.ID?
+    @State private var sortOrder = [KeyPathComparator(\Usage.date, order: .reverse)]
 
     private var filteredUsage: [Usage] {
-        guard !searchText.isEmpty else { return usageRecords }
-        return usageRecords.filter {
-            $0.item?.name.localizedCaseInsensitiveContains(searchText) ?? false
+        var result = usageRecords
+        if !searchText.isEmpty {
+            result = result.filter {
+                $0.item?.name.localizedCaseInsensitiveContains(searchText) ?? false
+            }
         }
+        return result.sorted(using: sortOrder)
     }
 
     var body: some View {
         NavigationStack {
-            Table(filteredUsage, selection: $selectedUsageID) {
-                TableColumn("Date") { usage in
+            Table(filteredUsage, selection: $selectedUsageID, sortOrder: $sortOrder) {
+                TableColumn("Date", value: \.date) { usage in
                     Text(usage.date, format: .dateTime.month(.abbreviated).day().year())
                 }
                 .width(min: 90, ideal: 110)
 
-                TableColumn("Item") { usage in
+                TableColumn("Item") { (usage: Usage) in
                     Text(usage.item?.name ?? "Unknown")
                         .lineLimit(1)
                 }
                 .width(min: 150, ideal: 220)
 
-                TableColumn("Qty Used") { usage in
+                TableColumn("Qty Used", value: \.quantity) { usage in
                     if let item = usage.item {
                         Text("\(usage.quantity) \(item.unit.abbreviation)")
                             .foregroundStyle(.red)
@@ -42,7 +46,7 @@ struct UsageListView: View {
                 }
                 .width(70)
 
-                TableColumn("Est.") { usage in
+                TableColumn("Est.") { (usage: Usage) in
                     if usage.isEstimate {
                         Image(systemName: "checkmark")
                             .foregroundStyle(.teal)
@@ -50,18 +54,7 @@ struct UsageListView: View {
                 }
                 .width(35)
 
-                TableColumn("Remaining") { usage in
-                    if let item = usage.item {
-                        Text("\(item.currentInventory) \(item.unit.abbreviation)")
-                            .foregroundStyle(item.needsReorder ? .orange : .secondary)
-                    } else {
-                        Text("-")
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .width(80)
-
-                TableColumn("Notes") { usage in
+                TableColumn("Notes", value: \.notes) { usage in
                     Text(usage.notes.isEmpty ? "-" : usage.notes)
                         .foregroundStyle(usage.notes.isEmpty ? .tertiary : .secondary)
                         .lineLimit(1)
