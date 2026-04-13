@@ -2,6 +2,8 @@
 
 A dental inventory tracking web app. Track supplies, vendors, purchases, and usage with automatic reorder alerts and expiration warnings.
 
+<img src="assets/screenshot.png" alt="Inventory Tracker" width="800">
+
 ## Features
 
 - **Items** - Track inventory with units, reorder levels, and perishability
