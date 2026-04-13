@@ -10,6 +10,9 @@ let state = {
   dashboard: null,
   search: "",
   sort: { key: null, dir: "asc" },
+  filter: "all",
+  sortField: "name",
+  sortDir: "asc",
 };
 
 const UNITS = [
@@ -141,6 +144,9 @@ function expirationBadge(item) {
   return `<span class="badge badge-green">${d}d left</span>`;
 }
 
+const ICON_EDIT = `<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>`;
+const ICON_TRASH = `<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>`;
+
 // ── Modal ───────────────────────────────────────────────
 
 let modalSaveHandler = null;
@@ -187,11 +193,14 @@ function confirm(message) {
 
 // ── Router ──────────────────────────────────────────────
 
-function navigate(view, detailId = null) {
+function navigate(view, detailId = null, filter = "all") {
   state.view = view;
   state.detailId = detailId;
   state.search = "";
   state.sort = { key: null, dir: "asc" };
+  state.filter = filter;
+  state.sortField = "name";
+  state.sortDir = "asc";
 
   $$(".nav-item").forEach((el) => {
     el.classList.toggle(
@@ -253,12 +262,13 @@ async function renderDashboard(el) {
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card">
+      <div class="stat-card clickable" data-nav="items">
         <div class="stat-icon blue">
           <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+            <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
             <path
               fill-rule="evenodd"
-              d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
+              d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
               clip-rule="evenodd"
             />
           </svg>
@@ -266,7 +276,7 @@ async function renderDashboard(el) {
         <span class="stat-label">Total Items</span>
         <span class="stat-value">${data.totalItems}</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card clickable" data-nav="items" data-filter="low">
         <div class="stat-icon amber">
           <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
             <path
@@ -281,7 +291,7 @@ async function renderDashboard(el) {
           >${data.lowStockCount}</span
         >
       </div>
-      <div class="stat-card">
+      <div class="stat-card clickable" data-nav="items" data-filter="expiring">
         <div class="stat-icon red">
           <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
             <path
@@ -296,8 +306,8 @@ async function renderDashboard(el) {
           >${data.expiringCount}</span
         >
       </div>
-      <div class="stat-card">
-        <div class="stat-icon green">
+      <div class="stat-card clickable" data-nav="vendors">
+        <div class="stat-icon purple">
           <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
             <path
               d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
@@ -308,7 +318,7 @@ async function renderDashboard(el) {
         <span class="stat-value">${data.totalVendors}</span>
       </div>
       <div class="stat-card">
-        <div class="stat-icon purple">
+        <div class="stat-icon green">
           <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
             <path
               d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"
@@ -321,7 +331,9 @@ async function renderDashboard(el) {
           </svg>
         </div>
         <span class="stat-label">Inventory Value</span>
-        <span class="stat-value text-sm">${currency(data.totalValue)}</span>
+        <span class="stat-value text-sm text-green"
+          >${currency(data.totalValue)}</span
+        >
       </div>
     </div>
 
@@ -342,7 +354,11 @@ async function renderDashboard(el) {
           : `<ul class="alert-list">${data.lowStockItems
               .map(
                 (i) => html`
-                  <li class="alert-item">
+                  <li
+                    class="alert-item clickable"
+                    data-nav="item-detail"
+                    data-id="${i.id}"
+                  >
                     <span class="alert-name">${i.name}</span>
                     <span class="alert-stock"
                       >${i.currentInventory} / ${i.reorderLevel}
@@ -371,7 +387,11 @@ async function renderDashboard(el) {
           : `<ul class="alert-list">${data.expiringItems
               .map(
                 (i) => html`
-                  <li class="alert-item">
+                  <li
+                    class="alert-item clickable"
+                    data-nav="item-detail"
+                    data-id="${i.id}"
+                  >
                     <span class="alert-name">${i.name}</span>
                     <span class="alert-stock"
                       >${shortDate(i.nextExpiration)}</span
@@ -384,6 +404,20 @@ async function renderDashboard(el) {
       </div>
     </div>
   `;
+
+  // Clickable stat cards
+  el.querySelectorAll(".stat-card.clickable").forEach((card) => {
+    card.style.cursor = "pointer";
+    card.addEventListener("click", () =>
+      navigate(card.dataset.nav, null, card.dataset.filter || "all"),
+    );
+  });
+
+  // Clickable alert items
+  el.querySelectorAll(".alert-item.clickable").forEach((li) => {
+    li.style.cursor = "pointer";
+    li.addEventListener("click", () => navigate(li.dataset.nav, li.dataset.id));
+  });
 }
 
 // ── Items List ──────────────────────────────────────────
@@ -393,8 +427,30 @@ async function renderItems(el) {
   renderItemsInner(el);
 }
 
+function applyItemSort(items) {
+  const key = state.sortField;
+  const m = state.sortDir === "desc" ? -1 : 1;
+  return [...items].sort((a, b) => {
+    switch (key) {
+      case "name":
+        return a.name.localeCompare(b.name) * m;
+      case "stock":
+        return (a.currentInventory - b.currentInventory) * m;
+      case "price":
+        return ((a.averagePrice || 0) - (b.averagePrice || 0)) * m;
+      case "added":
+        return (a.createdAt || "").localeCompare(b.createdAt || "") * m;
+      case "reorder":
+        return (a.reorderLevel - b.reorderLevel) * m;
+      default:
+        return 0;
+    }
+  });
+}
+
 function renderItemsInner(el) {
   let items = state.items;
+
   if (state.search) {
     const q = state.search.toLowerCase();
     items = items.filter(
@@ -403,7 +459,39 @@ function renderItemsInner(el) {
         i.storageLocation.toLowerCase().includes(q),
     );
   }
-  items = sortList(items);
+
+  switch (state.filter) {
+    case "low":
+      items = items.filter((i) => i.needsReorder);
+      break;
+    case "out":
+      items = items.filter((i) => i.currentInventory <= 0);
+      break;
+    case "expiring":
+      items = items.filter(
+        (i) => i.daysUntilExpiration != null && i.daysUntilExpiration <= 30,
+      );
+      break;
+    case "perishable":
+      items = items.filter((i) => i.isPerishable);
+      break;
+  }
+
+  items = applyItemSort(items);
+
+  const totalCount = state.items.length;
+  const lowCount = state.items.filter((i) => i.needsReorder).length;
+  const outCount = state.items.filter((i) => i.currentInventory <= 0).length;
+  const expCount = state.items.filter(
+    (i) => i.daysUntilExpiration != null && i.daysUntilExpiration <= 30,
+  ).length;
+  const perishCount = state.items.filter((i) => i.isPerishable).length;
+
+  function fc(name, label, count) {
+    const active = state.filter === name ? "active" : "";
+    const badge = count > 0 ? ` (${count})` : "";
+    return `<button class="filter-chip ${active}" data-filter="${name}">${label}${badge}</button>`;
+  }
 
   el.innerHTML = html`
     <div class="view-header">
@@ -418,16 +506,67 @@ function renderItemsInner(el) {
         <button class="btn btn-primary" id="add-item-btn">+ Add Item</button>
       </div>
     </div>
-    ${items.length === 0 && !state.search
+    <div class="toolbar">
+      <div class="filter-chips">
+        ${fc("all", "All", totalCount)} ${fc("low", "Low Stock", lowCount)}
+        ${fc("out", "Out of Stock", outCount)}
+        ${fc("expiring", "Expiring Soon", expCount)}
+        ${fc("perishable", "Perishable", perishCount)}
+      </div>
+      <div class="sort-group">
+        <select class="sort-select" id="items-sort-field">
+          <option value="name" ${state.sortField === "name" ? "selected" : ""}>
+            Name
+          </option>
+          <option
+            value="stock"
+            ${state.sortField === "stock" ? "selected" : ""}
+          >
+            Stock
+          </option>
+          <option
+            value="price"
+            ${state.sortField === "price" ? "selected" : ""}
+          >
+            Price
+          </option>
+          <option
+            value="reorder"
+            ${state.sortField === "reorder" ? "selected" : ""}
+          >
+            Reorder Level
+          </option>
+          <option
+            value="added"
+            ${state.sortField === "added" ? "selected" : ""}
+          >
+            Date Added
+          </option>
+        </select>
+        <button
+          class="sort-dir-btn"
+          id="items-sort-dir"
+          title="${state.sortDir === "asc" ? "Ascending" : "Descending"}"
+        >
+          ${state.sortDir === "asc"
+            ? '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>'
+            : '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>'}
+        </button>
+      </div>
+    </div>
+    ${items.length === 0
       ? html`
           <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="48" height="48">
-              <path
-                d="M12 2C9.5 2 7.5 3 6.5 4.5C5.5 6 5 8 5 10C5 12 5.2 13.5 5.5 15C5.8 16.5 6.2 18 6.5 19.5C6.8 21 7.5 22 8.5 22C9.5 22 10 21 10.2 19.5C10.4 18 10.8 16 11 14.5C11.1 13.5 11.5 13 12 13C12.5 13 12.9 13.5 13 14.5C13.2 16 13.6 18 13.8 19.5C14 21 14.5 22 15.5 22C16.5 22 17.2 21 17.5 19.5C17.8 18 18.2 16.5 18.5 15C18.8 13.5 19 12 19 10C19 8 18.5 6 17.5 4.5C16.5 3 14.5 2 12 2Z"
-              />
-            </svg>
-            <h3>No items yet</h3>
-            <p>Add your first dental supply item to get started.</p>
+            <h3>
+              ${state.filter !== "all" || state.search
+                ? "No matching items"
+                : "No items yet"}
+            </h3>
+            <p>
+              ${state.filter !== "all" || state.search
+                ? "Try adjusting your filters or search."
+                : "Add your first dental supply item to get started."}
+            </p>
           </div>
         `
       : html`
@@ -435,12 +574,12 @@ function renderItemsInner(el) {
             <table>
               <thead>
                 <tr>
-                  <th data-sort="name">Name</th>
-                  <th data-sort="currentInventory">Stock</th>
-                  <th data-sort="reorderLevel">Reorder At</th>
-                  <th data-sort="needsReorder">Status</th>
-                  <th data-sort="storageLocation">Location</th>
-                  <th data-sort="averagePrice">Avg Price</th>
+                  <th>Name</th>
+                  <th>Stock</th>
+                  <th>Reorder At</th>
+                  <th>Status</th>
+                  <th>Location</th>
+                  <th>Avg Price</th>
                   <th></th>
                 </tr>
               </thead>
@@ -465,14 +604,14 @@ function renderItemsInner(el) {
                             data-id="${i.id}"
                             title="Edit"
                           >
-                            Edit
+                            ${ICON_EDIT}
                           </button>
                           <button
                             class="btn-ghost btn-sm delete-item text-red"
                             data-id="${i.id}"
                             title="Delete"
                           >
-                            Del
+                            ${ICON_TRASH}
                           </button>
                         </td>
                       </tr>
@@ -486,7 +625,22 @@ function renderItemsInner(el) {
   `;
 
   bindSearch(el, () => renderItemsInner(el));
-  bindSort(el, () => renderItemsInner(el));
+
+  el.querySelectorAll(".filter-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.filter = btn.dataset.filter;
+      renderItemsInner(el);
+    });
+  });
+
+  el.querySelector("#items-sort-field")?.addEventListener("change", (e) => {
+    state.sortField = e.target.value;
+    renderItemsInner(el);
+  });
+  el.querySelector("#items-sort-dir")?.addEventListener("click", () => {
+    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+    renderItemsInner(el);
+  });
 
   el.querySelector("#add-item-btn")?.addEventListener("click", () =>
     showItemForm(),
@@ -700,6 +854,25 @@ async function renderVendors(el) {
   renderVendorsInner(el);
 }
 
+function applyVendorSort(vendors) {
+  const key = state.sortField;
+  const m = state.sortDir === "desc" ? -1 : 1;
+  return [...vendors].sort((a, b) => {
+    switch (key) {
+      case "name":
+        return a.name.localeCompare(b.name) * m;
+      case "orders":
+        return (a.totalPurchases - b.totalPurchases) * m;
+      case "spent":
+        return (a.totalSpent - b.totalSpent) * m;
+      case "added":
+        return (a.createdAt || "").localeCompare(b.createdAt || "") * m;
+      default:
+        return 0;
+    }
+  });
+}
+
 function renderVendorsInner(el) {
   let vendors = state.vendors;
   if (state.search) {
@@ -711,7 +884,32 @@ function renderVendorsInner(el) {
         v.email.toLowerCase().includes(q),
     );
   }
-  vendors = sortList(vendors);
+
+  switch (state.filter) {
+    case "active":
+      vendors = vendors.filter((v) => v.totalPurchases > 0);
+      break;
+    case "inactive":
+      vendors = vendors.filter((v) => v.totalPurchases === 0);
+      break;
+    case "top":
+      vendors = vendors.filter((v) => v.totalSpent > 0);
+      break;
+  }
+
+  vendors = applyVendorSort(vendors);
+
+  const totalCount = state.vendors.length;
+  const activeCount = state.vendors.filter((v) => v.totalPurchases > 0).length;
+  const inactiveCount = state.vendors.filter(
+    (v) => v.totalPurchases === 0,
+  ).length;
+
+  function fc(name, label, count) {
+    const active = state.filter === name ? "active" : "";
+    const badge = count > 0 ? ` (${count})` : "";
+    return `<button class="filter-chip ${active}" data-filter="${name}">${label}${badge}</button>`;
+  }
 
   el.innerHTML = html`
     <div class="view-header">
@@ -728,18 +926,59 @@ function renderVendorsInner(el) {
         </button>
       </div>
     </div>
-    ${vendors.length === 0 && !state.search
+    <div class="toolbar">
+      <div class="filter-chips">
+        ${fc("all", "All", totalCount)} ${fc("active", "Active", activeCount)}
+        ${fc("inactive", "No Orders", inactiveCount)}
+      </div>
+      <div class="sort-group">
+        <select class="sort-select" id="vendors-sort-field">
+          <option value="name" ${state.sortField === "name" ? "selected" : ""}>
+            Name
+          </option>
+          <option
+            value="orders"
+            ${state.sortField === "orders" ? "selected" : ""}
+          >
+            Orders
+          </option>
+          <option
+            value="spent"
+            ${state.sortField === "spent" ? "selected" : ""}
+          >
+            Total Spent
+          </option>
+          <option
+            value="added"
+            ${state.sortField === "added" ? "selected" : ""}
+          >
+            Date Added
+          </option>
+        </select>
+        <button
+          class="sort-dir-btn"
+          id="vendors-sort-dir"
+          title="${state.sortDir === "asc" ? "Ascending" : "Descending"}"
+        >
+          ${state.sortDir === "asc"
+            ? '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>'
+            : '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>'}
+        </button>
+      </div>
+    </div>
+    ${vendors.length === 0
       ? html`
           <div class="empty-state">
-            <svg viewBox="0 0 20 20" fill="currentColor" width="48" height="48">
-              <path
-                fill-rule="evenodd"
-                d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <h3>No vendors yet</h3>
-            <p>Add your dental suppliers to track purchases and spending.</p>
+            <h3>
+              ${state.filter !== "all" || state.search
+                ? "No matching vendors"
+                : "No vendors yet"}
+            </h3>
+            <p>
+              ${state.filter !== "all" || state.search
+                ? "Try adjusting your filters or search."
+                : "Add your dental suppliers to track purchases and spending."}
+            </p>
           </div>
         `
       : html`
@@ -747,12 +986,12 @@ function renderVendorsInner(el) {
             <table>
               <thead>
                 <tr>
-                  <th data-sort="name">Name</th>
-                  <th data-sort="contactName">Contact</th>
-                  <th data-sort="phone">Phone</th>
-                  <th data-sort="email">Email</th>
-                  <th data-sort="totalPurchases">Orders</th>
-                  <th data-sort="totalSpent">Total Spent</th>
+                  <th>Name</th>
+                  <th>Contact</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Orders</th>
+                  <th>Total Spent</th>
                   <th></th>
                 </tr>
               </thead>
@@ -776,13 +1015,13 @@ function renderVendorsInner(el) {
                             class="btn-ghost btn-sm edit-vendor"
                             data-id="${v.id}"
                           >
-                            Edit
+                            ${ICON_EDIT}
                           </button>
                           <button
                             class="btn-ghost btn-sm delete-vendor text-red"
                             data-id="${v.id}"
                           >
-                            Del
+                            ${ICON_TRASH}
                           </button>
                         </td>
                       </tr>
@@ -796,7 +1035,22 @@ function renderVendorsInner(el) {
   `;
 
   bindSearch(el, () => renderVendorsInner(el));
-  bindSort(el, () => renderVendorsInner(el));
+
+  el.querySelectorAll(".filter-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.filter = btn.dataset.filter;
+      renderVendorsInner(el);
+    });
+  });
+
+  el.querySelector("#vendors-sort-field")?.addEventListener("change", (e) => {
+    state.sortField = e.target.value;
+    renderVendorsInner(el);
+  });
+  el.querySelector("#vendors-sort-dir")?.addEventListener("click", () => {
+    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+    renderVendorsInner(el);
+  });
 
   el.querySelector("#add-vendor-btn")?.addEventListener("click", () =>
     showVendorForm(),
@@ -1017,8 +1271,16 @@ function renderPurchasesInner(el) {
                     return html`
                       <tr>
                         <td>${fmtDate(p.date)}</td>
-                        <td class="font-medium">${p.itemName}</td>
-                        <td class="text-secondary">${p.vendorName || "-"}</td>
+                        <td class="font-medium">
+                          <a class="item-link" data-id="${p.itemId}"
+                            >${p.itemName}</a
+                          >
+                        </td>
+                        <td>
+                          ${p.vendorName
+                            ? `<a class="vendor-link text-secondary" data-id="${p.vendorId}">${p.vendorName}</a>`
+                            : '<span class="text-secondary">-</span>'}
+                        </td>
                         <td>${p.quantity} ${unitAbbr(p.itemUnit)}</td>
                         <td>${currency(p.pricePerUnit)}</td>
                         <td class="font-medium">${currency(p.totalCost)}</td>
@@ -1029,13 +1291,13 @@ function renderPurchasesInner(el) {
                             class="btn-ghost btn-sm edit-purchase"
                             data-id="${p.id}"
                           >
-                            Edit
+                            ${ICON_EDIT}
                           </button>
                           <button
                             class="btn-ghost btn-sm delete-purchase text-red"
                             data-id="${p.id}"
                           >
-                            Del
+                            ${ICON_TRASH}
                           </button>
                         </td>
                       </tr>
@@ -1067,6 +1329,20 @@ function renderPurchasesInner(el) {
         await api.del(`purchases/${btn.dataset.id}`);
         await renderPurchases(el);
       }
+    });
+  });
+
+  el.querySelectorAll(".item-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigate("item-detail", a.dataset.id);
+    });
+  });
+
+  el.querySelectorAll(".vendor-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigate("vendor-detail", a.dataset.id);
     });
   });
 }
@@ -1137,7 +1413,11 @@ function renderUsageInner(el) {
                     (u) => html`
                       <tr>
                         <td>${fmtDate(u.date)}</td>
-                        <td class="font-medium">${u.itemName}</td>
+                        <td class="font-medium">
+                          <a class="item-link" data-id="${u.itemId}"
+                            >${u.itemName}</a
+                          >
+                        </td>
                         <td class="text-red">
                           -${u.quantity} ${unitAbbr(u.itemUnit)}
                         </td>
@@ -1152,13 +1432,13 @@ function renderUsageInner(el) {
                             class="btn-ghost btn-sm edit-usage"
                             data-id="${u.id}"
                           >
-                            Edit
+                            ${ICON_EDIT}
                           </button>
                           <button
                             class="btn-ghost btn-sm delete-usage text-red"
                             data-id="${u.id}"
                           >
-                            Del
+                            ${ICON_TRASH}
                           </button>
                         </td>
                       </tr>
@@ -1190,6 +1470,13 @@ function renderUsageInner(el) {
         await api.del(`usage/${btn.dataset.id}`);
         await renderUsage(el);
       }
+    });
+  });
+
+  el.querySelectorAll(".item-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigate("item-detail", a.dataset.id);
     });
   });
 }

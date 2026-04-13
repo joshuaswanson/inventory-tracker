@@ -93,8 +93,7 @@ body {
 }
 
 .sidebar-header .tooth-icon {
-  width: 36px;
-  height: 36px;
+  font-size: 28px;
   opacity: 0.95;
   flex-shrink: 0;
 }
@@ -272,11 +271,25 @@ body {
   border: none;
   color: var(--text-secondary);
   padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn-ghost:hover {
   color: var(--text);
-  background: var(--border-light);
+  background: var(--border);
+}
+
+.btn-ghost.text-red {
+  color: var(--red);
+}
+
+.btn-ghost.text-red:hover {
+  background: var(--red-light);
+  color: var(--red);
 }
 
 .icon-btn {
@@ -330,6 +343,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.stat-card.clickable:hover {
+  border-color: var(--primary);
+  cursor: pointer;
 }
 
 .stat-card .stat-icon {
@@ -763,6 +781,7 @@ tbody tr.clickable:hover {
 .form-textarea {
   width: 100%;
   padding: 9px 12px;
+  height: 38px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-size: 14px;
@@ -790,6 +809,7 @@ tbody tr.clickable:hover {
 .form-textarea {
   resize: vertical;
   min-height: 80px;
+  height: auto;
 }
 
 .form-row {
@@ -819,6 +839,89 @@ tbody tr.clickable:hover {
 }
 
 /* ── Dashboard specifics ───────────────────────────────── */
+
+/* ── Toolbar & Filters ──────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.filter-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-chip.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.sort-select {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: var(--surface);
+  cursor: pointer;
+  height: 30px;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.sort-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sort-dir-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+
+.sort-dir-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
 
 .dashboard-grid {
   display: grid;
@@ -902,6 +1005,18 @@ tbody tr.clickable:hover {
 .text-right {
   text-align: right;
 }
+.item-link,
+.vendor-link {
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.item-link:hover,
+.vendor-link:hover {
+  text-decoration: underline;
+}
+
 .text-mono {
   font-family: "SF Mono", "Fira Code", monospace;
 }
