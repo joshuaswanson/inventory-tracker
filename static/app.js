@@ -202,6 +202,9 @@ function navigate(view, detailId = null, filter = "all") {
   state.sortField = "name";
   state.sortDir = "asc";
 
+  const hash = detailId ? `${view}/${detailId}` : view;
+  history.replaceState(null, "", `#${hash}`);
+
   $$(".nav-item").forEach((el) => {
     el.classList.toggle(
       "active",
@@ -1947,6 +1950,14 @@ function stripPhone(phone) {
 // ── Init ────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Nav items: always go through navigate() to avoid stale hash issues
+  $$(".nav-item").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigate(a.dataset.view);
+    });
+  });
+
   const hash = location.hash.slice(1) || "dashboard";
   const parts = hash.split("/");
   navigate(parts[0], parts[1] || null);
