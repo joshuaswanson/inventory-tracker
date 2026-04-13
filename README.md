@@ -14,17 +14,14 @@ A dental inventory tracking web app. Track supplies, vendors, purchases, and usa
 
 ## Getting Started
 
-Requires Python 3.
+Requires [uv](https://docs.astral.sh/uv/).
 
-**Option 1:** Double-click `start.command` to launch the app and open your browser.
+**Option 1:** Double-click `start.command` to launch the app and open your browser (installs uv automatically if needed).
 
 **Option 2:** Run manually:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python3 app.py
+uv run app.py
 ```
 
 Then open http://localhost:5050.
@@ -32,7 +29,7 @@ Then open http://localhost:5050.
 To load sample data:
 
 ```bash
-python3 seed.py
+uv run seed.py
 ```
 
 ## Support

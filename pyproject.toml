@@ -1,0 +1,8 @@
+[project]
+name = "inventory-tracker"
+version = "1.0.0"
+requires-python = ">=3.9"
+dependencies = ["flask>=3.0"]
+
+[project.scripts]
+inventory-tracker = "app:main"

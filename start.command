@@ -1,21 +1,11 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-if ! command -v python3 &> /dev/null; then
-    echo "Python 3 is required but not installed."
-    echo "Download it from https://www.python.org/downloads/"
-    echo ""
-    read -p "Press Enter to close..."
-    exit 1
+if ! command -v uv &> /dev/null; then
+    echo "Installing uv (Python package manager)..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
 fi
-
-if [ ! -d "venv" ]; then
-    echo "First-time setup (this only happens once)..."
-    python3 -m venv venv
-fi
-
-source venv/bin/activate
-pip install -q -r requirements.txt 2>/dev/null
 
 mkdir -p data
 
@@ -28,4 +18,4 @@ echo ""
 
 sleep 1 && open "http://localhost:5050" &
 
-python3 app.py
+uv run app.py
