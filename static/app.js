@@ -1958,6 +1958,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Heartbeat: server shuts down automatically when the page is closed
+  setInterval(
+    () => fetch("/api/heartbeat", { method: "POST" }).catch(() => {}),
+    5000,
+  );
+
   const hash = location.hash.slice(1) || "dashboard";
   const parts = hash.split("/");
   navigate(parts[0], parts[1] || null);

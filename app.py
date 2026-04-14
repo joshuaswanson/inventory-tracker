@@ -2,10 +2,31 @@ from flask import Flask, jsonify, request, render_template
 import json
 import os
 import uuid
+import threading
+import time
 from datetime import datetime, date
 
 app = Flask(__name__)
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+# ── Heartbeat / auto-shutdown ────────────────────────────
+
+last_heartbeat = time.time()
+HEARTBEAT_TIMEOUT = 15
+
+
+def watchdog():
+    while True:
+        time.sleep(5)
+        if time.time() - last_heartbeat > HEARTBEAT_TIMEOUT:
+            os._exit(0)
+
+
+@app.route("/api/heartbeat", methods=["POST"])
+def heartbeat():
+    global last_heartbeat
+    last_heartbeat = time.time()
+    return "", 204
 
 
 # ── Storage helpers ──────────────────────────────────────────
@@ -382,6 +403,8 @@ def dashboard():
 
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
+    t = threading.Thread(target=watchdog, daemon=True)
+    t.start()
     app.run(debug=True, port=5050)
 
 
