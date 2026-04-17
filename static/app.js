@@ -1964,7 +1964,54 @@ document.addEventListener("DOMContentLoaded", () => {
     5000,
   );
 
+  // Update check
+  checkForUpdate();
+  setInterval(checkForUpdate, 10 * 60 * 1000);
+  $("#update-banner-btn").addEventListener("click", runUpdate);
+  $("#update-banner-dismiss").addEventListener("click", () =>
+    $("#update-banner").classList.add("hidden"),
+  );
+
   const hash = location.hash.slice(1) || "dashboard";
   const parts = hash.split("/");
   navigate(parts[0], parts[1] || null);
 });
+
+async function checkForUpdate() {
+  try {
+    const r = await fetch("/api/check-update");
+    const data = await r.json();
+    if (data.updateAvailable) {
+      const text =
+        data.commitCount === 1
+          ? "A new update is available."
+          : `${data.commitCount} new updates available.`;
+      $("#update-banner-text").textContent = text;
+      $("#update-banner").classList.remove("hidden");
+    }
+  } catch {}
+}
+
+async function runUpdate() {
+  const btn = $("#update-banner-btn");
+  btn.textContent = "Updating...";
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/update", { method: "POST" });
+    const data = await r.json();
+    if (data.success) {
+      $("#update-banner-text").textContent = "Update complete! Refreshing...";
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      $("#update-banner-text").textContent =
+        "Update failed. Please try again later.";
+      btn.textContent = "Retry";
+      btn.disabled = false;
+    }
+  } catch {
+    $("#update-banner-text").textContent =
+      "Update failed. Please try again later.";
+    btn.textContent = "Retry";
+    btn.disabled = false;
+  }
+}

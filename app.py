@@ -1,10 +1,13 @@
 from flask import Flask, jsonify, request, render_template
 import json
 import os
+import subprocess
 import uuid
 import threading
 import time
 from datetime import datetime, date
+
+REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
@@ -27,6 +30,40 @@ def heartbeat():
     global last_heartbeat
     last_heartbeat = time.time()
     return "", 204
+
+
+# ── Update check / git pull ──────────────────────────────
+
+def git(*args, timeout=10):
+    return subprocess.run(["git", "-C", REPO_DIR, *args], capture_output=True, text=True, timeout=timeout)
+
+
+@app.route("/api/check-update")
+def check_update():
+    try:
+        fetch = git("fetch", "--quiet", timeout=15)
+        if fetch.returncode != 0:
+            return jsonify({"updateAvailable": False})
+        local = git("rev-parse", "HEAD").stdout.strip()
+        remote = git("rev-parse", "@{u}").stdout.strip()
+        if not local or not remote or local == remote:
+            return jsonify({"updateAvailable": False})
+        log = git("log", "--oneline", f"{local}..{remote}").stdout.strip()
+        commits = [line for line in log.split("\n") if line]
+        return jsonify({"updateAvailable": True, "commitCount": len(commits), "commits": commits[:5]})
+    except Exception:
+        return jsonify({"updateAvailable": False})
+
+
+@app.route("/api/update", methods=["POST"])
+def do_update():
+    try:
+        result = git("pull", "--ff-only", timeout=30)
+        if result.returncode != 0:
+            return jsonify({"success": False, "error": result.stderr.strip()}), 500
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ── Storage helpers ──────────────────────────────────────────
