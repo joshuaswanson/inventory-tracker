@@ -25,11 +25,17 @@ pkill -f "app.py" 2>/dev/null
 sleep 0.5
 
 # Start server in background, detached from terminal
-nohup uv run app.py > /dev/null 2>&1 &
+nohup uv run app.py > /tmp/inventory-tracker.log 2>&1 &
 disown
 
-# Wait for server to be ready, then open browser
-sleep 1
+# Wait (up to 60s) for the server to be ready before opening the browser
+for i in {1..60}; do
+    if curl -s -o /dev/null http://localhost:5050; then
+        break
+    fi
+    sleep 1
+done
+
 open "http://localhost:5050"
 
 # Close this terminal window
