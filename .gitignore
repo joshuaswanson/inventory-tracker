@@ -1,6 +1,9 @@
 # Data
 data/
 
+# Dev-only sample data generator
+seed.py
+
 # Python
 venv/
 .venv/

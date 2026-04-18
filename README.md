@@ -26,12 +26,6 @@ uv run app.py
 
 Then open http://localhost:5050.
 
-To load sample data:
-
-```bash
-uv run seed.py
-```
-
 ## Support
 
 If you find this useful, [buy me a coffee](https://buymeacoffee.com/swanson).
