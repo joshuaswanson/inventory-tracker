@@ -550,13 +550,13 @@ function renderItemsInner(el) {
   el.innerHTML = html`
     <div class="view-header">
       <h2>Items</h2>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search items..."
+        value="${state.search}"
+      />
       <div class="view-header-actions">
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Search items..."
-          value="${state.search}"
-        />
         <button class="btn btn-primary" id="add-item-btn">+ Add Item</button>
       </div>
     </div>
@@ -971,13 +971,13 @@ function renderVendorsInner(el) {
   el.innerHTML = html`
     <div class="view-header">
       <h2>Vendors</h2>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search vendors..."
+        value="${state.search}"
+      />
       <div class="view-header-actions">
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Search vendors..."
-          value="${state.search}"
-        />
         <button class="btn btn-primary" id="add-vendor-btn">
           + Add Vendor
         </button>
@@ -1062,7 +1062,15 @@ function renderVendorsInner(el) {
                         <td class="text-secondary">
                           ${v.phone ? formatPhone(v.phone) : "-"}
                         </td>
-                        <td class="text-secondary">${v.email || "-"}</td>
+                        <td class="text-secondary">
+                          ${v.email
+                            ? html`<a
+                                class="email-link"
+                                href="mailto:${v.email}"
+                                >${v.email}</a
+                              >`
+                            : "-"}
+                        </td>
                         <td>${v.totalPurchases}</td>
                         <td class="text-green font-medium">
                           ${currency(v.totalSpent)}
@@ -1115,7 +1123,7 @@ function renderVendorsInner(el) {
 
   el.querySelectorAll("tr.clickable").forEach((tr) => {
     tr.addEventListener("click", (e) => {
-      if (e.target.closest("button")) return;
+      if (e.target.closest("button, a")) return;
       navigate("vendor-detail", tr.dataset.id);
     });
   });
@@ -1192,7 +1200,11 @@ async function renderVendorDetail(el, id) {
         ${vendor.email
           ? html`<div class="info-row">
               <span class="label">Email</span
-              ><span class="value">${vendor.email}</span>
+              ><span class="value"
+                ><a class="email-link" href="mailto:${vendor.email}"
+                  >${vendor.email}</a
+                ></span
+              >
             </div>`
           : ""}
         ${vendor.address
@@ -1271,16 +1283,21 @@ function renderPurchasesInner(el) {
   el.innerHTML = html`
     <div class="view-header">
       <h2>Purchases</h2>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by item or vendor..."
+        value="${state.search}"
+      />
       <div class="view-header-actions">
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Search by item or vendor..."
-          value="${state.search}"
-        />
-        <button class="btn btn-secondary" id="import-sc-btn">
-          Import from SupplyClinic
-        </button>
+        <div class="dropdown" id="import-dropdown">
+          <button class="btn btn-secondary" id="import-btn">Import ▾</button>
+          <div class="dropdown-menu hidden" id="import-menu">
+            <button class="dropdown-item" data-import="supplyclinic">
+              SupplyClinic
+            </button>
+          </div>
+        </div>
         <button class="btn btn-primary" id="add-purchase-btn">
           + Add Purchase
         </button>
@@ -1380,9 +1397,19 @@ function renderPurchasesInner(el) {
     showPurchaseForm(),
   );
 
-  el.querySelector("#import-sc-btn")?.addEventListener("click", () =>
-    showSupplyClinicImport(),
-  );
+  const importBtn = el.querySelector("#import-btn");
+  const importMenu = el.querySelector("#import-menu");
+  importBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    importMenu.classList.toggle("hidden");
+  });
+  document.addEventListener("click", () => importMenu?.classList.add("hidden"));
+  el.querySelectorAll("#import-menu .dropdown-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      importMenu.classList.add("hidden");
+      if (btn.dataset.import === "supplyclinic") showSupplyClinicImport();
+    });
+  });
 
   el.querySelectorAll(".edit-purchase").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1433,13 +1460,13 @@ function renderUsageInner(el) {
   el.innerHTML = html`
     <div class="view-header">
       <h2>Usage</h2>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by item..."
+        value="${state.search}"
+      />
       <div class="view-header-actions">
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Search by item..."
-          value="${state.search}"
-        />
         <button class="btn btn-primary" id="add-usage-btn">
           + Record Usage
         </button>
@@ -1949,7 +1976,38 @@ ${usage?.notes || ""}</textarea
 // ── SupplyClinic import ─────────────────────────────────
 
 async function showSupplyClinicImport() {
-  const bodyHtml = html`
+  let status = { remembered: false, email: "" };
+  try {
+    status = await (await fetch("/api/import/supplyclinic/status")).json();
+  } catch (e) {
+    /* fall back to login form */
+  }
+  openModal("Import from SupplyClinic", "", () => {});
+  if (status.remembered) scShowRemembered(status.email);
+  else scShowLogin(status.email, "");
+}
+
+function scShowRemembered(email) {
+  $("#modal-body").innerHTML = html`
+    <p class="modal-intro">
+      Signed in to SupplyClinic${email
+        ? html` as <strong>${email}</strong>`
+        : ""}. Click Import to bring in any new orders.
+    </p>
+    <p id="sc-error" class="text-red"></p>
+    <button class="link-btn" id="sc-switch-account">
+      Use a different account
+    </button>
+  `;
+  $("#sc-switch-account").onclick = () => scShowLogin(email, "");
+  const save = $("#modal-save");
+  save.textContent = "Import";
+  modalSaveHandler = () => scRunImport({});
+  wireRequiredValidation();
+}
+
+function scShowLogin(email, errorMsg) {
+  $("#modal-body").innerHTML = html`
     <p class="modal-intro">
       Sign in with your SupplyClinic account to import your order history as
       purchases. Only new orders are added, so it's safe to run anytime.
@@ -1962,14 +2020,13 @@ async function showSupplyClinicImport() {
         type="email"
         class="form-input"
         id="sc-email"
+        value="${email || ""}"
         placeholder="you@example.com"
         autocomplete="username"
       />
     </div>
     <div class="form-group">
-      <label class="form-label"
-        >Password <span class="required">*</span></label
-      >
+      <label class="form-label">Password <span class="required">*</span></label>
       <input
         type="password"
         class="form-input"
@@ -1981,70 +2038,86 @@ async function showSupplyClinicImport() {
     <p class="sc-note text-secondary">
       Your password is only used to sign in to SupplyClinic. It is never saved.
     </p>
-    <p id="sc-error" class="text-red"></p>
+    <p id="sc-error" class="text-red">${errorMsg || ""}</p>
   `;
+  const save = $("#modal-save");
+  save.textContent = "Sign in & Import";
+  modalSaveHandler = () =>
+    scRunImport({
+      email: $("#sc-email").value.trim(),
+      password: $("#sc-password").value,
+    });
+  wireRequiredValidation();
+  setTimeout(() => $("#sc-email")?.focus(), 50);
+}
 
-  openModal("Import from SupplyClinic", bodyHtml, async () => {
-    const save = $("#modal-save");
-    if (save.dataset.busy) return;
-    const email = $("#sc-email").value.trim();
-    const password = $("#sc-password").value;
-    const errEl = $("#sc-error");
-    errEl.textContent = "";
-    save.dataset.busy = "1";
-    save.classList.add("is-disabled");
-    save.textContent = "Signing in…";
-    try {
-      const r = await fetch("/api/import/supplyclinic", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await r.json();
-      if (!r.ok)
-        throw new Error(data.error || "Import failed. Please try again.");
-      const plural = (n) => (n === 1 ? "" : "s");
-      $("#modal-body").innerHTML = html`
-        <div class="sc-result">
-          <p class="sc-result-title">Import complete</p>
-          <ul class="sc-result-list">
-            <li>
-              <strong>${data.imported}</strong> new purchase${plural(
-                data.imported,
-              )}
-              added
-            </li>
-            <li>
-              <strong>${data.newItems}</strong> new item${plural(data.newItems)}
-              created
-            </li>
-            <li>
-              <strong>${data.newVendors}</strong> new
-              vendor${plural(data.newVendors)} created
-            </li>
-            <li>${data.duplicates} already imported (skipped)</li>
-            ${data.skipped
-              ? html`<li>${data.skipped} cancelled or returned (skipped)</li>`
-              : ""}
-          </ul>
-        </div>
-      `;
-      save.textContent = "Done";
-      save.classList.remove("is-disabled");
-      modalSaveHandler = () => {
-        closeModal();
-        navigate("purchases");
-      };
-    } catch (e) {
-      errEl.textContent = e.message;
-      save.textContent = "Sign in & Import";
-      save.classList.remove("is-disabled");
-    } finally {
-      delete save.dataset.busy;
+async function scRunImport(creds) {
+  const save = $("#modal-save");
+  if (save.dataset.busy) return;
+  const errEl = $("#sc-error");
+  if (errEl) errEl.textContent = "";
+  save.dataset.busy = "1";
+  save.classList.add("is-disabled");
+  save.textContent = creds.password ? "Signing in…" : "Importing…";
+  try {
+    const r = await fetch("/api/import/supplyclinic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(creds),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      if (data.needLogin) {
+        delete save.dataset.busy;
+        scShowLogin(creds.email || "", data.error || "Please sign in again.");
+        return;
+      }
+      throw new Error(data.error || "Import failed. Please try again.");
     }
-  });
+    scShowResult(data);
+  } catch (e) {
+    if (errEl) errEl.textContent = e.message;
+    save.textContent = creds.password ? "Sign in & Import" : "Import";
+    save.classList.remove("is-disabled");
+  } finally {
+    delete save.dataset.busy;
+  }
+}
 
-  $("#modal-save").textContent = "Sign in & Import";
+function scShowResult(data) {
+  const plural = (n) => (n === 1 ? "" : "s");
+  $("#modal-body").innerHTML = html`
+    <div class="sc-result">
+      <p class="sc-result-title">Import complete</p>
+      <ul class="sc-result-list">
+        <li>
+          <strong>${data.imported}</strong> new purchase${plural(data.imported)}
+          added
+        </li>
+        <li>
+          <strong>${data.newItems}</strong> new item${plural(data.newItems)}
+          created
+        </li>
+        <li>
+          <strong>${data.newVendors}</strong> new vendor${plural(
+            data.newVendors,
+          )}
+          created
+        </li>
+        <li>${data.duplicates} already imported (skipped)</li>
+        ${data.skipped
+          ? html`<li>${data.skipped} cancelled or returned (skipped)</li>`
+          : ""}
+      </ul>
+    </div>
+  `;
+  const save = $("#modal-save");
+  save.textContent = "Done";
+  save.classList.remove("is-disabled");
+  modalSaveHandler = () => {
+    closeModal();
+    navigate("purchases");
+  };
 }
 
 // ── Search & Sort helpers ───────────────────────────────
@@ -2114,6 +2187,19 @@ function stripPhone(phone) {
 
 // ── Init ────────────────────────────────────────────────
 
+async function heartbeat() {
+  try {
+    const r = await fetch("/api/heartbeat", { method: "POST" });
+    setConnectionLost(!r.ok);
+  } catch (e) {
+    setConnectionLost(true);
+  }
+}
+
+function setConnectionLost(lost) {
+  $("#connection-banner")?.classList.toggle("hidden", !lost);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Nav items: always go through navigate() to avoid stale hash issues
   $$(".nav-item").forEach((a) => {
@@ -2123,11 +2209,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Heartbeat: server shuts down automatically when the page is closed
-  setInterval(
-    () => fetch("/api/heartbeat", { method: "POST" }).catch(() => {}),
-    5000,
-  );
+  // Heartbeat: keeps the server alive and detects a lost connection
+  heartbeat();
+  setInterval(heartbeat, 5000);
 
   // Update check
   checkForUpdate();
