@@ -437,23 +437,28 @@ thead th {
   color: var(--text-secondary);
   background: var(--border-light);
   border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  user-select: none;
   white-space: nowrap;
   transition: color var(--transition);
 }
 
-thead th:hover {
+thead th[data-sort] {
+  cursor: pointer;
+  user-select: none;
+}
+
+thead th[data-sort]:hover {
   color: var(--primary);
 }
 
 thead th.sorted-asc::after {
-  content: " \u2191";
+  content: " \0025B2";
+  font-size: 9px;
   color: var(--primary);
 }
 
 thead th.sorted-desc::after {
-  content: " \u2193";
+  content: " \0025BC";
+  font-size: 9px;
   color: var(--primary);
 }
 

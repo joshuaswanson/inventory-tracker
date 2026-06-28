@@ -11,8 +11,6 @@ let state = {
   search: "",
   sort: { key: null, dir: "asc" },
   filter: "all",
-  sortField: "name",
-  sortDir: "asc",
   detailFrom: null,
 };
 
@@ -239,10 +237,7 @@ const VIEW_LABELS = {
 };
 
 function navigate(view, detailId = null, filter = "all") {
-  if (
-    (view === "item-detail" || view === "vendor-detail") &&
-    state.view !== view
-  ) {
+  if (view.endsWith("-detail") && state.view !== view) {
     state.detailFrom = { view: state.view, filter: state.filter };
   }
   state.view = view;
@@ -250,8 +245,6 @@ function navigate(view, detailId = null, filter = "all") {
   state.search = "";
   state.sort = { key: null, dir: "asc" };
   state.filter = filter;
-  state.sortField = "name";
-  state.sortDir = "asc";
 
   const hash = detailId ? `${view}/${detailId}` : view;
   history.replaceState(null, "", `#${hash}`);
@@ -481,27 +474,6 @@ async function renderItems(el) {
   renderItemsInner(el);
 }
 
-function applyItemSort(items) {
-  const key = state.sortField;
-  const m = state.sortDir === "desc" ? -1 : 1;
-  return [...items].sort((a, b) => {
-    switch (key) {
-      case "name":
-        return a.name.localeCompare(b.name) * m;
-      case "stock":
-        return (a.currentInventory - b.currentInventory) * m;
-      case "price":
-        return ((a.averagePrice || 0) - (b.averagePrice || 0)) * m;
-      case "added":
-        return (a.createdAt || "").localeCompare(b.createdAt || "") * m;
-      case "reorder":
-        return (a.reorderLevel - b.reorderLevel) * m;
-      default:
-        return 0;
-    }
-  });
-}
-
 function renderItemsInner(el) {
   let items = state.items;
 
@@ -531,7 +503,9 @@ function renderItemsInner(el) {
       break;
   }
 
-  items = applyItemSort(items);
+  items = state.sort.key
+    ? sortList(items)
+    : [...items].sort((a, b) => a.name.localeCompare(b.name));
 
   const totalCount = state.items.length;
   const lowCount = state.items.filter((i) => i.needsReorder).length;
@@ -567,46 +541,6 @@ function renderItemsInner(el) {
         ${fc("expiring", "Expiring Soon", expCount)}
         ${fc("perishable", "Perishable", perishCount)}
       </div>
-      <div class="sort-group">
-        <select class="sort-select" id="items-sort-field">
-          <option value="name" ${state.sortField === "name" ? "selected" : ""}>
-            Name
-          </option>
-          <option
-            value="stock"
-            ${state.sortField === "stock" ? "selected" : ""}
-          >
-            Stock
-          </option>
-          <option
-            value="price"
-            ${state.sortField === "price" ? "selected" : ""}
-          >
-            Price
-          </option>
-          <option
-            value="reorder"
-            ${state.sortField === "reorder" ? "selected" : ""}
-          >
-            Reorder Level
-          </option>
-          <option
-            value="added"
-            ${state.sortField === "added" ? "selected" : ""}
-          >
-            Date Added
-          </option>
-        </select>
-        <button
-          class="sort-dir-btn"
-          id="items-sort-dir"
-          title="${state.sortDir === "asc" ? "Ascending" : "Descending"}"
-        >
-          ${state.sortDir === "asc"
-            ? '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>'
-            : '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>'}
-        </button>
-      </div>
     </div>
     ${items.length === 0
       ? html`
@@ -628,12 +562,12 @@ function renderItemsInner(el) {
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Stock</th>
-                  <th>Reorder At</th>
-                  <th>Status</th>
-                  <th>Location</th>
-                  <th>Avg Price</th>
+                  <th data-sort="name">Name</th>
+                  <th data-sort="currentInventory">Stock</th>
+                  <th data-sort="reorderLevel">Reorder At</th>
+                  <th data-sort="needsReorder">Status</th>
+                  <th data-sort="storageLocation">Location</th>
+                  <th data-sort="averagePrice">Avg Price</th>
                   <th></th>
                 </tr>
               </thead>
@@ -679,21 +613,13 @@ function renderItemsInner(el) {
   `;
 
   bindSearch(el, () => renderItemsInner(el));
+  bindSort(el, () => renderItemsInner(el));
 
   el.querySelectorAll(".filter-chip").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.filter = btn.dataset.filter;
       renderItemsInner(el);
     });
-  });
-
-  el.querySelector("#items-sort-field")?.addEventListener("change", (e) => {
-    state.sortField = e.target.value;
-    renderItemsInner(el);
-  });
-  el.querySelector("#items-sort-dir")?.addEventListener("click", () => {
-    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-    renderItemsInner(el);
   });
 
   el.querySelector("#add-item-btn")?.addEventListener("click", () =>
@@ -911,25 +837,6 @@ async function renderVendors(el) {
   renderVendorsInner(el);
 }
 
-function applyVendorSort(vendors) {
-  const key = state.sortField;
-  const m = state.sortDir === "desc" ? -1 : 1;
-  return [...vendors].sort((a, b) => {
-    switch (key) {
-      case "name":
-        return a.name.localeCompare(b.name) * m;
-      case "orders":
-        return (a.totalPurchases - b.totalPurchases) * m;
-      case "spent":
-        return (a.totalSpent - b.totalSpent) * m;
-      case "added":
-        return (a.createdAt || "").localeCompare(b.createdAt || "") * m;
-      default:
-        return 0;
-    }
-  });
-}
-
 function renderVendorsInner(el) {
   let vendors = state.vendors;
   if (state.search) {
@@ -954,7 +861,9 @@ function renderVendorsInner(el) {
       break;
   }
 
-  vendors = applyVendorSort(vendors);
+  vendors = state.sort.key
+    ? sortList(vendors)
+    : [...vendors].sort((a, b) => a.name.localeCompare(b.name));
 
   const totalCount = state.vendors.length;
   const activeCount = state.vendors.filter((v) => v.totalPurchases > 0).length;
@@ -988,40 +897,6 @@ function renderVendorsInner(el) {
         ${fc("all", "All", totalCount)} ${fc("active", "Active", activeCount)}
         ${fc("inactive", "No Orders", inactiveCount)}
       </div>
-      <div class="sort-group">
-        <select class="sort-select" id="vendors-sort-field">
-          <option value="name" ${state.sortField === "name" ? "selected" : ""}>
-            Name
-          </option>
-          <option
-            value="orders"
-            ${state.sortField === "orders" ? "selected" : ""}
-          >
-            Orders
-          </option>
-          <option
-            value="spent"
-            ${state.sortField === "spent" ? "selected" : ""}
-          >
-            Total Spent
-          </option>
-          <option
-            value="added"
-            ${state.sortField === "added" ? "selected" : ""}
-          >
-            Date Added
-          </option>
-        </select>
-        <button
-          class="sort-dir-btn"
-          id="vendors-sort-dir"
-          title="${state.sortDir === "asc" ? "Ascending" : "Descending"}"
-        >
-          ${state.sortDir === "asc"
-            ? '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>'
-            : '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>'}
-        </button>
-      </div>
     </div>
     ${vendors.length === 0
       ? html`
@@ -1043,12 +918,12 @@ function renderVendorsInner(el) {
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Contact</th>
-                  <th>Phone</th>
-                  <th>Email</th>
-                  <th>Orders</th>
-                  <th>Total Spent</th>
+                  <th data-sort="name">Name</th>
+                  <th data-sort="contactName">Contact</th>
+                  <th data-sort="phone">Phone</th>
+                  <th data-sort="email">Email</th>
+                  <th data-sort="totalPurchases">Orders</th>
+                  <th data-sort="totalSpent">Total Spent</th>
                   <th></th>
                 </tr>
               </thead>
@@ -1100,21 +975,13 @@ function renderVendorsInner(el) {
   `;
 
   bindSearch(el, () => renderVendorsInner(el));
+  bindSort(el, () => renderVendorsInner(el));
 
   el.querySelectorAll(".filter-chip").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.filter = btn.dataset.filter;
       renderVendorsInner(el);
     });
-  });
-
-  el.querySelector("#vendors-sort-field")?.addEventListener("change", (e) => {
-    state.sortField = e.target.value;
-    renderVendorsInner(el);
-  });
-  el.querySelector("#vendors-sort-dir")?.addEventListener("click", () => {
-    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-    renderVendorsInner(el);
   });
 
   el.querySelector("#add-vendor-btn")?.addEventListener("click", () =>
