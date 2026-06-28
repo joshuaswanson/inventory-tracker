@@ -13,6 +13,7 @@ let state = {
   filter: "all",
   sortField: "name",
   sortDir: "asc",
+  detailFrom: null,
 };
 
 const UNITS = [
@@ -229,7 +230,21 @@ function confirm(message) {
 
 // ── Router ──────────────────────────────────────────────
 
+const VIEW_LABELS = {
+  dashboard: "Dashboard",
+  items: "Items",
+  vendors: "Vendors",
+  purchases: "Purchases",
+  usage: "Usage",
+};
+
 function navigate(view, detailId = null, filter = "all") {
+  if (
+    (view === "item-detail" || view === "vendor-detail") &&
+    state.view !== view
+  ) {
+    state.detailFrom = { view: state.view, filter: state.filter };
+  }
   state.view = view;
   state.detailId = detailId;
   state.search = "";
@@ -725,9 +740,12 @@ async function renderItemDetail(el, id) {
     return;
   }
 
+  const back = state.detailFrom || { view: "items", filter: "all" };
+  const backLabel = VIEW_LABELS[back.view] || "Items";
+
   el.innerHTML = html`
     <div class="detail-header">
-      <button class="back-btn" id="back-to-items">&larr; Items</button>
+      <button class="back-btn" id="back-to-items">&larr; ${backLabel}</button>
       <h2>${item.name}</h2>
       <div class="detail-actions">
         <button class="btn btn-secondary" id="edit-detail-item">Edit</button>
@@ -879,7 +897,7 @@ async function renderItemDetail(el, id) {
     </div>
   `;
 
-  $("#back-to-items").onclick = () => navigate("items");
+  $("#back-to-items").onclick = () => navigate(back.view, null, back.filter);
   $("#edit-detail-item").onclick = () =>
     showItemForm(item, () => renderItemDetail(el, id));
   $("#add-purchase-from-detail").onclick = () => showPurchaseForm(null, id);
@@ -1131,9 +1149,12 @@ async function renderVendorDetail(el, id) {
     return;
   }
 
+  const back = state.detailFrom || { view: "vendors", filter: "all" };
+  const backLabel = VIEW_LABELS[back.view] || "Vendors";
+
   el.innerHTML = html`
     <div class="detail-header">
-      <button class="back-btn" id="back-to-vendors">&larr; Vendors</button>
+      <button class="back-btn" id="back-to-vendors">&larr; ${backLabel}</button>
       <h2>${vendor.name}</h2>
       <div class="detail-actions">
         <button class="btn btn-secondary" id="edit-detail-vendor">Edit</button>
@@ -1222,7 +1243,7 @@ async function renderVendorDetail(el, id) {
     </div>
   `;
 
-  $("#back-to-vendors").onclick = () => navigate("vendors");
+  $("#back-to-vendors").onclick = () => navigate(back.view, null, back.filter);
   $("#edit-detail-vendor").onclick = () =>
     showVendorForm(vendor, () => renderVendorDetail(el, id));
 }
