@@ -2200,6 +2200,24 @@ function setConnectionLost(lost) {
   $("#connection-banner")?.classList.toggle("hidden", !lost);
 }
 
+async function reconnect() {
+  const btn = $("#connection-retry");
+  const msg = btn.previousElementSibling;
+  btn.textContent = "Reconnecting…";
+  btn.classList.add("is-disabled");
+  try {
+    const r = await fetch("/api/heartbeat", { method: "POST" });
+    if (!r.ok) throw new Error();
+    location.reload();
+  } catch (e) {
+    if (msg)
+      msg.textContent =
+        "Still can't reach the app. Reopen it (start.command), then click Reconnect.";
+    btn.textContent = "Reconnect";
+    btn.classList.remove("is-disabled");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Nav items: always go through navigate() to avoid stale hash issues
   $$(".nav-item").forEach((a) => {
@@ -2212,6 +2230,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Heartbeat: keeps the server alive and detects a lost connection
   heartbeat();
   setInterval(heartbeat, 5000);
+  $("#connection-retry").addEventListener("click", reconnect);
 
   // Update check
   checkForUpdate();
