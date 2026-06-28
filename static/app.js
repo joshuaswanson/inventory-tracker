@@ -189,6 +189,10 @@ function wireRequiredValidation() {
 function closeModal() {
   $("#modal-overlay").classList.add("hidden");
   modalSaveHandler = null;
+  const save = $("#modal-save");
+  save.textContent = "Save";
+  save.classList.remove("is-disabled");
+  delete save.dataset.busy;
 }
 
 $("#modal-close").onclick = closeModal;
@@ -1253,6 +1257,9 @@ function renderPurchasesInner(el) {
           placeholder="Search by item or vendor..."
           value="${state.search}"
         />
+        <button class="btn btn-secondary" id="import-sc-btn">
+          Import from SupplyClinic
+        </button>
         <button class="btn btn-primary" id="add-purchase-btn">
           + Add Purchase
         </button>
@@ -1350,6 +1357,10 @@ function renderPurchasesInner(el) {
 
   el.querySelector("#add-purchase-btn")?.addEventListener("click", () =>
     showPurchaseForm(),
+  );
+
+  el.querySelector("#import-sc-btn")?.addEventListener("click", () =>
+    showSupplyClinicImport(),
   );
 
   el.querySelectorAll(".edit-purchase").forEach((btn) => {
@@ -1912,6 +1923,107 @@ ${usage?.notes || ""}</textarea
       state.detailId,
     );
   });
+}
+
+// ── SupplyClinic import ─────────────────────────────────
+
+async function showSupplyClinicImport() {
+  const bodyHtml = html`
+    <p class="modal-intro">
+      Sign in with your SupplyClinic account to import your order history as
+      purchases. Only new orders are added, so it's safe to run anytime.
+    </p>
+    <div class="form-group">
+      <label class="form-label"
+        >SupplyClinic Email <span class="required">*</span></label
+      >
+      <input
+        type="email"
+        class="form-input"
+        id="sc-email"
+        placeholder="you@example.com"
+        autocomplete="username"
+      />
+    </div>
+    <div class="form-group">
+      <label class="form-label"
+        >Password <span class="required">*</span></label
+      >
+      <input
+        type="password"
+        class="form-input"
+        id="sc-password"
+        placeholder="Your SupplyClinic password"
+        autocomplete="current-password"
+      />
+    </div>
+    <p class="sc-note text-secondary">
+      Your password is only used to sign in to SupplyClinic. It is never saved.
+    </p>
+    <p id="sc-error" class="text-red"></p>
+  `;
+
+  openModal("Import from SupplyClinic", bodyHtml, async () => {
+    const save = $("#modal-save");
+    if (save.dataset.busy) return;
+    const email = $("#sc-email").value.trim();
+    const password = $("#sc-password").value;
+    const errEl = $("#sc-error");
+    errEl.textContent = "";
+    save.dataset.busy = "1";
+    save.classList.add("is-disabled");
+    save.textContent = "Signing in…";
+    try {
+      const r = await fetch("/api/import/supplyclinic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await r.json();
+      if (!r.ok)
+        throw new Error(data.error || "Import failed. Please try again.");
+      const plural = (n) => (n === 1 ? "" : "s");
+      $("#modal-body").innerHTML = html`
+        <div class="sc-result">
+          <p class="sc-result-title">Import complete</p>
+          <ul class="sc-result-list">
+            <li>
+              <strong>${data.imported}</strong> new purchase${plural(
+                data.imported,
+              )}
+              added
+            </li>
+            <li>
+              <strong>${data.newItems}</strong> new item${plural(data.newItems)}
+              created
+            </li>
+            <li>
+              <strong>${data.newVendors}</strong> new
+              vendor${plural(data.newVendors)} created
+            </li>
+            <li>${data.duplicates} already imported (skipped)</li>
+            ${data.skipped
+              ? html`<li>${data.skipped} cancelled or returned (skipped)</li>`
+              : ""}
+          </ul>
+        </div>
+      `;
+      save.textContent = "Done";
+      save.classList.remove("is-disabled");
+      modalSaveHandler = () => {
+        closeModal();
+        navigate("purchases");
+      };
+    } catch (e) {
+      errEl.textContent = e.message;
+      save.textContent = "Sign in & Import";
+      save.classList.remove("is-disabled");
+    } finally {
+      delete save.dataset.busy;
+    }
+  });
+
+  $("#modal-save").textContent = "Sign in & Import";
 }
 
 // ── Search & Sort helpers ───────────────────────────────

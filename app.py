@@ -1,11 +1,18 @@
 from flask import Flask, jsonify, request, render_template
 import json
 import os
+import re
+import gzip
 import subprocess
 import uuid
 import threading
 import time
+import http.cookiejar
+import urllib.parse
+import urllib.request
+import urllib.error
 from datetime import datetime, date
+from bs4 import BeautifulSoup
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -435,6 +442,258 @@ def dashboard():
         "lowStockItems": low_stock,
         "expiringItems": expiring,
         "recentPurchases": sorted(purchases, key=lambda p: p["date"], reverse=True)[:8],
+    })
+
+
+# ── SupplyClinic import ──────────────────────────────────────
+
+SC_HOST = "https://www.supplyclinic.com"
+SC_SIGNIN = f"{SC_HOST}/users/sign_in"
+SC_ORDERS = f"{SC_HOST}/checkout/orders"
+SC_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip",
+}
+
+
+def _sc_read(resp):
+    raw = resp.read()
+    if resp.headers.get("Content-Encoding") == "gzip":
+        raw = gzip.decompress(raw)
+    return raw.decode("utf-8", "replace")
+
+
+def _sc_get(opener, url):
+    req = urllib.request.Request(url, headers=SC_HEADERS)
+    return opener.open(req, timeout=30)
+
+
+def _sc_is_blocked(body):
+    markers = ["challenge-platform", "Just a moment", "cf-challenge", "Attention Required"]
+    return any(m in body for m in markers)
+
+
+def _sc_login(opener, email, password):
+    """Log into SupplyClinic. Returns (ok, error_message)."""
+    try:
+        body = _sc_read(_sc_get(opener, SC_SIGNIN))
+    except urllib.error.URLError:
+        return False, "Couldn't reach SupplyClinic. Check your internet connection and try again."
+    if _sc_is_blocked(body):
+        return False, "SupplyClinic is temporarily blocking automated sign-in. Please try again in a few minutes."
+    soup = BeautifulSoup(body, "html.parser")
+    form = soup.find("form", attrs={"action": "/users/sign_in"})
+    token_el = form.find("input", attrs={"name": "authenticity_token"}) if form else None
+    token = token_el.get("value") if token_el else None
+    if not token:
+        return False, "Couldn't load the SupplyClinic sign-in page. Please try again later."
+    data = urllib.parse.urlencode({
+        "authenticity_token": token,
+        "user[email]": email,
+        "user[password]": password,
+        "commit": "Sign in",
+    }).encode()
+    req = urllib.request.Request(
+        SC_SIGNIN, data=data,
+        headers={**SC_HEADERS, "Content-Type": "application/x-www-form-urlencoded", "Referer": SC_SIGNIN},
+    )
+    try:
+        resp = opener.open(req, timeout=30)
+    except urllib.error.URLError:
+        return False, "Couldn't reach SupplyClinic. Check your internet connection and try again."
+    result = _sc_read(resp)
+    if "/users/sign_in" in resp.geturl() or 'name="user[password]"' in result:
+        return False, "Sign in failed. Please double-check your SupplyClinic email and password."
+    return True, None
+
+
+def _sc_clean(text, *labels):
+    t = (text or "").strip()
+    for lab in labels:
+        t = t.replace(lab, "")
+    return t.strip()
+
+
+def _sc_date(text):
+    m = re.search(r"(\d{2})/(\d{2})/(\d{4})", text or "")
+    return f"{m.group(3)}-{m.group(1)}-{m.group(2)}" if m else None
+
+
+def _sc_money(text):
+    m = re.search(r"\$([\d,]+\.\d{2})", text or "")
+    return float(m.group(1).replace(",", "")) if m else None
+
+
+def _sc_qty(text):
+    m = re.search(r"(\d+)", text or "")
+    return int(m.group(1)) if m else None
+
+
+def _sc_unit(name):
+    n = (name or "").lower()
+    if re.search(r"/\s*(cs|case)\b", n) or "case" in n:
+        return "case"
+    if re.search(r"/\s*bx\b", n) or "box" in n:
+        return "box"
+    if "/pk" in n or "pkg" in n or "pack" in n:
+        return "pack"
+    if "bottle" in n:
+        return "bottle"
+    if "bag" in n:
+        return "bag"
+    if "roll" in n:
+        return "roll"
+    return "each"
+
+
+def _sc_parse(body):
+    soup = BeautifulSoup(body, "html.parser")
+    lines = []
+    for order in soup.select("div.order"):
+        date_el = order.select_one(".order-date")
+        date_iso = _sc_date(date_el.get_text(" ", strip=True) if date_el else "")
+        for sub in order.select(".suborder"):
+            vendor_el = sub.select_one(".suborder-vendor")
+            vendor = _sc_clean(vendor_el.get_text(" ", strip=True) if vendor_el else "", "Items from")
+            num_el = sub.select_one(".suborder-number")
+            sub_number = _sc_clean(num_el.get_text(" ", strip=True) if num_el else "", "#")
+            for it in sub.select(".historical-suborder-item"):
+                def field(cls):
+                    e = it.select_one("." + cls)
+                    return e.get_text(" ", strip=True) if e else ""
+                lines.append({
+                    "date": date_iso,
+                    "vendor": vendor,
+                    "suborderNumber": sub_number,
+                    "name": field("suborder-item-name"),
+                    "manuCode": _sc_clean(field("suborder-item-manu"), "Manu Code:"),
+                    "quantity": _sc_qty(field("suborder-item-quantity")),
+                    "unitPrice": _sc_money(field("suborder-item-unit-price")),
+                    "status": _sc_clean(field("suborder-item-status"), "Status:"),
+                })
+    return lines
+
+
+def _sc_fetch_orders(opener):
+    lines = []
+    page = 1
+    while page <= 50:
+        body = _sc_read(_sc_get(opener, SC_ORDERS if page == 1 else f"{SC_ORDERS}?page={page}"))
+        page_lines = _sc_parse(body)
+        if not page_lines:
+            break
+        lines.extend(page_lines)
+        page += 1
+    return lines
+
+
+@app.route("/api/import/supplyclinic", methods=["POST"])
+def import_supplyclinic():
+    d = request.json or {}
+    email = (d.get("email") or "").strip()
+    password = d.get("password") or ""
+    if not email or not password:
+        return jsonify({"error": "Please enter your SupplyClinic email and password."}), 400
+
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    ok, err = _sc_login(opener, email, password)
+    if not ok:
+        return jsonify({"error": err}), 401
+
+    try:
+        lines = _sc_fetch_orders(opener)
+    except Exception:
+        return jsonify({"error": "Signed in, but couldn't read your order history. Please try again."}), 502
+
+    items = load("items.json")
+    vendors = load("vendors.json")
+    purchases = load("purchases.json")
+    items_by_name = {i["name"].lower(): i for i in items}
+    vendors_by_name = {v["name"].lower(): v for v in vendors}
+    existing_sources = {p.get("sourceId") for p in purchases if p.get("sourceId")}
+
+    today = date.today().isoformat()
+    imported = 0
+    duplicates = 0
+    skipped = 0
+    new_items = 0
+    new_vendors = 0
+
+    for ln in lines:
+        status = (ln.get("status") or "").lower()
+        if "cancel" in status or "return" in status:
+            skipped += 1
+            continue
+        if not ln.get("name") or not ln.get("quantity") or ln.get("unitPrice") is None:
+            skipped += 1
+            continue
+
+        source_id = f"supplyclinic:{ln['suborderNumber']}:{ln['manuCode'] or ln['name']}"
+        if source_id in existing_sources:
+            duplicates += 1
+            continue
+
+        vendor = vendors_by_name.get(ln["vendor"].lower())
+        if not vendor and ln["vendor"]:
+            vendor = {
+                "id": str(uuid.uuid4()),
+                "name": ln["vendor"],
+                "contactName": "",
+                "phone": "",
+                "email": "",
+                "address": "",
+                "notes": "Imported from SupplyClinic",
+                "createdAt": today,
+            }
+            vendors.append(vendor)
+            vendors_by_name[ln["vendor"].lower()] = vendor
+            new_vendors += 1
+
+        item = items_by_name.get(ln["name"].lower())
+        if not item:
+            item = {
+                "id": str(uuid.uuid4()),
+                "name": ln["name"],
+                "unit": _sc_unit(ln["name"]),
+                "reorderLevel": 2,
+                "isPerishable": False,
+                "storageLocation": "",
+                "notes": "Imported from SupplyClinic",
+                "createdAt": today,
+            }
+            items.append(item)
+            items_by_name[ln["name"].lower()] = item
+            new_items += 1
+
+        purchases.append({
+            "id": str(uuid.uuid4()),
+            "date": ln["date"],
+            "itemId": item["id"],
+            "vendorId": vendor["id"] if vendor else None,
+            "quantity": ln["quantity"],
+            "pricePerUnit": ln["unitPrice"],
+            "lotNumber": ln["manuCode"],
+            "expirationDate": None,
+            "notes": f"SupplyClinic order {ln['suborderNumber']}",
+            "sourceId": source_id,
+        })
+        existing_sources.add(source_id)
+        imported += 1
+
+    save("items.json", items)
+    save("vendors.json", vendors)
+    save("purchases.json", purchases)
+
+    return jsonify({
+        "imported": imported,
+        "duplicates": duplicates,
+        "skipped": skipped,
+        "newItems": new_items,
+        "newVendors": new_vendors,
     })
 
 

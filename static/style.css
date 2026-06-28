@@ -826,6 +826,37 @@ tbody tr.clickable:hover {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
+.modal-intro {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sc-note {
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+#sc-error:not(:empty) {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.sc-result-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+.sc-result-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.8;
+  font-size: 14px;
+  color: var(--text);
+}
+
 .form-textarea {
   resize: vertical;
   min-height: 80px;
