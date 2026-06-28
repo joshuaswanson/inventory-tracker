@@ -576,6 +576,7 @@ tbody tr.clickable:hover {
   border: none;
   background: none;
   font-family: inherit;
+  white-space: nowrap;
   transition: background var(--transition);
 }
 
@@ -652,6 +653,10 @@ tbody tr.clickable:hover {
 
 .mini-table tr:last-child td {
   border-bottom: none;
+}
+
+.mini-table tr:hover {
+  background: transparent;
 }
 
 /* ── Stock Bar ─────────────────────────────────────────── */
@@ -1200,6 +1205,9 @@ tbody tr.clickable:hover {
 }
 .text-right {
   text-align: right;
+}
+td.text-right {
+  white-space: nowrap;
 }
 .item-link,
 .vendor-link {
