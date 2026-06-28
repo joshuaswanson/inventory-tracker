@@ -55,8 +55,12 @@ def check_update():
         remote = git("rev-parse", "@{u}").stdout.strip()
         if not local or not remote or local == remote:
             return jsonify({"updateAvailable": False})
+        # Only an update if the remote is actually ahead (commits to pull).
+        # local != remote can also mean local is ahead or diverged.
         log = git("log", "--oneline", f"{local}..{remote}").stdout.strip()
         commits = [line for line in log.split("\n") if line]
+        if not commits:
+            return jsonify({"updateAvailable": False})
         return jsonify({"updateAvailable": True, "commitCount": len(commits), "commits": commits[:5]})
     except Exception:
         return jsonify({"updateAvailable": False})
