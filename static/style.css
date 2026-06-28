@@ -242,6 +242,13 @@ body {
   background: var(--primary-dark);
 }
 
+.btn-primary.is-disabled,
+.btn-primary.is-disabled:hover {
+  background: var(--primary);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-secondary {
   background: var(--surface);
   color: var(--text);
@@ -804,6 +811,19 @@ tbody tr.clickable:hover {
 .form-input::placeholder,
 .form-textarea::placeholder {
   color: var(--text-tertiary);
+}
+
+.form-input.field-error,
+.form-select.field-error,
+.form-textarea.field-error {
+  border-color: var(--red);
+}
+
+.form-input.field-error:focus,
+.form-select.field-error:focus,
+.form-textarea.field-error:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
 .form-textarea {
