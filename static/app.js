@@ -1742,7 +1742,7 @@ async function showPurchaseForm(purchase = null, preselectedItemId = null) {
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Lot Number</label>
+        <label class="form-label">Product Number</label>
         <input
           type="text"
           class="form-input"
