@@ -493,6 +493,7 @@ def _sc_login(opener, email, password):
         "authenticity_token": token,
         "user[email]": email,
         "user[password]": password,
+        "user[remember_me]": "1",
         "commit": "Sign in",
     }).encode()
     req = urllib.request.Request(
@@ -576,17 +577,65 @@ def _sc_parse(body):
     return lines
 
 
-def _sc_fetch_orders(opener):
+SC_SESSION_FILE = os.path.join(DATA_DIR, ".sc_session.json")
+
+
+def _sc_cookie_string(jar):
+    return "; ".join(f"{c.name}={c.value}" for c in jar)
+
+
+def _sc_save_session(cookie, email):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(SC_SESSION_FILE, "w") as f:
+            json.dump({"cookie": cookie, "email": email, "savedAt": date.today().isoformat()}, f)
+        os.chmod(SC_SESSION_FILE, 0o600)
+    except OSError:
+        pass
+
+
+def _sc_load_session():
+    try:
+        with open(SC_SESSION_FILE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def _sc_clear_session():
+    try:
+        os.remove(SC_SESSION_FILE)
+    except OSError:
+        pass
+
+
+def _sc_fetch_orders(cookie):
+    """Fetch all order lines using a stored cookie. Returns (lines, authenticated)."""
+    headers = {**SC_HEADERS, "Cookie": cookie}
     lines = []
     page = 1
     while page <= 50:
-        body = _sc_read(_sc_get(opener, SC_ORDERS if page == 1 else f"{SC_ORDERS}?page={page}"))
+        url = SC_ORDERS if page == 1 else f"{SC_ORDERS}?page={page}"
+        req = urllib.request.Request(url, headers=headers)
+        resp = urllib.request.urlopen(req, timeout=30)
+        body = _sc_read(resp)
+        if page == 1 and ("/users/sign_in" in resp.geturl() or 'name="user[password]"' in body):
+            return [], False
         page_lines = _sc_parse(body)
         if not page_lines:
             break
         lines.extend(page_lines)
         page += 1
-    return lines
+    return lines, True
+
+
+@app.route("/api/import/supplyclinic/status")
+def import_supplyclinic_status():
+    sess = _sc_load_session()
+    return jsonify({
+        "remembered": bool(sess and sess.get("cookie")),
+        "email": (sess or {}).get("email", ""),
+    })
 
 
 @app.route("/api/import/supplyclinic", methods=["POST"])
@@ -594,20 +643,32 @@ def import_supplyclinic():
     d = request.json or {}
     email = (d.get("email") or "").strip()
     password = d.get("password") or ""
-    if not email or not password:
-        return jsonify({"error": "Please enter your SupplyClinic email and password."}), 400
 
-    jar = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-
-    ok, err = _sc_login(opener, email, password)
-    if not ok:
-        return jsonify({"error": err}), 401
+    if email and password:
+        jar = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        ok, err = _sc_login(opener, email, password)
+        if not ok:
+            return jsonify({"error": err}), 401
+        cookie = _sc_cookie_string(jar)
+        _sc_save_session(cookie, email)
+    else:
+        sess = _sc_load_session()
+        if not sess or not sess.get("cookie"):
+            return jsonify({"error": "Please sign in to SupplyClinic.", "needLogin": True}), 401
+        cookie = sess["cookie"]
 
     try:
-        lines = _sc_fetch_orders(opener)
+        lines, authenticated = _sc_fetch_orders(cookie)
     except Exception:
-        return jsonify({"error": "Signed in, but couldn't read your order history. Please try again."}), 502
+        return jsonify({"error": "Couldn't read your order history. Please try again."}), 502
+
+    if not authenticated:
+        _sc_clear_session()
+        return jsonify({
+            "error": "Your saved SupplyClinic session expired. Please sign in again.",
+            "needLogin": True,
+        }), 401
 
     items = load("items.json")
     vendors = load("vendors.json")
