@@ -9,6 +9,9 @@ seed.py
 .AppleDouble
 .LSOverride
 
+# Disk images
+dist/
+
 # Xcode
 xcuserdata/
 DerivedData/
