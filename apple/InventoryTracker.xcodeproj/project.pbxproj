@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		AA0000000000000000000020 /* InventoryTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = InventoryTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000020 /* Inventory Tracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Inventory Tracker.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000021 /* InventoryTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = InventoryTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000022 /* InventoryTracker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = InventoryTracker.entitlements; sourceTree = "<group>"; };
 		AA0000000000000000000023 /* InventoryTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = InventoryTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -87,7 +87,7 @@
 		AA0000000000000000000051 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AA0000000000000000000020 /* InventoryTracker.app */,
+				AA0000000000000000000020 /* Inventory Tracker.app */,
 				AA0000000000000000000021 /* InventoryTrackerTests.xctest */,
 				AA0000000000000000000023 /* InventoryTrackerUITests.xctest */,
 			);
@@ -114,7 +114,7 @@
 			);
 			name = InventoryTracker;
 			productName = InventoryTracker;
-			productReference = AA0000000000000000000020 /* InventoryTracker.app */;
+			productReference = AA0000000000000000000020 /* Inventory Tracker.app */;
 			productType = "com.apple.product-type.application";
 		};
 		AA0000000000000000000012 /* InventoryTrackerTests */ = {
@@ -342,7 +342,8 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.joshuaswanson.inventorytracker;
-				PRODUCT_NAME = InventoryTracker;
+				PRODUCT_MODULE_NAME = InventoryTracker;
+				PRODUCT_NAME = "Inventory Tracker";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Debug;
@@ -371,7 +372,8 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.joshuaswanson.inventorytracker;
-				PRODUCT_NAME = InventoryTracker;
+				PRODUCT_MODULE_NAME = InventoryTracker;
+				PRODUCT_NAME = "Inventory Tracker";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
@@ -388,8 +390,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.joshuaswanson.inventorytracker.tests;
 				PRODUCT_NAME = InventoryTrackerTests;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/InventoryTracker.app/InventoryTracker";
-				"TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/InventoryTracker.app/Contents/MacOS/InventoryTracker";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Inventory Tracker.app/Inventory Tracker";
+				"TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/Inventory Tracker.app/Contents/MacOS/Inventory Tracker";
 			};
 			name = Debug;
 		};
@@ -405,8 +407,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.joshuaswanson.inventorytracker.tests;
 				PRODUCT_NAME = InventoryTrackerTests;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/InventoryTracker.app/InventoryTracker";
-				"TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/InventoryTracker.app/Contents/MacOS/InventoryTracker";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Inventory Tracker.app/Inventory Tracker";
+				"TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/Inventory Tracker.app/Contents/MacOS/Inventory Tracker";
 			};
 			name = Release;
 		};
