@@ -4,17 +4,16 @@ data/
 # Dev-only sample data generator
 seed.py
 
-# Python
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
 
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcresult
+
 # Claude
 CLAUDE.md
+.claude/
