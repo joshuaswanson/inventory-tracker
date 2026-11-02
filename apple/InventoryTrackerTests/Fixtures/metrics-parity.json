@@ -1,0 +1,624 @@
+{
+  "items": [
+    {
+      "expected": {
+        "averagePrice": 5.25,
+        "batchRemaining": {},
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 10,
+        "daysUntilExpiration": null,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 5.25,
+        "needsReorder": false,
+        "nextExpiration": null,
+        "usageRatePerDay": 0
+      },
+      "id": "plain",
+      "isPerishable": false,
+      "purchases": [
+        {
+          "date": "2026-01-10",
+          "expirationDate": null,
+          "id": "p-2026-01-10-10",
+          "itemId": "plain",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 5.25,
+          "quantity": 10,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 2,
+      "usage": []
+    },
+    {
+      "expected": {
+        "averagePrice": null,
+        "batchRemaining": {},
+        "bestPriceVendor": null,
+        "currentInventory": 0,
+        "daysUntilExpiration": null,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": null,
+        "needsReorder": true,
+        "nextExpiration": null,
+        "usageRatePerDay": 0
+      },
+      "id": "no-purchases",
+      "isPerishable": false,
+      "purchases": [],
+      "reorderLevel": 3,
+      "usage": []
+    },
+    {
+      "expected": {
+        "averagePrice": 5.45,
+        "batchRemaining": {},
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 101,
+        "daysUntilExpiration": null,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 5.0,
+        "needsReorder": false,
+        "nextExpiration": null,
+        "usageRatePerDay": 0
+      },
+      "id": "mixed-prices",
+      "isPerishable": false,
+      "purchases": [
+        {
+          "date": "2026-01-01",
+          "expirationDate": null,
+          "id": "p-2026-01-01-100",
+          "itemId": "mixed-prices",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 5.0,
+          "quantity": 100,
+          "vendorId": "v1"
+        },
+        {
+          "date": "2026-02-01",
+          "expirationDate": null,
+          "id": "p-2026-02-01-1",
+          "itemId": "mixed-prices",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 50.0,
+          "quantity": 1,
+          "vendorId": null
+        }
+      ],
+      "reorderLevel": 1,
+      "usage": []
+    },
+    {
+      "expected": {
+        "averagePrice": 12.5,
+        "batchRemaining": {
+          "p-2026-01-10-6": 6
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 6,
+        "daysUntilExpiration": -10,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 12.5,
+        "needsReorder": false,
+        "nextExpiration": "2026-05-22",
+        "usageRatePerDay": 0
+      },
+      "id": "expired",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-10",
+          "expirationDate": "2026-05-22",
+          "id": "p-2026-01-10-6",
+          "itemId": "expired",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 12.5,
+          "quantity": 6,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 2,
+      "usage": []
+    },
+    {
+      "expected": {
+        "averagePrice": 1.2,
+        "batchRemaining": {
+          "p-2026-01-01-5": 0,
+          "p-2026-03-01-5": 5
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 5,
+        "daysUntilExpiration": 92,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": true,
+        "lowestPrice": 1.1,
+        "needsReorder": false,
+        "nextExpiration": "2026-09-01",
+        "usageRatePerDay": 0
+      },
+      "id": "rolled-over",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-01",
+          "expirationDate": "2026-05-01",
+          "id": "p-2026-01-01-5",
+          "itemId": "rolled-over",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 1.1,
+          "quantity": 5,
+          "vendorId": "v1"
+        },
+        {
+          "date": "2026-03-01",
+          "expirationDate": "2026-09-01",
+          "id": "p-2026-03-01-5",
+          "itemId": "rolled-over",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 1.3,
+          "quantity": 5,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 0,
+      "usage": [
+        {
+          "date": "2026-02-01",
+          "id": "u-2026-02-01-5-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "rolled-over",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 3.0,
+        "batchRemaining": {
+          "p-2026-01-10-5": 0
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 0,
+        "daysUntilExpiration": null,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": true,
+        "lowestPrice": 3.0,
+        "needsReorder": true,
+        "nextExpiration": null,
+        "usageRatePerDay": 0
+      },
+      "id": "used-up",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-10",
+          "expirationDate": "2026-05-01",
+          "id": "p-2026-01-10-5",
+          "itemId": "used-up",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 3.0,
+          "quantity": 5,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 2,
+      "usage": [
+        {
+          "date": "2026-02-01",
+          "id": "u-2026-02-01-5-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "used-up",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 9.99,
+        "batchRemaining": {},
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": -1,
+        "daysUntilExpiration": null,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 9.99,
+        "needsReorder": true,
+        "nextExpiration": null,
+        "usageRatePerDay": 0
+      },
+      "id": "oversold",
+      "isPerishable": false,
+      "purchases": [
+        {
+          "date": "2026-01-10",
+          "expirationDate": null,
+          "id": "p-2026-01-10-2",
+          "itemId": "oversold",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 9.99,
+          "quantity": 2,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 5,
+      "usage": [
+        {
+          "date": "2026-02-01",
+          "id": "u-2026-02-01-3-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "oversold",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 2.75,
+        "batchRemaining": {
+          "p-2026-01-01-40": 28
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 28,
+        "daysUntilExpiration": 19,
+        "daysUntilReorder": 120,
+        "expirationIsEstimated": true,
+        "lowestPrice": 2.75,
+        "needsReorder": false,
+        "nextExpiration": "2026-06-20",
+        "usageRatePerDay": 0.2
+      },
+      "id": "steady",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-01",
+          "expirationDate": "2026-06-20",
+          "id": "p-2026-01-01-40",
+          "itemId": "steady",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 2.75,
+          "quantity": 40,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 4,
+      "usage": [
+        {
+          "date": "2026-01-10",
+          "id": "u-2026-01-10-3-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "steady",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 3
+        },
+        {
+          "date": "2026-02-09",
+          "id": "u-2026-02-09-5-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "steady",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 5
+        },
+        {
+          "date": "2026-03-11",
+          "id": "u-2026-03-11-4-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "steady",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 1.0,
+        "batchRemaining": {},
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 1,
+        "daysUntilExpiration": null,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 1.0,
+        "needsReorder": true,
+        "nextExpiration": null,
+        "usageRatePerDay": 0
+      },
+      "id": "same-day-usage",
+      "isPerishable": false,
+      "purchases": [
+        {
+          "date": "2026-01-10",
+          "expirationDate": null,
+          "id": "p-2026-01-10-4",
+          "itemId": "same-day-usage",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 1.0,
+          "quantity": 4,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 1,
+      "usage": [
+        {
+          "date": "2026-02-01",
+          "id": "u-2026-02-01-1-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "same-day-usage",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 1
+        },
+        {
+          "date": "2026-02-01",
+          "id": "u-2026-02-01-2-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "same-day-usage",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 4.0,
+        "batchRemaining": {
+          "new": 1,
+          "old": 3
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 4,
+        "daysUntilExpiration": -61,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 4.0,
+        "needsReorder": false,
+        "nextExpiration": "2026-04-01",
+        "usageRatePerDay": 0
+      },
+      "id": "linked-newest",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-01",
+          "expirationDate": "2026-04-01",
+          "id": "old",
+          "itemId": "linked-newest",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 4.0,
+          "quantity": 3,
+          "vendorId": "v1"
+        },
+        {
+          "date": "2026-02-01",
+          "expirationDate": "2026-12-01",
+          "id": "new",
+          "itemId": "linked-newest",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 4.0,
+          "quantity": 3,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 1,
+      "usage": [
+        {
+          "date": "2026-03-01",
+          "id": "u-2026-03-01-2-new",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "linked-newest",
+          "notes": "",
+          "purchaseId": "new",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 2.0,
+        "batchRemaining": {
+          "gone": 0,
+          "kept": 3
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 3,
+        "daysUntilExpiration": 183,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 2.0,
+        "needsReorder": false,
+        "nextExpiration": "2026-12-01",
+        "usageRatePerDay": 0
+      },
+      "id": "counted-out",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-01",
+          "expirationDate": "2026-04-01",
+          "id": "gone",
+          "itemId": "counted-out",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 2.0,
+          "quantity": 3,
+          "vendorId": "v1"
+        },
+        {
+          "date": "2026-02-01",
+          "expirationDate": "2026-12-01",
+          "id": "kept",
+          "itemId": "counted-out",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 2.0,
+          "quantity": 3,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 0,
+      "usage": [
+        {
+          "date": "2026-03-01",
+          "id": "u-2026-03-01-3-gone",
+          "isAdjustment": true,
+          "isEstimate": false,
+          "itemId": "counted-out",
+          "notes": "",
+          "purchaseId": "gone",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 2.0,
+        "batchRemaining": {
+          "found": 5
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 5,
+        "daysUntilExpiration": 183,
+        "daysUntilReorder": null,
+        "expirationIsEstimated": false,
+        "lowestPrice": 2.0,
+        "needsReorder": false,
+        "nextExpiration": "2026-12-01",
+        "usageRatePerDay": 0
+      },
+      "id": "found-units",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-10",
+          "expirationDate": "2026-12-01",
+          "id": "found",
+          "itemId": "found-units",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 2.0,
+          "quantity": 2,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 0,
+      "usage": [
+        {
+          "date": "2026-03-01",
+          "id": "u-2026-03-01--3-found",
+          "isAdjustment": true,
+          "isEstimate": false,
+          "itemId": "found-units",
+          "notes": "",
+          "purchaseId": "found",
+          "quantity": -3
+        }
+      ]
+    },
+    {
+      "expected": {
+        "averagePrice": 1.0,
+        "batchRemaining": {
+          "a": 0,
+          "b": 1
+        },
+        "bestPriceVendor": "Acme Dental",
+        "currentInventory": 1,
+        "daysUntilExpiration": 183,
+        "daysUntilReorder": 0,
+        "expirationIsEstimated": true,
+        "lowestPrice": 1.0,
+        "needsReorder": false,
+        "nextExpiration": "2026-12-01",
+        "usageRatePerDay": 7.0
+      },
+      "id": "mixed-links",
+      "isPerishable": true,
+      "purchases": [
+        {
+          "date": "2026-01-01",
+          "expirationDate": "2026-04-01",
+          "id": "a",
+          "itemId": "mixed-links",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 1.0,
+          "quantity": 4,
+          "vendorId": "v1"
+        },
+        {
+          "date": "2026-02-01",
+          "expirationDate": "2026-12-01",
+          "id": "b",
+          "itemId": "mixed-links",
+          "lotNumber": "",
+          "notes": "",
+          "pricePerUnit": 1.0,
+          "quantity": 4,
+          "vendorId": "v1"
+        }
+      ],
+      "reorderLevel": 0,
+      "usage": [
+        {
+          "date": "2026-03-01",
+          "id": "u-2026-03-01-2-b",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "mixed-links",
+          "notes": "",
+          "purchaseId": "b",
+          "quantity": 2
+        },
+        {
+          "date": "2026-03-02",
+          "id": "u-2026-03-02-5-None",
+          "isAdjustment": false,
+          "isEstimate": false,
+          "itemId": "mixed-links",
+          "notes": "",
+          "purchaseId": null,
+          "quantity": 5
+        }
+      ]
+    }
+  ],
+  "today": "2026-06-01",
+  "vendorName": "Acme Dental"
+}
