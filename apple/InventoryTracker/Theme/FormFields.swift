@@ -6,6 +6,7 @@ struct FormSheet<Content: View>: View {
     var canSave = true
     var showsCancel = true
     var macHeight: CGFloat = 600
+    var fitsContentOnMac = false
     var errorMessage: String?
     let onSave: () -> Void
     @ViewBuilder let content: Content
@@ -23,11 +24,7 @@ struct FormSheet<Content: View>: View {
             .padding(.horizontal, 24)
             .padding(.top, 20)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) { content }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 20)
-            }
+            fields
 
             if let errorMessage {
                 Text(errorMessage)
@@ -56,7 +53,26 @@ struct FormSheet<Content: View>: View {
         }
         .background(Theme.surface)
         #if os(macOS)
-        .frame(width: 480, height: macHeight)
+        .frame(width: 480, height: fitsContentOnMac ? nil : macHeight)
+        #endif
+    }
+
+    private var form: some View {
+        VStack(alignment: .leading, spacing: 16) { content }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+    }
+
+    @ViewBuilder
+    private var fields: some View {
+        #if os(macOS)
+        if fitsContentOnMac {
+            form.fixedSize(horizontal: false, vertical: true)
+        } else {
+            ScrollView { form }
+        }
+        #else
+        ScrollView { form }
         #endif
     }
 }

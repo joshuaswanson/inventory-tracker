@@ -32,7 +32,7 @@ struct AppShell: View {
             Button("Delete", role: .destructive) { pending.perform() }
         }
         #if os(macOS)
-        .frame(minWidth: 1000, minHeight: 640)
+        .frame(minWidth: 1000, minHeight: 720)
         #endif
     }
 

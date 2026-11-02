@@ -17,7 +17,7 @@ struct DataView: View {
     @State private var messageIsError = false
 
     var body: some View {
-        FormSheet(title: "Data", saveTitle: "Done", onSave: { dismiss() }) {
+        FormSheet(title: "Data", saveTitle: "Done", showsCancel: false, fitsContentOnMac: true, onSave: { dismiss() }) {
             VStack(spacing: 0) {
                 InfoRow("Items", value: "\(items.count)")
                 InfoRow("Vendors", value: "\(vendors.count)")
