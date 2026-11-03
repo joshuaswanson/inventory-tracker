@@ -5,6 +5,7 @@ import SwiftUI
 struct InventoryTrackerApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(LaunchWindowGuard.self) private var launchWindowGuard
+    @State private var updateChecker = UpdateChecker()
     #endif
     @State private var router = Router()
     private let store = Result { try InventoryStore.makeContainer() }
@@ -18,6 +19,10 @@ struct InventoryTrackerApp: App {
                     .modelContainer(container)
                     .preferredColorScheme(.light)
                     .tint(Theme.primary)
+                    #if os(macOS)
+                    .environment(updateChecker)
+                    .task { await updateChecker.run() }
+                    #endif
                     #if DEBUG
                     .task { DebugLaunch.apply(context: container.mainContext, router: router) }
                     #endif
