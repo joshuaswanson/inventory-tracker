@@ -419,6 +419,28 @@ nonisolated extension Supplier {
     return true;
     """#
 
+    /// Hides everything on the page except the site's own check box and moves it to the top left corner.
+    static let showOnlyHumanCheckScript = #"""
+    (() => {
+      const widget = document.querySelector("form[data-inventory-submitted] .cf-turnstile");
+      if (!widget) return false;
+      const style = document.createElement("style");
+      style.textContent = `
+        html, body { background: #fff !important; overflow: hidden !important; }
+        body { visibility: hidden !important; }
+        .cf-turnstile, .cf-turnstile * { visibility: visible !important; }
+        form[data-inventory-submitted] .cf-turnstile {
+          position: fixed !important; top: 0 !important; left: 0 !important; margin: 0 !important;
+          z-index: 2147483647 !important; background: #fff !important;
+        }`;
+      document.head.appendChild(style);
+      const box = widget.getBoundingClientRect();
+      const isInCorner = Math.abs(box.top) < 2 && Math.abs(box.left) < 2 && box.height > 0;
+      if (!isInCorner) style.remove();
+      return isInCorner;
+    })()
+    """#
+
     /// Submits the filled-in form once the person has passed the site's own check.
     static let humanCheckScript = #"""
     (() => {

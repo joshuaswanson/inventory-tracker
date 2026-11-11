@@ -66,6 +66,8 @@ struct SupplierImportView: View {
 
     private static let formHeight: CGFloat = 520
     private static let verificationHeaderHeight: CGFloat = 76
+    private static let humanCheckTop: CGFloat = 132
+    private static let humanCheckSize = CGSize(width: 304, height: 72)
     #if os(macOS)
     private static let ownerCheck = "Touch ID or your Mac password"
     #else
@@ -109,6 +111,10 @@ struct SupplierImportView: View {
 
     private var needsVerification: Bool { browser.page == .challenge && summary == nil }
 
+    private var showsOnlyHumanCheck: Bool { needsVerification && browser.showsOnlyHumanCheck }
+
+    private var showsFullPage: Bool { needsVerification && !showsOnlyHumanCheck }
+
     private var canSubmit: Bool {
         switch page {
         case .signIn: !isWorking && !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
@@ -130,13 +136,17 @@ struct SupplierImportView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .topLeading) {
             WebContainer(webView: browser.webView)
-                .padding(.top, Self.verificationHeaderHeight)
+                .frame(width: showsOnlyHumanCheck ? Self.humanCheckSize.width : nil, height: showsOnlyHumanCheck ? Self.humanCheckSize.height : nil)
+                .padding(.top, showsOnlyHumanCheck ? Self.humanCheckTop : Self.verificationHeaderHeight)
+                .padding(.leading, showsOnlyHumanCheck ? 24 : 0)
                 .opacity(needsVerification ? 1 : 0)
                 .allowsHitTesting(needsVerification)
 
-            if needsVerification {
+            if showsOnlyHumanCheck {
+                humanCheckPanel
+            } else if needsVerification {
                 verificationHeader
             } else {
                 content
@@ -152,8 +162,38 @@ struct SupplierImportView: View {
             if page == .signIn { emailFocusRequest += 1 }
         }
         #if os(macOS)
-        .frame(width: needsVerification ? 860 : 480, height: needsVerification ? 680 : Self.formHeight)
+        .frame(width: showsFullPage ? 860 : 480, height: showsFullPage ? 680 : Self.formHeight)
         #endif
+    }
+
+    private var humanCheckPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("One last step")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Theme.text)
+                    Spacer()
+                    RowIconButton(systemImage: "xmark", label: "Close") { dismiss() }
+                }
+                Text("\(supplier.name) wants to confirm you're a person. Tick the box below and you'll be signed in.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(height: Self.humanCheckTop - 24, alignment: .topLeading)
+            Color.clear.frame(height: Self.humanCheckSize.height)
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text("Waiting for you to tick the box...")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            .padding(.top, 16)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(true)
     }
 
     private var verificationHeader: some View {

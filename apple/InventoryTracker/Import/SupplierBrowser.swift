@@ -51,6 +51,7 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
     private(set) var ordersFound = 0
     private(set) var progress = ImportProgress.starting
     private(set) var isWaitingForCheckOnSignInForm = false
+    private(set) var showsOnlyHumanCheck = false
     @ObservationIgnored private var pendingLoad: CheckedContinuation<Void, Error>?
     @ObservationIgnored private var finishedLoads = 0
 
@@ -110,9 +111,13 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
     }
 
     func waitForHumanCheck() async throws {
+        showsOnlyHumanCheck = (try? await webView.evaluateJavaScript(Supplier.showOnlyHumanCheckScript, in: nil, contentWorld: .defaultClient) as? Bool) ?? false
         page = .challenge
         isWaitingForCheckOnSignInForm = true
-        defer { isWaitingForCheckOnSignInForm = false }
+        defer {
+            isWaitingForCheckOnSignInForm = false
+            showsOnlyHumanCheck = false
+        }
         for _ in 0..<Self.humanCheckPolls {
             try await Task.sleep(for: .milliseconds(500))
             let state = try? await webView.evaluateJavaScript(Supplier.humanCheckScript, in: nil, contentWorld: .defaultClient) as? String

@@ -462,7 +462,7 @@ private let orderPage = """
         <html><body>
         <form onsubmit="event.preventDefault(); document.title = 'sent:' + this.querySelector('#password').value">
           <input id="email" name="email" type="email"><input id="password" name="password" type="password">
-          <div class="cf-turnstile"><input type="hidden" name="cf-turnstile-response" value=""></div>
+          <div class="cf-turnstile" style="margin: 40px; width: 300px; height: 65px"><input type="hidden" name="cf-turnstile-response" value=""></div>
           <button type="submit">Login</button>
         </form>
         </body></html>
@@ -477,6 +477,11 @@ private let orderPage = """
         try await Task.sleep(for: .milliseconds(200))
         #expect(browser.page == .challenge)
         #expect(browser.isWaitingForCheckOnSignInForm)
+        #expect(browser.showsOnlyHumanCheck)
+        let visibility = try await browser.webView.evaluateJavaScript(
+            "getComputedStyle(document.querySelector('#email')).visibility + '/' + getComputedStyle(document.querySelector('.cf-turnstile')).visibility"
+        ) as? String
+        #expect(visibility == "hidden/visible")
         _ = try await browser.webView.evaluateJavaScript("document.querySelector('[name=cf-turnstile-response]').value = 'passed'")
         try await waiting.value
         #expect(!browser.isWaitingForCheckOnSignInForm)
