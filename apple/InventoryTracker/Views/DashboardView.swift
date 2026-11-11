@@ -173,7 +173,7 @@ struct DashboardView: View {
                             router.show(.items)
                             router.open(.item(row.item.id))
                         } label: {
-                            MiniRow(showsDivider: row.id != rows.last?.id) {
+                            MiniRow(showsDivider: row.id != rows.last?.id, verticalPadding: 11) {
                                 Text(row.item.name)
                                     .lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -347,6 +347,7 @@ extension InfoRow where Value == Text {
 
 struct MiniRow<Content: View>: View {
     var showsDivider = true
+    var verticalPadding: CGFloat = 6
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -354,7 +355,7 @@ struct MiniRow<Content: View>: View {
             HStack(spacing: 12) { content }
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.text)
-                .padding(.vertical, 6)
+                .padding(.vertical, verticalPadding)
             if showsDivider {
                 Divider().overlay(Theme.borderLight)
             }
