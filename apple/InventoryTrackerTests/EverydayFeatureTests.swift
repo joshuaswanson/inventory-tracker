@@ -203,6 +203,39 @@ private func makeContext() throws -> ModelContext {
     }
 }
 
+@Suite struct TourTests {
+    @Test func stepsRunInOrderAndEndAtSettings() {
+        var visited: [TourStep] = []
+        var step: TourStep? = .dashboard
+        while let current = step {
+            visited.append(current)
+            step = current.next
+        }
+        #expect(visited == TourStep.allCases)
+        #expect(TourStep.dashboard.previous == nil)
+        #expect(TourStep.settings.previous == .reorder)
+        #expect(TourStep.items.position == "2 of 5")
+    }
+
+    @Test func startingOnAnEmptyInventoryAddsPracticeItemsOnce() throws {
+        let context = try makeContext()
+        let router = Router()
+        Tour.start(router: router, context: context)
+        #expect(router.tourStep == .dashboard)
+        #expect(try context.fetchCount(FetchDescriptor<Item>()) == 6)
+        Tour.start(router: router, context: context)
+        #expect(try context.fetchCount(FetchDescriptor<Item>()) == 6)
+    }
+
+    @Test func startingWithRealItemsAddsNothing() throws {
+        let context = try makeContext()
+        context.insert(Item(name: "Mine"))
+        try context.save()
+        Tour.start(router: Router(), context: context)
+        #expect(try context.fetch(FetchDescriptor<Item>()).map(\.name) == ["Mine"])
+    }
+}
+
 @Suite struct DayOffsetTests {
     @Test func offsetCrossesMonthsAndLeapDays() {
         #expect(Day.offset("2026-01-31", by: 1) == "2026-02-01")

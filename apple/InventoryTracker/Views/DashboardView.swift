@@ -72,10 +72,8 @@ struct DashboardView: View {
             .buttonStyle(.themedPrimary)
         Button("Import from SupplyClinic") { router.sheet = .supplyClinic }
             .buttonStyle(.themedSecondary)
-        Button("Try Sample Data") {
-            try? BackupMerge.merge(SampleData.backup(), into: modelContext)
-        }
-        .buttonStyle(.themedSecondary)
+        Button("Take a Quick Tour") { Tour.start(router: router, context: modelContext) }
+            .buttonStyle(.themedSecondary)
     }
 
     private func stats(rows: [ItemRow], lowStock: Int, expiring: Int) -> some View {

@@ -16,6 +16,13 @@ struct AppShell: View {
                 }
             }
             .environment(\.isWideLayout, isWide)
+            .overlay(alignment: isWide ? .bottomTrailing : .bottom) {
+                if let step = router.tourStep {
+                    TourCard(step: step)
+                        .padding(.horizontal, isWide ? 28 : 16)
+                        .padding(.bottom, isWide ? 28 : 72)
+                }
+            }
         }
         .sheet(item: $router.sheet) { sheet in
             SheetContent(sheet: sheet)
@@ -155,7 +162,8 @@ private struct Sidebar: View {
                     SidebarButton(
                         title: section.title,
                         systemImage: section.systemImage,
-                        isActive: router.section == section
+                        isActive: router.section == section,
+                        isHighlighted: router.tourStep.map { $0 != .settings && $0.section == section } ?? false
                     ) {
                         router.show(section)
                     }
@@ -166,7 +174,7 @@ private struct Sidebar: View {
 
             Spacer()
 
-            SidebarButton(title: "Settings", systemImage: "gearshape.fill", isActive: false) {
+            SidebarButton(title: "Settings", systemImage: "gearshape.fill", isActive: false, isHighlighted: router.tourStep == .settings) {
                 router.sheet = .data
             }
             .padding(.horizontal, 8)
@@ -183,6 +191,7 @@ private struct SidebarButton: View {
     let title: String
     let systemImage: String
     let isActive: Bool
+    var isHighlighted = false
     let action: () -> Void
     @State private var isHovering = false
 
@@ -201,6 +210,11 @@ private struct SidebarButton: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(background, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
+            .overlay {
+                if isHighlighted {
+                    RoundedRectangle(cornerRadius: Theme.radiusSmall).strokeBorder(.white, lineWidth: 2)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

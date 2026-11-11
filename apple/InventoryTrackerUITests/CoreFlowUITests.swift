@@ -129,6 +129,19 @@ final class CoreFlowUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Estimated from past usage. Count your shelf to confirm."].exists)
     }
 
+    func testTourWalksThroughTheAppAndRemovesPracticeItems() {
+        tapButton("Take a Quick Tour")
+        for title in ["Your dashboard", "Your items", "What you buy", "What to reorder"] {
+            expectText(title)
+            tapButton("Next")
+        }
+        expectText("Backups are automatic")
+        expectText("The items you just saw are practice items.")
+        tapButton("Remove Practice Items")
+        expectText("Welcome to Inventory Tracker")
+        XCTAssertFalse(app.staticTexts["Backups are automatic"].exists)
+    }
+
     func testVendorCanBeAddedAndAppearsInTheList() {
         tapButton("Vendors")
         tapButton("+ Add Vendor")

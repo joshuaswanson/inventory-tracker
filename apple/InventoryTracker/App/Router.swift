@@ -63,11 +63,17 @@ final class Router {
     var itemFilter: ItemFilter = .all
     var sheet: ActiveSheet?
     var pendingDelete: PendingDelete?
+    var tourStep: TourStep?
 
     func show(_ section: AppSection, itemFilter: ItemFilter = .all) {
         self.itemFilter = itemFilter
         self.section = section
         paths[section] = []
+    }
+
+    func showTour(_ step: TourStep) {
+        tourStep = step
+        show(step.section)
     }
 
     func open(_ route: AppRoute) {

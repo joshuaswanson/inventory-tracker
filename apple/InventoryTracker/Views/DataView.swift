@@ -60,9 +60,11 @@ struct DataView: View {
                 CheckboxField(title: "Remind me before items expire or run low", isOn: reminders)
             }
 
-            if SampleData.hasSamples(in: items) {
-                section("Sample Data", detail: "Remove the practice items when you're ready to add your own.") {
-                    Button("Remove Sample Data", action: removeSamples)
+            section("Getting Started", detail: "See a quick tour of the app.") {
+                Button("Take the Tour") { Tour.start(router: router, context: modelContext) }
+                    .buttonStyle(.themedSecondary)
+                if SampleData.hasSamples(in: items) {
+                    Button("Remove Practice Items", action: removeSamples)
                         .buttonStyle(.themedSecondary)
                 }
             }
@@ -186,7 +188,7 @@ struct DataView: View {
     private func removeSamples() {
         do {
             try SampleData.remove(from: modelContext)
-            show("Sample data removed.", isError: false)
+            show("Practice items removed.", isError: false)
         } catch {
             show(error.localizedDescription, isError: true)
         }
