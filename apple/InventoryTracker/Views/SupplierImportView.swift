@@ -25,6 +25,11 @@ private struct SavedLoginSuggestion: View {
     let onRemove: () -> Void
     @State private var isHovering = false
 
+    private static let fieldGap: CGFloat = 6
+    private var shape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(bottomLeadingRadius: Theme.radiusSmall, bottomTrailingRadius: Theme.radiusSmall)
+    }
+
     var body: some View {
         HStack(spacing: 4) {
             Button(action: onUse) {
@@ -52,10 +57,11 @@ private struct SavedLoginSuggestion: View {
         .padding(.leading, 12)
         .padding(.trailing, 4)
         .padding(.vertical, 6)
-        .background(isHovering ? Theme.primaryBackground : Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
-        .overlay(RoundedRectangle(cornerRadius: Theme.radiusSmall).strokeBorder(Theme.border))
-        .shadow(color: .black.opacity(0.08), radius: 6, y: 3)
+        .background(isHovering ? Theme.primaryBackground : Theme.surface, in: shape)
+        .overlay(shape.strokeBorder(Theme.primary))
+        .shadow(color: .black.opacity(0.08), radius: 6, y: 5)
         .onHover { isHovering = $0 }
+        .padding(.top, -(Self.fieldGap + 1))
     }
 }
 
@@ -307,12 +313,14 @@ struct SupplierImportView: View {
                 activeField = .email
             }
             .textContentType(.username)
+            .environment(\.fieldHasAttachedPanel, showsSuggestion(under: .email))
             suggestion(under: .email)
         }
         LabeledField(title: "Password", isRequired: true) {
             ThemedSecureField(placeholder: "Your \(supplier.name) password", text: $password) {
                 activeField = .password
             }
+            .environment(\.fieldHasAttachedPanel, showsSuggestion(under: .password))
             suggestion(under: .password)
         }
         CheckboxField(title: "Save this login on this device", isOn: $savesLogin)
@@ -324,9 +332,13 @@ struct SupplierImportView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    private func showsSuggestion(under field: Field) -> Bool {
+        activeField == field && password.isEmpty && savedLoginEmail != nil
+    }
+
     @ViewBuilder
     private func suggestion(under field: Field) -> some View {
-        if activeField == field, password.isEmpty, let savedLoginEmail {
+        if showsSuggestion(under: field), let savedLoginEmail {
             SavedLoginSuggestion(supplierName: supplier.name, email: savedLoginEmail, onUse: useSavedLogin, onRemove: removeSavedLogin)
         }
     }

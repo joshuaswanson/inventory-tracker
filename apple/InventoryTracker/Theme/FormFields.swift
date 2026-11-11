@@ -116,8 +116,22 @@ struct FieldRow<Content: View>: View {
     }
 }
 
+extension EnvironmentValues {
+    /// True while a suggestion panel hangs off the bottom edge of the field.
+    @Entry var fieldHasAttachedPanel = false
+}
+
 private struct FieldBox: ViewModifier {
     let isFocused: Bool
+    @Environment(\.fieldHasAttachedPanel) private var hasAttachedPanel
+
+    private var shape: UnevenRoundedRectangle {
+        let bottom = hasAttachedPanel ? 0 : Theme.radiusSmall
+        return UnevenRoundedRectangle(
+            topLeadingRadius: Theme.radiusSmall, bottomLeadingRadius: bottom,
+            bottomTrailingRadius: bottom, topTrailingRadius: Theme.radiusSmall
+        )
+    }
 
     func body(content: Content) -> some View {
         content
@@ -126,11 +140,8 @@ private struct FieldBox: ViewModifier {
             .padding(.horizontal, 12)
             .frame(minHeight: 38)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.radiusSmall)
-                    .strokeBorder(isFocused ? Theme.primary : Theme.border)
-            )
+            .background(Theme.surface, in: shape)
+            .overlay(shape.strokeBorder(isFocused ? Theme.primary : Theme.border))
     }
 }
 
