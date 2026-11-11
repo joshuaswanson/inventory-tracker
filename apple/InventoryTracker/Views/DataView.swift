@@ -50,11 +50,6 @@ struct DataView: View {
                     .buttonStyle(.themedSecondary)
             }
 
-            section("SupplyClinic", detail: "Bring in your order history. Only new orders are added.") {
-                Button("Import Orders") { router.sheet = .supplyClinic }
-                    .buttonStyle(.themedSecondary)
-            }
-
             VStack(alignment: .leading, spacing: 8) {
                 FieldLabel(title: "Reminders")
                 CheckboxField(title: "Remind me before items expire or run low", isOn: reminders)

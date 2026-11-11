@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import WebKit
 
-enum SupplyClinicFailure: LocalizedError {
+enum ImportFailure: LocalizedError {
     case signInRequired
     case signInFormMissing
     case invalidCredentials
@@ -12,37 +12,37 @@ enum SupplyClinicFailure: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .signInRequired: "Please sign in to SupplyClinic."
-        case .signInFormMissing: "Couldn't load the SupplyClinic sign-in page. Please try again later."
-        case .invalidCredentials: "Sign in failed. Please double-check your SupplyClinic email and password."
-        case .noResponse: "SupplyClinic didn't respond. Please try again."
-        case .challenge: "Complete the check on SupplyClinic's page, then try again."
+        case .signInRequired: "Please sign in first."
+        case .signInFormMissing: "Couldn't load the sign-in page. Please try again later."
+        case .invalidCredentials: "Sign in failed. Please double-check your email and password."
+        case .noResponse: "The site didn't respond. Please try again."
+        case .challenge: "Complete the check on the site's page, then try again."
         case .unreadablePage: "Couldn't read your order history. Please try again."
         }
     }
 }
 
-enum SupplyClinicPage {
+enum SupplierPage {
     case loading, signIn, challenge, ready, unreachable
 }
 
-/// Talks to SupplyClinic through a real web view, kept out of sight unless the site demands a
+/// Talks to a supplier's site through a real web view, kept out of sight unless the site demands a
 /// bot check. The default data store keeps the session between imports. Passwords are only
 /// typed into the site's form.
 @Observable
-final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
-    static let ordersURL = URL(string: "https://www.supplyclinic.com/checkout/orders")!
-    private static let signInURL = URL(string: "https://www.supplyclinic.com/users/sign_in")!
-    private static let maxOrderPages = 50
+final class SupplierBrowser: NSObject, WKNavigationDelegate {
     private static let signInPolls = 80
 
+    @ObservationIgnored let supplier: Supplier
+
     @ObservationIgnored let webView: WKWebView
-    private(set) var page = SupplyClinicPage.loading
+    private(set) var page = SupplierPage.loading
     private(set) var pagesRead = 0
     @ObservationIgnored private var pendingLoad: CheckedContinuation<Void, Error>?
     @ObservationIgnored private var finishedLoads = 0
 
-    override init() {
+    init(supplier: Supplier) {
+        self.supplier = supplier
         let configuration = WKWebViewConfiguration()
         #if DEBUG
         if ProcessInfo.processInfo.environment["INVENTORY_PRIVATE_WEB"] != nil {
@@ -56,17 +56,17 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
 
     func start() {
         page = .loading
-        webView.load(URLRequest(url: Self.ordersURL))
+        webView.load(URLRequest(url: supplier.ordersURL))
     }
 
     func signIn(email: String, password: String) async throws {
-        try await waitForLoad { webView.load(URLRequest(url: Self.signInURL)) }
+        try await waitForLoad { webView.load(URLRequest(url: supplier.signInURL)) }
         let markup = try await currentMarkup()
-        if SupplyClinicText.isChallengePage(markup) {
+        if OrderText.isChallengePage(markup) {
             page = .challenge
-            throw SupplyClinicFailure.challenge
+            throw ImportFailure.challenge
         }
-        guard SupplyClinicText.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) else { return }
+        guard supplier.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) else { return }
 
         let loadsBeforeSubmit = finishedLoads
         try await submitCredentials(email: email, password: password)
@@ -78,48 +78,48 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
         let store = webView.configuration.websiteDataStore
         let types = WKWebsiteDataStore.allWebsiteDataTypes()
         let records = await store.dataRecords(ofTypes: types)
-        await store.removeData(ofTypes: types, for: records.filter { $0.displayName.contains("supplyclinic") })
+        await store.removeData(ofTypes: types, for: records.filter { $0.displayName.contains(supplier.cookieDomain) })
         start()
     }
 
     func submitCredentials(email: String, password: String) async throws {
         let submitted = try await webView.callAsyncJavaScript(
-            Self.signInScript,
+            supplier.signInScript,
             arguments: ["email": email, "password": password],
             contentWorld: .defaultClient
         )
-        guard submitted as? Bool == true else { throw SupplyClinicFailure.signInFormMissing }
+        guard submitted as? Bool == true else { throw ImportFailure.signInFormMissing }
     }
 
     private func waitForSubmissionToSettle(loadsBeforeSubmit: Int) async throws {
         for _ in 0..<Self.signInPolls {
             try await Task.sleep(for: .milliseconds(250))
             if webView.isLoading { continue }
-            let leftSignIn = !(webView.url?.absoluteString.contains("/users/sign_in") ?? true)
+            let leftSignIn = !(webView.url?.absoluteString.contains(supplier.signInPath) ?? true)
             let wasReset = try await submittedFormWasReset()
             if finishedLoads != loadsBeforeSubmit || leftSignIn || wasReset { return }
         }
-        throw SupplyClinicFailure.noResponse
+        throw ImportFailure.noResponse
     }
 
     /// The site changes pages with Turbo, so the page showing after a submit proves nothing.
     /// Only the orders page shows whether the session is real.
     private func confirmSession() async throws {
-        try await waitForLoad { webView.load(URLRequest(url: Self.ordersURL)) }
+        try await waitForLoad { webView.load(URLRequest(url: supplier.ordersURL)) }
         let markup = try await currentMarkup()
-        if SupplyClinicText.isChallengePage(markup) {
+        if OrderText.isChallengePage(markup) {
             page = .challenge
-            throw SupplyClinicFailure.challenge
+            throw ImportFailure.challenge
         }
-        if SupplyClinicText.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) {
+        if supplier.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) {
             page = .signIn
-            throw SupplyClinicFailure.invalidCredentials
+            throw ImportFailure.invalidCredentials
         }
         page = .ready
     }
 
     func submittedFormWasReset() async throws -> Bool {
-        try await webView.evaluateJavaScript(Self.submittedFormResetScript) as? Bool ?? false
+        try await webView.evaluateJavaScript(supplier.submittedFormResetScript) as? Bool ?? false
     }
 
     func loadHTML(_ html: String) async throws {
@@ -129,8 +129,8 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
     func collectOrders() async throws -> [OrderLine] {
         var lines: [OrderLine] = []
         pagesRead = 0
-        for pageNumber in 1...Self.maxOrderPages {
-            try await waitForLoad { webView.load(URLRequest(url: Self.url(forPage: pageNumber))) }
+        for pageNumber in 1...supplier.maxOrderPages {
+            try await waitForLoad { webView.load(URLRequest(url: supplier.ordersURL(page: pageNumber))) }
             try await failIfBlocked(isFirstPage: pageNumber == 1)
             let pageLines = try await extractLines()
             if pageLines.isEmpty { break }
@@ -141,15 +141,10 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
     }
 
     func extractLines() async throws -> [OrderLine] {
-        guard let json = try await webView.evaluateJavaScript(Self.extractionScript) as? String else {
-            throw SupplyClinicFailure.unreadablePage
+        guard let json = try await webView.evaluateJavaScript(supplier.extractionScript) as? String else {
+            throw ImportFailure.unreadablePage
         }
         return try JSONDecoder().decode([RawOrderLine].self, from: Data(json.utf8)).map(OrderLine.init(raw:))
-    }
-
-    private static func url(forPage page: Int) -> URL {
-        guard page > 1 else { return ordersURL }
-        return ordersURL.appending(queryItems: [URLQueryItem(name: "page", value: "\(page)")])
     }
 
     private func waitForLoad(_ start: () -> Void) async throws {
@@ -161,13 +156,13 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
 
     private func failIfBlocked(isFirstPage: Bool) async throws {
         let markup = try await currentMarkup()
-        if SupplyClinicText.isChallengePage(markup) {
+        if OrderText.isChallengePage(markup) {
             page = .challenge
-            throw SupplyClinicFailure.challenge
+            throw ImportFailure.challenge
         }
-        if isFirstPage, SupplyClinicText.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) {
+        if isFirstPage, supplier.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) {
             page = .signIn
-            throw SupplyClinicFailure.signInRequired
+            throw ImportFailure.signInRequired
         }
     }
 
@@ -177,9 +172,9 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
 
     private func refreshPage() async {
         guard let markup = try? await currentMarkup() else { return }
-        if SupplyClinicText.isChallengePage(markup) {
+        if OrderText.isChallengePage(markup) {
             page = .challenge
-        } else if SupplyClinicText.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) {
+        } else if supplier.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) {
             page = .signIn
         } else {
             page = .ready
@@ -203,7 +198,7 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
     /// The site's widgets can hold back `didFinish` for a long time, and the address alone
     /// already shows that the sign-in page is up.
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-        if pendingLoad == nil, webView.url?.absoluteString.contains("/users/sign_in") == true {
+        if pendingLoad == nil, webView.url?.absoluteString.contains(supplier.signInPath) == true {
             page = .signIn
         }
     }
@@ -227,69 +222,4 @@ final class SupplyClinicBrowser: NSObject, WKNavigationDelegate {
         if pendingLoad == nil { page = .unreachable }
         finishLoad(with: error)
     }
-
-    private static let signInScript = """
-    const form = document.querySelector('form[action="/users/sign_in"]')
-      ?? document.querySelector('input[name="user[password]"]')?.form;
-    if (!form) return false;
-    const fill = (name, value) => {
-      const field = form.querySelector(`input[name="${name}"]`);
-      if (!field) return false;
-      field.value = value;
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    };
-    if (!fill("user[email]", email) || !fill("user[password]", password)) return false;
-    const remember = form.querySelector('input[type="checkbox"][name="user[remember_me]"]');
-    if (remember) remember.checked = true;
-    form.dataset.inventorySubmitted = "true";
-    setTimeout(() => form.requestSubmit(), 0);
-    return true;
-    """
-
-    private static let submittedFormResetScript = """
-    (() => {
-      const form = document.querySelector("form[data-inventory-submitted]");
-      if (!form) return true;
-      return form.querySelector('input[name="user[password]"]')?.value === "";
-    })()
-    """
-
-    private static let extractionScript = """
-    (() => {
-      const text = (root, selector) => {
-        const element = root.querySelector(selector);
-        if (!element) return "";
-        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-        const parts = [];
-        while (walker.nextNode()) {
-          const value = walker.currentNode.textContent.trim();
-          if (value) parts.push(value);
-        }
-        return parts.join(" ");
-      };
-      const lines = [];
-      for (const order of document.querySelectorAll("div.order")) {
-        const date = text(order, ".order-date");
-        for (const suborder of order.querySelectorAll(".suborder")) {
-          const vendor = text(suborder, ".suborder-vendor");
-          const suborderNumber = text(suborder, ".suborder-number");
-          for (const line of suborder.querySelectorAll(".historical-suborder-item")) {
-            lines.push({
-              date,
-              vendor,
-              suborderNumber,
-              name: text(line, ".suborder-item-name"),
-              manuCode: text(line, ".suborder-item-manu"),
-              quantity: text(line, ".suborder-item-quantity"),
-              unitPrice: text(line, ".suborder-item-unit-price"),
-              status: text(line, ".suborder-item-status"),
-            });
-          }
-        }
-      }
-      return JSON.stringify(lines);
-    })()
-    """
 }

@@ -142,6 +142,19 @@ final class CoreFlowUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Backups are automatic"].exists)
     }
 
+    func testImportOrdersListsSuppliersAndCanRemoveAndAddThem() {
+        tapButton("Import Orders")
+        expectText("SupplyClinic")
+        expectText("Not imported yet")
+        tapButton("Remove SupplyClinic")
+        expectText("Add a supplier to get started.")
+        tapButton("+ Add a Supplier")
+        tapButton("SupplyClinic")
+        expectText("Not imported yet")
+        tapButton("Done")
+        expectText("Welcome to Inventory Tracker")
+    }
+
     func testVendorCanBeAddedAndAppearsInTheList() {
         tapButton("Vendors")
         tapButton("+ Add Vendor")

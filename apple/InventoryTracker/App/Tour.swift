@@ -18,7 +18,7 @@ nonisolated enum TourStep: Int, CaseIterable {
         switch self {
         case .dashboard: "This is the first thing you see. It shows what is running low and what expires soon."
         case .items: "Everything you stock is listed here. Click an item to see its details. Every month or two, press Count Stock and correct any numbers that are off."
-        case .purchases: "Add a purchase when an order arrives, or import your orders from SupplyClinic. Your stock goes up by itself."
+        case .purchases: "Add a purchase when an order arrives, or press Import Orders to bring them in from your suppliers. Your stock goes up by itself."
         case .reorder: "Items that run low show up here. Press Reorder List for a ready-made shopping list."
         case .settings: "Your inventory is saved every day by itself. Settings is where you find your backups and turn on reminders."
         }

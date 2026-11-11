@@ -12,21 +12,10 @@ enum SavedLoginError: LocalizedError {
     }
 }
 
-/// Holds one SupplyClinic login in this device's Keychain. The item never syncs, and filling it
+/// Holds one supplier login in this device's Keychain. The item never syncs, and filling it
 /// asks the device owner to confirm with Touch ID, Face ID, or the device password.
 nonisolated struct SavedLoginStore {
-    private static let productionService = "com.joshuaswanson.inventorytracker.supplyclinic"
-
-    var service = SavedLoginStore.defaultService
-
-    static var defaultService: String {
-        #if DEBUG
-        if let service = ProcessInfo.processInfo.environment["INVENTORY_KEYCHAIN_SERVICE"] {
-            return service
-        }
-        #endif
-        return productionService
-    }
+    var service: String
 
     private var baseQuery: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
@@ -57,7 +46,7 @@ nonisolated struct SavedLoginStore {
         delete()
         var item = baseQuery
         item[kSecAttrAccount as String] = email
-        item[kSecAttrLabel as String] = "Inventory Tracker SupplyClinic login"
+        item[kSecAttrLabel as String] = "Inventory Tracker supplier login"
         item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         item[kSecValueData as String] = Data(password.utf8)
         let status = SecItemAdd(item as CFDictionary, nil)
@@ -72,7 +61,19 @@ nonisolated struct SavedLoginStore {
         #if DEBUG
         if ProcessInfo.processInfo.environment["INVENTORY_SKIP_OWNER_CHECK"] != nil { return true }
         #endif
-        let reason = "fill your saved SupplyClinic login"
+        let reason = "fill your saved login"
         return (try? await LAContext().evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
+    }
+}
+
+extension SavedLoginStore {
+    init(supplierID: String) {
+        #if DEBUG
+        if let service = ProcessInfo.processInfo.environment["INVENTORY_KEYCHAIN_SERVICE"] {
+            self.init(service: service)
+            return
+        }
+        #endif
+        self.init(service: "com.joshuaswanson.inventorytracker.\(supplierID)")
     }
 }

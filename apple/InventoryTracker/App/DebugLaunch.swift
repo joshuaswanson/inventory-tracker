@@ -14,7 +14,7 @@ enum DebugLaunch {
         }
 
         if let email = environment["INVENTORY_SEED_LOGIN"] {
-            try? SavedLoginStore().save(email: email, password: "fake-password")
+            try? SavedLoginStore(supplierID: Supplier.supplyClinic.id).save(email: email, password: "fake-password")
         }
 
         let screen = environment["INVENTORY_SCREEN"] ?? ""

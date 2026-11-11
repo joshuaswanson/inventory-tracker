@@ -2,6 +2,43 @@ import Foundation
 import Testing
 @testable import InventoryTracker
 
+@Suite struct SupplierTests {
+    @Test func everySupplierHasAUniqueIDAndSecureAddresses() {
+        #expect(Set(Supplier.all.map(\.id)).count == Supplier.all.count)
+        for supplier in Supplier.all {
+            #expect(supplier.ordersURL.scheme == "https")
+            #expect(supplier.signInURL.scheme == "https")
+            #expect(Supplier.withID(supplier.id) == supplier)
+        }
+        #expect(Supplier.supplyClinic.ordersURL(page: 1).absoluteString == "https://www.supplyclinic.com/checkout/orders")
+        #expect(Supplier.supplyClinic.ordersURL(page: 3).absoluteString == "https://www.supplyclinic.com/checkout/orders?page=3")
+    }
+
+    @Test func settingsRememberSuppliersEmailsAndImportDates() {
+        let name = "tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        #expect(SupplierSettings.added(in: defaults) == [.supplyClinic])
+        SupplierSettings.setAdded([], in: defaults)
+        #expect(SupplierSettings.added(in: defaults).isEmpty)
+
+        defaults.set("old@example.com", forKey: "supplyClinicEmail")
+        #expect(SupplierSettings.email(for: .supplyClinic, in: defaults) == "old@example.com")
+        SupplierSettings.setEmail("new@example.com", for: .supplyClinic, in: defaults)
+        #expect(SupplierSettings.email(for: .supplyClinic, in: defaults) == "new@example.com")
+
+        #expect(SupplierSettings.lastImport(for: .supplyClinic, in: defaults) == nil)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        SupplierSettings.setLastImport(now, for: .supplyClinic, in: defaults)
+        #expect(SupplierSettings.lastImport(for: .supplyClinic, in: defaults) == now)
+    }
+
+    @Test func eachSupplierKeepsItsOwnSavedLogin() {
+        #expect(SavedLoginStore(supplierID: "supplyclinic").service == "com.joshuaswanson.inventorytracker.supplyclinic")
+        #expect(SavedLoginStore(supplierID: "other").service != SavedLoginStore(supplierID: "supplyclinic").service)
+    }
+}
+
 @Suite struct SavedLoginStoreTests {
     private func makeStore() -> SavedLoginStore {
         SavedLoginStore(service: "com.joshuaswanson.inventorytracker.tests.\(UUID().uuidString)")

@@ -30,9 +30,9 @@ private let orderPage = """
 </body></html>
 """
 
-@Suite struct SupplyClinicExtractionTests {
+@Suite struct SupplierBrowserTests {
     @Test func scriptReadsOrderLinesFromARealWebView() async throws {
-        let browser = SupplyClinicBrowser()
+        let browser = SupplierBrowser(supplier: .supplyClinic)
         try await browser.loadHTML(orderPage)
         let lines = try await browser.extractLines()
 
@@ -67,7 +67,7 @@ private let orderPage = """
         </form>
         </body></html>
         """
-        let browser = SupplyClinicBrowser()
+        let browser = SupplierBrowser(supplier: .supplyClinic)
         try await browser.loadHTML(page)
 
         let password = #"p"a'ss\word`${1}<b>"#
@@ -93,7 +93,7 @@ private let orderPage = """
         </form>
         </body></html>
         """
-        let browser = SupplyClinicBrowser()
+        let browser = SupplierBrowser(supplier: .supplyClinic)
         try await browser.loadHTML(page)
         try await browser.submitCredentials(email: "a@example.com", password: "secret")
         try await Task.sleep(for: .milliseconds(100))
@@ -104,15 +104,15 @@ private let orderPage = """
     }
 
     @Test func pageWithoutASignInFormIsReported() async throws {
-        let browser = SupplyClinicBrowser()
+        let browser = SupplierBrowser(supplier: .supplyClinic)
         try await browser.loadHTML("<html><body>Maintenance</body></html>")
-        await #expect(throws: SupplyClinicFailure.self) {
+        await #expect(throws: ImportFailure.self) {
             try await browser.submitCredentials(email: "a@example.com", password: "b")
         }
     }
 
     @Test func emptyPageHasNoLines() async throws {
-        let browser = SupplyClinicBrowser()
+        let browser = SupplierBrowser(supplier: .supplyClinic)
         try await browser.loadHTML("<html><body>No orders</body></html>")
         #expect(try await browser.extractLines().isEmpty)
     }

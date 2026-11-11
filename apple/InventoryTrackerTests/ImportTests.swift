@@ -34,7 +34,7 @@ private func sampleBackup() -> Backup {
     )
 }
 
-@Suite struct SupplyClinicParsingTests {
+@Suite struct OrderParsingTests {
     @Test func lineParsesEveryField() {
         let line = OrderLine(raw: rawLine())
         #expect(line.date == "2026-03-14")
@@ -44,33 +44,33 @@ private func sampleBackup() -> Backup {
         #expect(line.quantity == 3)
         #expect(line.unitPrice == 1204.5)
         #expect(line.status == "Delivered")
-        #expect(line.sourceID == "supplyclinic:S-100:GZ-22")
+        #expect(line.sourceID(for: .supplyClinic) == "supplyclinic:S-100:GZ-22")
     }
 
     @Test func unitIsInferredFromTheProductName() {
-        #expect(SupplyClinicText.unit(for: "Ultimate Bib 250/Case") == .case)
-        #expect(SupplyClinicText.unit(for: "Syringe 50/Bx") == .box)
-        #expect(SupplyClinicText.unit(for: "Angles 200/Pkg") == .pack)
-        #expect(SupplyClinicText.unit(for: "Rinse 4 oz Bottle") == .bottle)
-        #expect(SupplyClinicText.unit(for: "Debacterol 1.5ml Vial") == .each)
+        #expect(OrderText.unit(for: "Ultimate Bib 250/Case") == .case)
+        #expect(OrderText.unit(for: "Syringe 50/Bx") == .box)
+        #expect(OrderText.unit(for: "Angles 200/Pkg") == .pack)
+        #expect(OrderText.unit(for: "Rinse 4 oz Bottle") == .bottle)
+        #expect(OrderText.unit(for: "Debacterol 1.5ml Vial") == .each)
     }
 
     @Test func pageDetection() {
-        #expect(SupplyClinicText.isChallengePage("<title>Just a moment...</title>"))
-        #expect(!SupplyClinicText.isChallengePage("<div class=\"order\"></div>"))
-        #expect(SupplyClinicText.isSignInPage(url: "https://www.supplyclinic.com/users/sign_in", markup: ""))
-        #expect(SupplyClinicText.isSignInPage(url: "https://x", markup: "<input name=\"user[password]\">"))
+        #expect(OrderText.isChallengePage("<title>Just a moment...</title>"))
+        #expect(!OrderText.isChallengePage("<div class=\"order\"></div>"))
+        #expect(Supplier.supplyClinic.isSignInPage(url: "https://www.supplyclinic.com/users/sign_in", markup: ""))
+        #expect(Supplier.supplyClinic.isSignInPage(url: "https://x", markup: "<input name=\"user[password]\">"))
     }
 }
 
-@Suite struct SupplyClinicMergeTests {
+@Suite struct OrderMergeTests {
     @Test func mergeCreatesRecordsAndSkipsReturns() throws {
         let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
         let lines = [
             OrderLine(raw: rawLine()),
             OrderLine(raw: rawLine(name: "Returned Thing", manuCode: "Manu Code: RT-1", status: "Status: Returned")),
         ]
-        let summary = try SupplyClinicMerge.merge(lines, into: context, today: "2026-04-01")
+        let summary = try OrderMerge.merge(lines, from: .supplyClinic, into: context, today: "2026-04-01")
         let item = try #require(try context.fetch(FetchDescriptor<Item>()).first)
         #expect(summary == OrderImportSummary(imported: 1, duplicates: 0, skipped: 1, newItems: 1, newVendors: 1, newItemIDs: [item.id]))
         #expect(item.unit == .pack)
@@ -83,8 +83,8 @@ private func sampleBackup() -> Backup {
     @Test func secondImportOnlyReportsDuplicates() throws {
         let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
         let lines = [OrderLine(raw: rawLine())]
-        try SupplyClinicMerge.merge(lines, into: context)
-        let summary = try SupplyClinicMerge.merge(lines, into: context)
+        try OrderMerge.merge(lines, from: .supplyClinic, into: context)
+        let summary = try OrderMerge.merge(lines, from: .supplyClinic, into: context)
         #expect(summary.imported == 0)
         #expect(summary.duplicates == 1)
         #expect(try context.fetchCount(FetchDescriptor<Purchase>()) == 1)
@@ -95,13 +95,13 @@ private func sampleBackup() -> Backup {
         var backup = sampleBackup()
         backup.purchases[0].sourceId = "supplyclinic:S-100:GZ-22"
         try BackupMerge.merge(backup, into: context)
-        let summary = try SupplyClinicMerge.merge([OrderLine(raw: rawLine())], into: context)
+        let summary = try OrderMerge.merge([OrderLine(raw: rawLine())], from: .supplyClinic, into: context)
         #expect(summary.duplicates == 1)
     }
 
     @Test func lineWithoutADateIsSkipped() throws {
         let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
-        let summary = try SupplyClinicMerge.merge([OrderLine(raw: rawLine(date: "soon"))], into: context)
+        let summary = try OrderMerge.merge([OrderLine(raw: rawLine(date: "soon"))], from: .supplyClinic, into: context)
         #expect(summary.imported == 0)
         #expect(summary.skipped == 1)
     }

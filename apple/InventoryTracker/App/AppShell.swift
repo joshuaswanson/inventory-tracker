@@ -66,7 +66,8 @@ private struct SheetContent: View {
         case .reorder: ReorderListView()
         case .spending: SpendingView()
         case .data: DataView()
-        case .supplyClinic: SupplyClinicImportView()
+        case .importOrders: ImportOrdersView()
+        case .supplier(let supplier): SupplierImportView(supplier: supplier)
         }
     }
 }

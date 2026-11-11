@@ -70,7 +70,7 @@ struct DashboardView: View {
     private var welcomeButtons: some View {
         Button("Add Item") { router.sheet = .item(nil) }
             .buttonStyle(.themedPrimary)
-        Button("Import from SupplyClinic") { router.sheet = .supplyClinic }
+        Button("Import Orders") { router.sheet = .importOrders }
             .buttonStyle(.themedSecondary)
         Button("Take a Quick Tour") { Tour.start(router: router, context: modelContext) }
             .buttonStyle(.themedSecondary)

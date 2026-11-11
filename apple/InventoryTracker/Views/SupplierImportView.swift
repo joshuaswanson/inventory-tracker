@@ -19,6 +19,7 @@ private struct WebContainer: UIViewRepresentable {
 #endif
 
 private struct SavedLoginSuggestion: View {
+    let supplierName: String
     let email: String
     let onUse: () -> Void
     let onRemove: () -> Void
@@ -36,7 +37,7 @@ private struct SavedLoginSuggestion: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Theme.text)
                             .lineLimit(1)
-                        Text("Saved SupplyClinic login")
+                        Text("Saved \(supplierName) login")
                             .font(.system(size: 11))
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -58,7 +59,7 @@ private struct SavedLoginSuggestion: View {
     }
 }
 
-struct SupplyClinicImportView: View {
+struct SupplierImportView: View {
     private enum Field {
         case email, password
     }
@@ -73,16 +74,17 @@ struct SupplyClinicImportView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("supplyClinicEmail") private var savedEmail = ""
+    @Environment(Router.self) private var router
+    @State private var savedEmail: String
     @Query private var allItems: [Item]
-    @State private var browser = SupplyClinicBrowser()
+    @State private var browser: SupplierBrowser
     @State private var email = ""
     @State private var password = ""
     @State private var isWorking = false
     @State private var isSigningIn = false
     @State private var summary: OrderImportSummary?
     @State private var errorMessage: String?
-    @State private var errorPage: SupplyClinicPage?
+    @State private var errorPage: SupplierPage?
     @State private var isReviewing = false
     @State private var perishableIDs: Set<String> = []
     @State private var expirations: [String: String] = [:]
@@ -90,9 +92,17 @@ struct SupplyClinicImportView: View {
     @State private var savesLogin = true
     @State private var activeField = Field.email
     @State private var emailFocusRequest = 0
-    private let loginStore = SavedLoginStore()
+    private let supplier: Supplier
+    private let loginStore: SavedLoginStore
 
-    private var page: SupplyClinicPage { isSigningIn ? .signIn : browser.page }
+    init(supplier: Supplier) {
+        self.supplier = supplier
+        loginStore = SavedLoginStore(supplierID: supplier.id)
+        _browser = State(initialValue: SupplierBrowser(supplier: supplier))
+        _savedEmail = State(initialValue: SupplierSettings.email(for: supplier))
+    }
+
+    private var page: SupplierPage { isSigningIn ? .signIn : browser.page }
 
     private var visibleError: String? { errorPage == page ? errorMessage : nil }
 
@@ -148,10 +158,10 @@ struct SupplyClinicImportView: View {
     private var verificationHeader: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Import from SupplyClinic")
+                Text("Import from \(supplier.name)")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.text)
-                Text("SupplyClinic wants to confirm you're a person. Complete the check below.")
+                Text("\(supplier.name) wants to confirm you're a person. Complete the check below.")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -170,12 +180,12 @@ struct SupplyClinicImportView: View {
                 review(newItems(in: summary))
             }
         } else if let summary {
-            FormSheet(title: "Import from SupplyClinic", saveTitle: "Done", showsCancel: false, macHeight: Self.formHeight, onSave: { dismiss() }) {
+            FormSheet(title: "Import from \(supplier.name)", saveTitle: "Done", showsCancel: false, macHeight: Self.formHeight, onSave: { router.sheet = .importOrders }) {
                 result(summary)
             }
         } else {
             FormSheet(
-                title: "Import from SupplyClinic",
+                title: "Import from \(supplier.name)",
                 saveTitle: submitTitle,
                 canSave: canSubmit,
                 macHeight: Self.formHeight,
@@ -188,11 +198,11 @@ struct SupplyClinicImportView: View {
                 case .ready:
                     signedIn
                 case .unreachable:
-                    intro("Couldn't reach SupplyClinic. Check your internet connection and try again.")
+                    intro("Couldn't reach \(supplier.name). Check your internet connection and try again.")
                 case .loading, .challenge:
                     HStack(spacing: 10) {
                         ProgressView().controlSize(.small)
-                        intro("Connecting to SupplyClinic...")
+                        intro("Connecting to \(supplier.name)...")
                     }
                 }
             }
@@ -208,8 +218,8 @@ struct SupplyClinicImportView: View {
 
     @ViewBuilder
     private var signInFields: some View {
-        intro("Sign in with your SupplyClinic account to import your order history as purchases. Only new orders are added, so it's safe to run anytime.")
-        LabeledField(title: "SupplyClinic Email", isRequired: true) {
+        intro("Sign in with your \(supplier.name) account to import your order history as purchases. Only new orders are added, so it's safe to run anytime.")
+        LabeledField(title: "\(supplier.name) Email", isRequired: true) {
             ThemedTextField("you@example.com", text: $email, keyboard: .email, focusRequest: emailFocusRequest) {
                 activeField = .email
             }
@@ -217,7 +227,7 @@ struct SupplyClinicImportView: View {
             suggestion(under: .email)
         }
         LabeledField(title: "Password", isRequired: true) {
-            ThemedSecureField(placeholder: "Your SupplyClinic password", text: $password) {
+            ThemedSecureField(placeholder: "Your \(supplier.name) password", text: $password) {
                 activeField = .password
             }
             suggestion(under: .password)
@@ -225,7 +235,7 @@ struct SupplyClinicImportView: View {
         CheckboxField(title: "Save this login on this device", isOn: $savesLogin)
         Text(savesLogin
             ? "Saved only on this device after you sign in. \(Self.ownerCheck) is needed to use it."
-            : "Your password is only used to sign in to SupplyClinic. It is not saved.")
+            : "Your password is only used to sign in to \(supplier.name). It is not saved.")
             .font(.system(size: 12))
             .foregroundStyle(Theme.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -234,7 +244,7 @@ struct SupplyClinicImportView: View {
     @ViewBuilder
     private func suggestion(under field: Field) -> some View {
         if activeField == field, password.isEmpty, let savedLoginEmail {
-            SavedLoginSuggestion(email: savedLoginEmail, onUse: useSavedLogin, onRemove: removeSavedLogin)
+            SavedLoginSuggestion(supplierName: supplier.name, email: savedLoginEmail, onUse: useSavedLogin, onRemove: removeSavedLogin)
         }
     }
 
@@ -261,7 +271,7 @@ struct SupplyClinicImportView: View {
     private var signedIn: some View {
         intro(isWorking
             ? "Reading your order history, \(browser.pagesRead) pages so far..."
-            : "Signed in to SupplyClinic\(savedEmail.isEmpty ? "" : " as \(savedEmail)"). Press Import to bring in any new orders.")
+            : "Signed in to \(supplier.name)\(savedEmail.isEmpty ? "" : " as \(savedEmail)"). Press Import to bring in any new orders.")
         Button("Use a different account") {
             errorMessage = nil
             Task { await browser.signOut() }
@@ -352,6 +362,7 @@ struct SupplyClinicImportView: View {
                 if needsSignIn {
                     try await browser.signIn(email: enteredEmail, password: enteredPassword)
                     savedEmail = enteredEmail
+                    SupplierSettings.setEmail(enteredEmail, for: supplier)
                     if savesLogin {
                         try? loginStore.save(email: enteredEmail, password: enteredPassword)
                         savedLoginEmail = enteredEmail
@@ -360,7 +371,8 @@ struct SupplyClinicImportView: View {
                     isSigningIn = false
                 }
                 let lines = try await browser.collectOrders()
-                let imported = try SupplyClinicMerge.merge(lines, into: modelContext)
+                let imported = try OrderMerge.merge(lines, from: supplier, into: modelContext)
+                SupplierSettings.setLastImport(Date(), for: supplier)
                 isReviewing = !imported.newItemIDs.isEmpty
                 summary = imported
             } catch {

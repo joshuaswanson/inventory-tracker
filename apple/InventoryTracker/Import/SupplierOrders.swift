@@ -23,14 +23,14 @@ nonisolated struct OrderLine: Equatable {
     var status: String
 
     init(raw: RawOrderLine) {
-        date = SupplyClinicText.date(raw.date)
-        vendor = SupplyClinicText.stripping(raw.vendor, labels: ["Items from"])
-        suborderNumber = SupplyClinicText.stripping(raw.suborderNumber, labels: ["#"])
+        date = OrderText.date(raw.date)
+        vendor = OrderText.stripping(raw.vendor, labels: ["Items from"])
+        suborderNumber = OrderText.stripping(raw.suborderNumber, labels: ["#"])
         name = raw.name
-        manuCode = SupplyClinicText.stripping(raw.manuCode, labels: ["Manu Code:"])
-        quantity = SupplyClinicText.quantity(raw.quantity)
-        unitPrice = SupplyClinicText.money(raw.unitPrice)
-        status = SupplyClinicText.stripping(raw.status, labels: ["Status:"])
+        manuCode = OrderText.stripping(raw.manuCode, labels: ["Manu Code:"])
+        quantity = OrderText.quantity(raw.quantity)
+        unitPrice = OrderText.money(raw.unitPrice)
+        status = OrderText.stripping(raw.status, labels: ["Status:"])
     }
 
     var isImportable: Bool {
@@ -39,12 +39,12 @@ nonisolated struct OrderLine: Equatable {
         return date != nil && !name.isEmpty && (quantity ?? 0) > 0 && unitPrice != nil
     }
 
-    var sourceID: String {
-        "supplyclinic:\(suborderNumber):\(manuCode.isEmpty ? name : manuCode)"
+    func sourceID(for supplier: Supplier) -> String {
+        "\(supplier.id):\(suborderNumber):\(manuCode.isEmpty ? name : manuCode)"
     }
 }
 
-nonisolated enum SupplyClinicText {
+nonisolated enum OrderText {
     static func stripping(_ text: String, labels: [String]) -> String {
         labels.reduce(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
             $0.replacingOccurrences(of: $1, with: "")
@@ -79,10 +79,6 @@ nonisolated enum SupplyClinicText {
     static func isChallengePage(_ markup: String) -> Bool {
         ["challenge-platform", "Just a moment", "cf-challenge", "Attention Required"].contains { markup.contains($0) }
     }
-
-    static func isSignInPage(url: String, markup: String) -> Bool {
-        url.contains("/users/sign_in") || markup.contains("name=\"user[password]\"")
-    }
 }
 
 nonisolated struct OrderImportSummary: Equatable {
@@ -94,13 +90,13 @@ nonisolated struct OrderImportSummary: Equatable {
     var newItemIDs: [String] = []
 }
 
-enum SupplyClinicMerge {
-    private static let importNote = "Imported from SupplyClinic"
+enum OrderMerge {
     private static let importedReorderLevel = 2
 
     @discardableResult
-    static func merge(_ lines: [OrderLine], into context: ModelContext, today: String = Day.today) throws -> OrderImportSummary {
+    static func merge(_ lines: [OrderLine], from supplier: Supplier, into context: ModelContext, today: String = Day.today) throws -> OrderImportSummary {
         var summary = OrderImportSummary()
+        let importNote = "Imported from \(supplier.name)"
         var itemsByName = Dictionary(try context.fetch(FetchDescriptor<Item>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
         var vendorsByName = Dictionary(try context.fetch(FetchDescriptor<Vendor>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
         var seenSources = Set(try context.fetch(FetchDescriptor<Purchase>()).compactMap(\.sourceId))
@@ -110,7 +106,8 @@ enum SupplyClinicMerge {
                 summary.skipped += 1
                 continue
             }
-            guard !seenSources.contains(line.sourceID) else {
+            let sourceID = line.sourceID(for: supplier)
+            guard !seenSources.contains(sourceID) else {
                 summary.duplicates += 1
                 continue
             }
@@ -130,7 +127,7 @@ enum SupplyClinicMerge {
             } else {
                 item = Item(
                     name: line.name,
-                    unit: SupplyClinicText.unit(for: line.name),
+                    unit: OrderText.unit(for: line.name),
                     reorderLevel: importedReorderLevel,
                     notes: importNote,
                     createdAt: today
@@ -146,9 +143,9 @@ enum SupplyClinicMerge {
             purchase.item = item
             purchase.vendor = vendor
             purchase.productNumber = line.manuCode
-            purchase.notes = "SupplyClinic order \(line.suborderNumber)"
-            purchase.sourceId = line.sourceID
-            seenSources.insert(line.sourceID)
+            purchase.notes = "\(supplier.name) order \(line.suborderNumber)"
+            purchase.sourceId = sourceID
+            seenSources.insert(sourceID)
             summary.imported += 1
         }
 

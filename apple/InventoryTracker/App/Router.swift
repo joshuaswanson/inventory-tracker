@@ -32,7 +32,8 @@ enum ActiveSheet: Identifiable {
     case reorder
     case spending
     case data
-    case supplyClinic
+    case importOrders
+    case supplier(Supplier)
 
     var id: String {
         switch self {
@@ -45,7 +46,8 @@ enum ActiveSheet: Identifiable {
         case .reorder: "reorder"
         case .spending: "spending"
         case .data: "data"
-        case .supplyClinic: "supply-clinic"
+        case .importOrders: "import-orders"
+        case .supplier(let supplier): "supplier-\(supplier.id)"
         }
     }
 }

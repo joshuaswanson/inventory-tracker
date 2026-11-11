@@ -41,15 +41,6 @@ private struct TextLinkButton: View {
     }
 }
 
-private struct TrailingIconLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 6) {
-            configuration.title
-            configuration.icon.font(.system(size: 9, weight: .bold))
-        }
-    }
-}
-
 struct PurchasesView: View {
     @Query private var purchases: [Purchase]
     @Environment(Router.self) private var router
@@ -65,14 +56,19 @@ struct PurchasesView: View {
             if isWide {
                 Button("Spending") { router.sheet = .spending }
                     .buttonStyle(.themedSecondary)
-                importMenu.buttonStyle(.themedSecondary)
+                Button("Import Orders") { router.sheet = .importOrders }
+                    .buttonStyle(.themedSecondary)
             } else {
                 Button {
                     router.sheet = .spending
                 } label: {
                     Label("Spending", systemImage: "chart.pie")
                 }
-                importMenu
+                Button {
+                    router.sheet = .importOrders
+                } label: {
+                    Label("Import Orders", systemImage: "square.and.arrow.down")
+                }
             }
             HeaderButton(title: "+ Add Purchase", compactImage: "plus") { router.sheet = .purchase(nil, itemID: nil) }
         } content: {
@@ -90,23 +86,6 @@ struct PurchasesView: View {
                 }
             }
         }
-    }
-
-    private var importMenu: some View {
-        Menu {
-            Button("SupplyClinic") { router.sheet = .supplyClinic }
-            Button("Backup File") { router.sheet = .data }
-        } label: {
-            if isWide {
-                Label("Import", systemImage: "chevron.down")
-                    .labelStyle(TrailingIconLabelStyle())
-            } else {
-                Label("Import", systemImage: "square.and.arrow.down")
-            }
-        }
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .fixedSize()
     }
 
     private var visiblePurchases: [Purchase] {
