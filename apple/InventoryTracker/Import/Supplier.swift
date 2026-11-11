@@ -22,7 +22,7 @@ nonisolated struct Supplier: Identifiable, Hashable {
     /// `knownOrders` and returns `{ ordersFound, lines }`, or `{ signedOut: true }`.
     var collectScript: String?
 
-    static let all = [supplyClinic, benco, elevate, dentalMarket, kettenbach, net32]
+    static let all = [supplyClinic, benco, elevate, dentalMarket, kettenbach, net32, tdsc, frontier]
     static let historyDays = 3 * 365
 
     static func withID(_ id: String) -> Supplier? {
@@ -476,6 +476,141 @@ nonisolated extension Supplier {
               quantity: (meta.match(/Qty\s+(\d+)/) ?? [])[1] ?? "",
               unitPrice: (meta.match(/Price\s+(\$[\d,.]+)/) ?? [])[1] ?? "",
               status: "",
+            });
+          }
+        }
+        return JSON.stringify({ ordersFound: orders.length, lines });
+        """#
+    )
+
+    static let tdsc = Supplier(
+        id: "tdsc",
+        name: "TDSC",
+        cookieDomain: "tdsc",
+        ordersURL: URL(string: "https://www.tdsc.com/my-account/orders")!,
+        signInURL: URL(string: "https://www.tdsc.com/signin")!,
+        signInPath: "/signin",
+        passwordFieldMarkup: "id=\"j_password\"",
+        signInScript: signInScript(email: "#j_username", password: "#j_password"),
+        submittedFormResetScript: passwordClearedScript,
+        extractionScript: "",
+        collectScript: #"""
+        const parse = async (address) => {
+          const response = await fetch(address, { credentials: "include" });
+          return { document: new DOMParser().parseFromString(await response.text(), "text/html"), address: response.url ?? "" };
+        };
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const toDate = (text) => {
+          const parts = text.match(/([A-Za-z]{3})[a-z]* (\d{1,2}), (\d{4})/);
+          if (!parts) return "";
+          return `${String(months.indexOf(parts[1].toLowerCase()) + 1).padStart(2, "0")}/${parts[2].padStart(2, "0")}/${parts[3]}`;
+        };
+        const labelled = (root, label) => {
+          const element = [...root.querySelectorAll(".item-label")].find((candidate) => candidate.textContent.trim() === label);
+          const value = element?.nextElementSibling ?? element?.parentElement?.nextElementSibling;
+          return (value?.textContent ?? "").replace(/\s+/g, " ").trim();
+        };
+        const lines = [];
+        let ordersFound = 0;
+        const seen = new Set();
+        for (let page = 0; page < 40; page++) {
+          const list = await parse(`${location.origin}/my-account/orders?page=${page}`);
+          if (/\/signin/.test(list.address) || list.document.querySelector("#j_password")) {
+            return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
+          }
+          const orderNumbers = [...new Set([...list.document.querySelectorAll("a")]
+            .map((link) => (link.getAttribute("href") ?? "").match(/^\/my-account\/order\/(\d+)$/))
+            .filter(Boolean)
+            .map((match) => match[1]))]
+            .filter((number) => !seen.has(number));
+          if (orderNumbers.length === 0) break;
+          let unseen = 0;
+          for (const orderNumber of orderNumbers) {
+            seen.add(orderNumber);
+            ordersFound += 1;
+            if (knownOrders.includes(orderNumber)) continue;
+            unseen += 1;
+            const order = (await parse(`${location.origin}/my-account/order/${orderNumber}`)).document;
+            const date = toDate(labelled(order, "Date Placed"));
+            const status = (order.body.textContent.match(/Status:\s*([A-Za-z ]+?)\s{2,}/) ?? [])[1] ?? "";
+            for (const quantityLabel of order.querySelectorAll(".order-details__item-qty")) {
+              let item = quantityLabel;
+              for (let step = 0; step < 6 && item && !item.querySelector(".order-details__mfr-container"); step++) item = item.parentElement;
+              if (!item) continue;
+              const quantity = Number(quantityLabel.textContent.replace(/\D/g, ""));
+              const total = [...item.querySelectorAll("div, span")]
+                .map((element) => element.children.length === 0 ? element.textContent.trim() : "")
+                .find((text) => /^\$[\d,]+\.\d\d$/.test(text));
+              const amount = total ? Number(total.replace(/[$,]/g, "")) : NaN;
+              const name = [...item.querySelectorAll("a")]
+                .find((link) => !link.classList.contains("returnPolicy") && !link.className.includes("track") && link.textContent.trim());
+              lines.push({
+                date,
+                vendor: "TDSC",
+                suborderNumber: orderNumber,
+                name: (name?.textContent ?? "").replace(/\s+/g, " ").trim(),
+                manuCode: (item.querySelector(".order-details__mfr-container")?.textContent ?? "").replace(/MFR #:/, "").trim(),
+                quantity: String(quantity || ""),
+                unitPrice: quantity > 0 && !Number.isNaN(amount) ? `$${(amount / quantity).toFixed(2)}` : "",
+                status,
+              });
+            }
+          }
+          if (unseen === 0) break;
+        }
+        return JSON.stringify({ ordersFound, lines });
+        """#
+    )
+
+    static let frontier = Supplier(
+        id: "frontier",
+        name: "Frontier Dental",
+        cookieDomain: "frontierdental",
+        ordersURL: URL(string: "https://www.frontierdental.com/us/en/home")!,
+        signInURL: URL(string: "https://www.frontierdental.com/us/en/login")!,
+        signInPath: "/login",
+        passwordFieldMarkup: "type=\"password\"",
+        signInScript: signInScript(
+            email: "input[type='email'], input[name*='email' i], input[name*='user' i]",
+            password: "input[type='password']"
+        ),
+        submittedFormResetScript: passwordClearedScript,
+        extractionScript: "",
+        collectScript: #"""
+        const ordersLink = document.querySelector('a[href*="/my-account/orders/"]');
+        if (!ordersLink) {
+          return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
+        }
+        const response = await fetch(ordersLink.href, { credentials: "include" });
+        const page = new DOMParser().parseFromString(await response.text(), "text/html");
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const toDate = (text) => {
+          const parts = text.match(/([A-Za-z]{3})[a-z]* (\d{1,2}), (\d{4})/);
+          if (!parts) return "";
+          return `${String(months.indexOf(parts[1].toLowerCase()) + 1).padStart(2, "0")}/${parts[2].padStart(2, "0")}/${parts[3]}`;
+        };
+        const lines = [];
+        const orders = [...page.querySelectorAll(".your-order")];
+        for (const order of orders) {
+          const cells = [...order.querySelectorAll(".order-box-header .row > div")].map((cell) => cell.textContent.replace(/\s+/g, " ").trim());
+          const value = (label) => (cells.find((cell) => cell.toLowerCase().startsWith(label)) ?? "").slice(label.length).trim();
+          const orderNumber = (cells.map((cell) => cell.match(/^Order\s+(?!placed|by)(\S+)/i)).find(Boolean) ?? [])[1] ?? "";
+          if (!orderNumber || knownOrders.includes(orderNumber)) continue;
+          const date = toDate(value("order placed"));
+          const status = value("status");
+          for (const details of order.querySelectorAll(".pro-details")) {
+            const name = (details.querySelector("a.text-info")?.textContent ?? "").replace(/\s+/g, " ").trim();
+            if (!name || /^Frontier Marketing/i.test(name)) continue;
+            const price = details.querySelector(".product-price .special") ?? details.querySelector(".product-price");
+            lines.push({
+              date,
+              vendor: "Frontier Dental",
+              suborderNumber: orderNumber,
+              name,
+              manuCode: ((details.querySelector(".product-brand")?.textContent ?? "").match(/Code:\s*(\S+)/) ?? [])[1] ?? "",
+              quantity: (details.textContent.match(/Qty:\s*(\d+)/) ?? [])[1] ?? "",
+              unitPrice: (price?.textContent ?? "").trim(),
+              status,
             });
           }
         }

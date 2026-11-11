@@ -350,4 +350,77 @@ private let orderPage = """
         #expect(lines[1].unitPrice == 1017.3)
         #expect(browser.ordersFound == 3)
     }
+
+    @Test func tdscReadsEachOrderAndTurnsLineTotalsIntoUnitPrices() async throws {
+        let page = """
+        <html><body><script>
+        const pages = {
+          "orders?page=0": '<a href="/my-account/order/2002">Order Details</a><a href="/my-account/order/2002">x</a><a href="/my-account/order/1001">Order Details</a>',
+          "orders?page=1": '<a href="/my-account/order/2002">Order Details</a>',
+          "order/2002": `<div><span class="item-label">Order Number</span><span>2002</span></div>
+            <div><span class="item-label">Date Placed</span><span>Oct 9, 2026, 9:47 AM</span></div>
+            <b>Status:</b> Completed    <div class="order-confirmation__order-info">
+            <div class="order-details__row-full"><div class="order-confirmation__order-details">
+              <a>Lidocaine HCl 2% and Epinephrine</a><div class="order-details__mfr-container">MFR #: 12345</div>
+              <div class="price-line details"><div>$1,229.20</div><div class="order-confirmation__order-quantity">
+              <div class="order-details__item-qty-container"><span class="order-details__item-qty">Qty: 2</span></div></div></div>
+              <a class="returnPolicy">Read the Return Policy</a></div></div></div>`,
+        };
+        window.fetch = async (address) => {
+          const key = Object.keys(pages).find((candidate) => address.includes(candidate));
+          return { ok: true, status: 200, url: address, text: async () => pages[key] ?? "" };
+        };
+        </script></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .tdsc)
+        try await browser.loadHTML(page, baseURL: URL(string: "https://store.example/"))
+        let lines = try await browser.collectFromService(knownOrders: ["1001"])
+        #expect(browser.ordersFound == 2)
+        #expect(lines.count == 1)
+        let first = try #require(lines.first)
+        #expect(first.date == "2026-10-09")
+        #expect(first.suborderNumber == "2002")
+        #expect(first.name == "Lidocaine HCl 2% and Epinephrine")
+        #expect(first.manuCode == "12345")
+        #expect(first.quantity == 2)
+        #expect(first.unitPrice == 614.6)
+        #expect(first.status == "Completed")
+    }
+
+    @Test func frontierFollowsTheOrdersLinkAndSkipsMarketingInserts() async throws {
+        let page = """
+        <html><body><a href="/us/en/my-account/orders/abc123">Go to My Orders</a><script>
+        const order = (number, placed, items) => `<div class="your-order"><div class="order-box-header"><div class="row">
+          <div>Order placed <span class="d-block font-weight-bold">${placed}</span></div>
+          <div>Order <span class="d-block font-weight-bold">${number}</span></div>
+          <div>Status <span class="d-block font-weight-bold">Completed</span></div></div></div>${items}</div>`;
+        const item = (name, code, quantity, price) => `<div class="pro-details"><a class="text-info">${name}</a>
+          <small class="product-brand">Code: ${code}</small><div>Qty: ${quantity}</div>
+          <div class="product-price"><del>$99.99</del><span class="special">${price}</span></div></div>`;
+        window.fetch = async (address) => ({ ok: true, status: 200, url: address, text: async () =>
+          order("FW200", "Aug 12, 2026", item("Cook-Waite Lidocaine", "102-1234AB", 2, "$1,042.99") + item("Frontier Marketing - August Flyer", "", 1, "$0.00"))
+          + order("FW100", "Jul 1, 2026", item("Old Thing", "1", 1, "$1.00")) });
+        </script></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .frontier)
+        try await browser.loadHTML(page, baseURL: URL(string: "https://store.example/"))
+        let lines = try await browser.collectFromService(knownOrders: ["FW100"])
+        #expect(browser.ordersFound == 2)
+        #expect(lines.count == 1)
+        let first = try #require(lines.first)
+        #expect(first.date == "2026-08-12")
+        #expect(first.suborderNumber == "FW200")
+        #expect(first.name == "Cook-Waite Lidocaine")
+        #expect(first.manuCode == "102-1234AB")
+        #expect(first.quantity == 2)
+        #expect(first.unitPrice == 1042.99)
+    }
+
+    @Test func frontierWithoutAnOrdersLinkAsksForSignIn() async throws {
+        let browser = SupplierBrowser(supplier: .frontier)
+        try await browser.loadHTML("<html><body><a>LOGIN</a></body></html>")
+        await #expect(throws: ImportFailure.self) {
+            try await browser.collectFromService(knownOrders: [])
+        }
+    }
 }
