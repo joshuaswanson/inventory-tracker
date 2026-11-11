@@ -90,6 +90,27 @@ nonisolated struct OrderImportSummary: Equatable {
     var newItemIDs: [String] = []
 }
 
+nonisolated enum ImportWarning {
+    /// An import that reads nothing looks the same as a quiet month unless the app says so.
+    static func message(linesRead: Int, summary: OrderImportSummary, previouslyImported: Int, supplierName: String) -> String? {
+        if linesRead == 0, previouslyImported > 0 {
+            return "No orders were found on \(supplierName), but you have imported from it before. The site has probably changed. Nothing in your inventory was changed. Please tell the person who set up this app."
+        }
+        if linesRead == 0 {
+            return "No orders were found on \(supplierName). If you have ordered from it before, the site may have changed. Please tell the person who set up this app."
+        }
+        if summary.skipped == linesRead {
+            return "\(linesRead) orders were found on \(supplierName), but none could be read. The site has probably changed. Please tell the person who set up this app."
+        }
+        return nil
+    }
+
+    static func previouslyImported(from supplier: Supplier, in context: ModelContext) -> Int {
+        let purchases = (try? context.fetch(FetchDescriptor<Purchase>())) ?? []
+        return purchases.filter { $0.sourceId?.hasPrefix("\(supplier.id):") == true }.count
+    }
+}
+
 enum OrderMerge {
     private static let importedReorderLevel = 2
 

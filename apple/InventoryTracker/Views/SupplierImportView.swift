@@ -86,6 +86,7 @@ struct SupplierImportView: View {
     @State private var errorMessage: String?
     @State private var errorPage: SupplierPage?
     @State private var isReviewing = false
+    @State private var warning: String?
     @State private var perishableIDs: Set<String> = []
     @State private var expirations: [String: String] = [:]
     @State private var savedLoginEmail: String?
@@ -326,8 +327,17 @@ struct SupplierImportView: View {
 
     private func result(_ summary: OrderImportSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Import complete")
-                .font(.system(size: 16, weight: .semibold))
+            if let warning {
+                Label("Something looks wrong", systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.amber)
+                Text(warning)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Import complete")
+                    .font(.system(size: 16, weight: .semibold))
+            }
             resultLine(count: summary.imported, noun: "new purchase", suffix: "added")
             resultLine(count: summary.newItems, noun: "new item", suffix: "created")
             resultLine(count: summary.newVendors, noun: "new vendor", suffix: "created")
@@ -371,8 +381,12 @@ struct SupplierImportView: View {
                     isSigningIn = false
                 }
                 let lines = try await browser.collectOrders()
+                let previouslyImported = ImportWarning.previouslyImported(from: supplier, in: modelContext)
                 let imported = try OrderMerge.merge(lines, from: supplier, into: modelContext)
-                SupplierSettings.setLastImport(Date(), for: supplier)
+                warning = ImportWarning.message(linesRead: lines.count, summary: imported, previouslyImported: previouslyImported, supplierName: supplier.name)
+                if warning == nil {
+                    SupplierSettings.setLastImport(Date(), for: supplier)
+                }
                 isReviewing = !imported.newItemIDs.isEmpty
                 summary = imported
             } catch {

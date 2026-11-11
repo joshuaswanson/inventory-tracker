@@ -107,6 +107,42 @@ private func sampleBackup() -> Backup {
     }
 }
 
+@Suite struct ImportWarningTests {
+    private func message(read: Int, imported: Int = 0, duplicates: Int = 0, skipped: Int = 0, before: Int = 0) -> String? {
+        let summary = OrderImportSummary(imported: imported, duplicates: duplicates, skipped: skipped, newItems: 0, newVendors: 0)
+        return ImportWarning.message(linesRead: read, summary: summary, previouslyImported: before, supplierName: "Acme")
+    }
+
+    @Test func normalImportsHaveNoWarning() {
+        #expect(message(read: 26, imported: 3, duplicates: 23) == nil)
+        #expect(message(read: 25, duplicates: 23, skipped: 2, before: 23) == nil)
+    }
+
+    @Test func nothingFoundAfterEarlierImportsSaysTheSiteChanged() throws {
+        let text = try #require(message(read: 0, before: 23))
+        #expect(text.contains("you have imported from it before"))
+        #expect(text.contains("Nothing in your inventory was changed"))
+    }
+
+    @Test func nothingFoundOnAFirstImportIsFlaggedMoreGently() throws {
+        let text = try #require(message(read: 0))
+        #expect(text.contains("If you have ordered from it before"))
+    }
+
+    @Test func ordersThatCannotBeReadAreFlagged() throws {
+        let text = try #require(message(read: 12, skipped: 12, before: 5))
+        #expect(text.contains("none could be read"))
+    }
+
+    @Test func earlierImportsAreCountedPerSupplier() throws {
+        let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
+        try OrderMerge.merge([OrderLine(raw: rawLine())], from: .supplyClinic, into: context)
+        #expect(ImportWarning.previouslyImported(from: .supplyClinic, in: context) == 1)
+        let other = Supplier(id: "other", name: "Other", cookieDomain: "other", ordersURL: Supplier.supplyClinic.ordersURL, signInURL: Supplier.supplyClinic.signInURL, signInPath: "/x", passwordFieldMarkup: "x", signInScript: "", submittedFormResetScript: "", extractionScript: "")
+        #expect(ImportWarning.previouslyImported(from: other, in: context) == 0)
+    }
+}
+
 @Suite struct BackupTests {
     @Test func mergePreservesRelationshipsAndSkipsOrphans() throws {
         let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
