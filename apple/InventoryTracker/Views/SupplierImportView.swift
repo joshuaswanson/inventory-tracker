@@ -162,7 +162,9 @@ struct SupplierImportView: View {
                 Text("Import from \(supplier.name)")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.text)
-                Text("\(supplier.name) wants to confirm you're a person. Complete the check below.")
+                Text(browser.isWaitingForCheckOnSignInForm
+                    ? "Tick the \"Verify you are human\" box below. You'll be signed in right after."
+                    : "\(supplier.name) wants to confirm you're a person. Complete the check below.")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.textSecondary)
             }

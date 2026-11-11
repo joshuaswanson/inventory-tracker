@@ -457,6 +457,39 @@ private let orderPage = """
         #expect(fields["trap"] as? String == "")
     }
 
+    @Test func frontierWaitsForTheHumanCheckBeforeSubmitting() async throws {
+        let page = """
+        <html><body>
+        <form onsubmit="event.preventDefault(); document.title = 'sent:' + this.querySelector('#password').value">
+          <input id="email" name="email" type="email"><input id="password" name="password" type="password">
+          <div class="cf-turnstile"><input type="hidden" name="cf-turnstile-response" value=""></div>
+          <button type="submit">Login</button>
+        </form>
+        </body></html>
+        """
+        let browser = SupplierBrowser(supplier: .frontier)
+        try await browser.loadHTML(page)
+        let submission = try await browser.submitCredentials(email: "office@example.com", password: "secret")
+        #expect(submission == .waitingForHumanCheck)
+        #expect(try await browser.webView.evaluateJavaScript("document.title") as? String == "")
+
+        let waiting = Task { try await browser.waitForHumanCheck() }
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(browser.page == .challenge)
+        #expect(browser.isWaitingForCheckOnSignInForm)
+        _ = try await browser.webView.evaluateJavaScript("document.querySelector('[name=cf-turnstile-response]').value = 'passed'")
+        try await waiting.value
+        #expect(!browser.isWaitingForCheckOnSignInForm)
+        #expect(try await browser.webView.evaluateJavaScript("document.title") as? String == "sent:secret")
+    }
+
+    @Test func frontierHomePageWithoutAnOrdersLinkCountsAsSignedOut() {
+        let home = "https://www.frontierdental.com/us/en/home"
+        #expect(Supplier.frontier.isSignInPage(url: home, markup: "<a href=\"/us/en/login\">LOGIN</a>"))
+        #expect(!Supplier.frontier.isSignInPage(url: home, markup: "<a href=\"/us/en/my-account/orders/abc\">Orders</a>"))
+        #expect(!Supplier.tdsc.isSignInPage(url: "https://www.tdsc.com/my-account/orders", markup: "<div>Orders</div>"))
+    }
+
     @Test func elevateFillsTheLoginFormAndNotTheRegisterForm() async throws {
         let page = """
         <html><body>

@@ -14,6 +14,8 @@ nonisolated struct Supplier: Identifiable, Hashable {
     let submittedFormResetScript: String
     let extractionScript: String
     var maxOrderPages = 50
+    /// Set when the orders page looks the same signed out, apart from missing this text.
+    var signedInMarkup: String?
     /// Set when the site has its own order data service. The script runs on the orders page with
     /// `knownOrders` and returns `{ ordersFound, lines }`, or `{ signedOut: true }`.
     var collectScript: String?
@@ -27,6 +29,7 @@ nonisolated struct Supplier: Identifiable, Hashable {
 
     func isSignInPage(url: String, markup: String) -> Bool {
         url.contains(signInPath) || markup.contains(passwordFieldMarkup)
+            || signedInMarkup.map { !markup.contains($0) } ?? false
     }
 
     func ordersURL(page: Int) -> URL {
@@ -402,11 +405,30 @@ nonisolated extension Supplier {
     const remember = form.querySelector("input[type='checkbox'][name*='remember' i], input[type='checkbox'][id*='remember' i]");
     if (remember && !remember.checked) remember.click();
     form.dataset.inventorySubmitted = "true";
+    if (form.querySelector(".cf-turnstile, [name='cf-turnstile-response']")) {
+      const passed = () => Boolean(form.querySelector("[name='cf-turnstile-response']")?.value);
+      for (let attempt = 0; attempt < 24 && !passed(); attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      if (!passed()) return "check";
+    }
     setTimeout(() => {
       const button = form.querySelector('[type="submit"]');
       if (button) button.click(); else form.requestSubmit();
     }, 0);
     return true;
+    """#
+
+    /// Submits the filled-in form once the person has passed the site's own check.
+    static let humanCheckScript = #"""
+    (() => {
+      const form = document.querySelector("form[data-inventory-submitted]");
+      if (!form) return "gone";
+      if (!form.querySelector("[name='cf-turnstile-response']")?.value) return "waiting";
+      const button = form.querySelector('[type="submit"]');
+      if (button) button.click(); else form.requestSubmit();
+      return "submitted";
+    })()
     """#
 
     private static func signInScript(email: String, password: String) -> String {
@@ -562,6 +584,7 @@ nonisolated extension Supplier {
         signInScript: signInScript(email: "#email", password: "#password"),
         submittedFormResetScript: passwordClearedScript,
         extractionScript: "",
+        signedInMarkup: "/my-account/orders/",
         collectScript: #"""
         const ordersLink = document.querySelector('a[href*="/my-account/orders/"]');
         if (!ordersLink) {

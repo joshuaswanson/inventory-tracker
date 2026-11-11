@@ -22,6 +22,10 @@ enum ImportFailure: LocalizedError {
     }
 }
 
+enum SignInSubmission {
+    case submitted, waitingForHumanCheck
+}
+
 enum ImportProgress: Equatable {
     case starting
     case scanning(page: Int)
@@ -37,6 +41,7 @@ enum SupplierPage {
 @Observable
 final class SupplierBrowser: NSObject, WKNavigationDelegate {
     private static let signInPolls = 80
+    private static let humanCheckPolls = 360
 
     @ObservationIgnored let supplier: Supplier
 
@@ -45,6 +50,7 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
     private(set) var pagesRead = 0
     private(set) var ordersFound = 0
     private(set) var progress = ImportProgress.starting
+    private(set) var isWaitingForCheckOnSignInForm = false
     @ObservationIgnored private var pendingLoad: CheckedContinuation<Void, Error>?
     @ObservationIgnored private var finishedLoads = 0
 
@@ -76,7 +82,9 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
         guard supplier.isSignInPage(url: webView.url?.absoluteString ?? "", markup: markup) else { return }
 
         let loadsBeforeSubmit = finishedLoads
-        try await submitCredentials(email: email, password: password)
+        if try await submitCredentials(email: email, password: password) == .waitingForHumanCheck {
+            try await waitForHumanCheck()
+        }
         try await waitForSubmissionToSettle(loadsBeforeSubmit: loadsBeforeSubmit)
         try await confirmSession()
     }
@@ -89,13 +97,31 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
         start()
     }
 
-    func submitCredentials(email: String, password: String) async throws {
+    @discardableResult
+    func submitCredentials(email: String, password: String) async throws -> SignInSubmission {
         let submitted = try await webView.callAsyncJavaScript(
             supplier.signInScript,
             arguments: ["email": email, "password": password],
             contentWorld: .defaultClient
         )
+        if submitted as? String == "check" { return .waitingForHumanCheck }
         guard submitted as? Bool == true else { throw ImportFailure.signInFormMissing }
+        return .submitted
+    }
+
+    func waitForHumanCheck() async throws {
+        page = .challenge
+        isWaitingForCheckOnSignInForm = true
+        defer { isWaitingForCheckOnSignInForm = false }
+        for _ in 0..<Self.humanCheckPolls {
+            try await Task.sleep(for: .milliseconds(500))
+            let state = try? await webView.evaluateJavaScript(Supplier.humanCheckScript, in: nil, contentWorld: .defaultClient) as? String
+            if state != "waiting" {
+                page = .loading
+                return
+            }
+        }
+        throw ImportFailure.challenge
     }
 
     private func waitForSubmissionToSettle(loadsBeforeSubmit: Int) async throws {
