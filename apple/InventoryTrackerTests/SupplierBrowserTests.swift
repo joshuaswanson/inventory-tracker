@@ -273,4 +273,81 @@ private let orderPage = """
             try await browser.collectFromService(knownOrders: [])
         }
     }
+
+    @Test func kettenbachReadsOrdersFromItsOrderPage() async throws {
+        let page = """
+        <html><body><table class="table"><tr class="expand-row"><td><div id="exp-KB100" class="expand-panel"><article class="order card">
+          <div>Order KB100 Placed 29 SEP 2026 • 1 Carton(s) Shipped on 09-30-26 $231.50</div>
+          <div class="items">
+            <div class="item"><div class="meta"><strong>Visalys CemCore Normal pack</strong><small>Qty 1 • SKU 13571 • Price $1,167.50 • Line $1,167.50</small></div></div>
+            <div class="item"><div class="meta"><strong>Panasil Tray Soft</strong><small>Qty 2 • SKU 11141 • Price $64.00 • Line $128.00</small></div></div>
+          </div></article></div></td></tr>
+          <tr class="expand-row"><td><div id="exp-KB099" class="expand-panel"><article class="order card">
+          <div>Order KB099 Placed 3 JAN 2026</div>
+          <div class="items"><div class="item"><div class="meta"><strong>Old Thing</strong><small>Qty 1 • SKU 1 • Price $1.00 • Line $1.00</small></div></div></div>
+          </article></div></td></tr></table></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .kettenbach)
+        try await browser.loadHTML(page)
+        let lines = try await browser.collectFromService(knownOrders: ["KB099"])
+        #expect(browser.ordersFound == 2)
+        #expect(lines.count == 2)
+        let first = try #require(lines.first)
+        #expect(first.date == "2026-09-29")
+        #expect(first.suborderNumber == "KB100")
+        #expect(first.manuCode == "13571")
+        #expect(first.quantity == 1)
+        #expect(first.unitPrice == 1167.5)
+        #expect(lines[1].quantity == 2)
+        #expect(lines[1].unitPrice == 64)
+    }
+
+    @Test func kettenbachSignedOutPageAsksForSignIn() async throws {
+        let browser = SupplierBrowser(supplier: .kettenbach)
+        try await browser.loadHTML("<html><body><a class='sign-in-button-a'>Sign In</a>Loading orders…</body></html>")
+        await #expect(throws: ImportFailure.self) {
+            try await browser.collectFromService(knownOrders: [])
+        }
+        #expect(Supplier.kettenbach.isSignInPage(url: "https://www.kettenbachusa.com/orders.aspx", markup: "<a class='sign-in-button-a'>"))
+    }
+
+    @Test func net32ReadsEachVendorsLinesAndStopsAtKnownOrders() async throws {
+        let page = """
+        <html><body><script>
+        const orderCard = (id, placed, status) => `<div class="ordersList_orderCard__x"><a href="/account/orders/details/${id}">Order # ${id}</a>
+          Placed On ${placed} Status ${status} (1) Shipped To 1 Main St Total (1 Items) $9.00</div>`;
+        const lineItem = (name, price, quantity) => `<div class="ordersList_lineItem__y"><div class="ordersList_itemName__z">${name}</div>
+          <div class="ordersList_itemMeta__z"><span class="ordersList_itemPrice__z">${price}/ea</span><span class="ordersList_itemQty__z">Qty: ${quantity}</span></div></div>`;
+        const pages = {
+          "pageNumber=1": orderCard(900, "09/11/2026", "Delivered") + orderCard(800, "08/19/2026", "Delivered"),
+          "pageNumber=2": orderCard(700, "07/01/2026", "Delivered"),
+          "details/900": `<div class="orderDetail_vendorSection__a"><span class="ordersList_fulfilledByName__b">Fulfilled by <strong>Carolina Dental</strong></span>${lineItem("N95 Mask", "$53.70", 1)}</div>
+            <div class="orderDetail_vendorSection__a"><span class="ordersList_fulfilledByName__b">Fulfilled by <strong>PA Dental</strong></span>${lineItem("Arti-Check .0016\\"", "$1,017.30", 5)}</div>`,
+        };
+        window.requests = [];
+        window.fetch = async (address) => {
+          window.requests.push(address);
+          const key = Object.keys(pages).find((candidate) => address.includes(candidate));
+          return { ok: true, status: 200, url: address, text: async () => pages[key] ?? "" };
+        };
+        </script></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .net32)
+        try await browser.loadHTML(page, baseURL: URL(string: "https://store.example/"))
+        let lines = try await browser.collectFromService(knownOrders: ["800", "700"])
+
+        #expect(lines.count == 2)
+        let first = try #require(lines.first)
+        #expect(first.date == "2026-09-11")
+        #expect(first.vendor == "Carolina Dental")
+        #expect(first.suborderNumber == "900")
+        #expect(first.name == "N95 Mask")
+        #expect(first.quantity == 1)
+        #expect(first.unitPrice == 53.7)
+        #expect(first.status == "Delivered")
+        #expect(lines[1].vendor == "PA Dental")
+        #expect(lines[1].quantity == 5)
+        #expect(lines[1].unitPrice == 1017.3)
+        #expect(browser.ordersFound == 3)
+    }
 }

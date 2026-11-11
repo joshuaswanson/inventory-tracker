@@ -22,7 +22,7 @@ nonisolated struct Supplier: Identifiable, Hashable {
     /// `knownOrders` and returns `{ ordersFound, lines }`, or `{ signedOut: true }`.
     var collectScript: String?
 
-    static let all = [supplyClinic, benco, elevate, dentalMarket]
+    static let all = [supplyClinic, benco, elevate, dentalMarket, kettenbach, net32]
     static let historyDays = 3 * 365
 
     static func withID(_ id: String) -> Supplier? {
@@ -388,6 +388,161 @@ nonisolated extension Supplier {
     }
     return JSON.stringify({ ordersFound, lines });
     """#
+}
+
+nonisolated extension Supplier {
+    /// Fills a sign-in form in a way that sites built with React also notice, then submits it.
+    /// `{email}` and `{password}` are the field selectors.
+    private static let fillAndSubmitScript = #"""
+    const waitFor = async (selector) => {
+      for (let attempt = 0; attempt < 60; attempt++) {
+        const element = document.querySelector(selector);
+        if (element) return element;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      return null;
+    };
+    const passwordField = await waitFor("{password}");
+    const form = passwordField?.form;
+    const emailField = form?.querySelector("{email}");
+    if (!form || !emailField) return false;
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    for (const [field, value] of [[emailField, email], [passwordField, password]]) {
+      setValue.call(field, value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    form.dataset.inventorySubmitted = "true";
+    setTimeout(() => {
+      const button = form.querySelector('[type="submit"]');
+      if (button) button.click(); else form.requestSubmit();
+    }, 0);
+    return true;
+    """#
+
+    private static func signInScript(email: String, password: String) -> String {
+        fillAndSubmitScript
+            .replacingOccurrences(of: "{email}", with: email)
+            .replacingOccurrences(of: "{password}", with: password)
+    }
+
+    private static let passwordClearedScript = #"""
+    (() => {
+      const form = document.querySelector("form[data-inventory-submitted]");
+      if (!form) return true;
+      return form.querySelector('input[type="password"]')?.value === "";
+    })()
+    """#
+
+    static let kettenbach = Supplier(
+        id: "kettenbach",
+        name: "Kettenbach",
+        cookieDomain: "kettenbachusa",
+        ordersURL: URL(string: "https://www.kettenbachusa.com/orders.aspx")!,
+        signInURL: URL(string: "https://www.kettenbachusa.com/signin.aspx")!,
+        signInPath: "/signin",
+        passwordFieldMarkup: "sign-in-button-a",
+        signInScript: signInScript(email: "#inputUsername", password: "#inputPassword"),
+        submittedFormResetScript: passwordClearedScript,
+        extractionScript: "",
+        collectScript: #"""
+        if (document.querySelector(".sign-in-button-a")) {
+          return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
+        }
+        for (let attempt = 0; attempt < 40; attempt++) {
+          if (document.querySelector("article.order") || !/Loading orders/i.test(document.body.textContent)) break;
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const lines = [];
+        const orders = [...document.querySelectorAll("article.order")];
+        for (const order of orders) {
+          const text = order.textContent.replace(/\s+/g, " ");
+          const placed = text.match(/Placed (\d{1,2}) ([A-Za-z]{3})[a-z]* (\d{4})/);
+          const panel = order.closest("[id^='exp-']");
+          const orderNumber = panel ? panel.id.replace(/^exp-/, "") : (text.match(/Order (\S+)/) ?? [])[1] ?? "";
+          if (knownOrders.includes(orderNumber)) continue;
+          const date = placed
+            ? `${String(months.indexOf(placed[2].toLowerCase()) + 1).padStart(2, "0")}/${placed[1].padStart(2, "0")}/${placed[3]}`
+            : "";
+          for (const item of order.querySelectorAll(".items .item .meta")) {
+            const meta = item.querySelector("small")?.textContent ?? "";
+            lines.push({
+              date,
+              vendor: "Kettenbach",
+              suborderNumber: orderNumber,
+              name: (item.querySelector("strong")?.textContent ?? "").trim(),
+              manuCode: ((meta.match(/SKU\s+([^•]+)/) ?? [])[1] ?? "").trim(),
+              quantity: (meta.match(/Qty\s+(\d+)/) ?? [])[1] ?? "",
+              unitPrice: (meta.match(/Price\s+(\$[\d,.]+)/) ?? [])[1] ?? "",
+              status: "",
+            });
+          }
+        }
+        return JSON.stringify({ ordersFound: orders.length, lines });
+        """#
+    )
+
+    static let net32 = Supplier(
+        id: "net32",
+        name: "Net32",
+        cookieDomain: "net32",
+        ordersURL: URL(string: "https://www.net32.com/account/orders")!,
+        signInURL: URL(string: "https://www.net32.com/login")!,
+        signInPath: "/login",
+        passwordFieldMarkup: "login_form__",
+        signInScript: signInScript(email: "#email-address", password: "#password"),
+        submittedFormResetScript: passwordClearedScript,
+        extractionScript: "",
+        collectScript: #"""
+        const parse = async (address) => {
+          const response = await fetch(address, { credentials: "include" });
+          return { document: new DOMParser().parseFromString(await response.text(), "text/html"), address: response.url ?? "" };
+        };
+        const text = (root, part) => (root.querySelector(`[class*="${part}"]`)?.textContent ?? "").replace(/\s+/g, " ").trim();
+        const lines = [];
+        let ordersFound = 0;
+        for (let page = 1; page <= 40; page++) {
+          const list = await parse(`${location.origin}/account/orders?pageNumber=${page}`);
+          if (/\/login/.test(list.address) || list.document.querySelector('[class*="login_form"]')) {
+            return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
+          }
+          const cards = [...list.document.querySelectorAll('[class*="ordersList_orderCard"]')];
+          if (cards.length === 0) break;
+          let unseen = 0;
+          for (const card of cards) {
+            const link = card.querySelector('a[href*="/account/orders/details/"]');
+            if (!link) continue;
+            const address = new URL(link.getAttribute("href"), location.origin);
+            const orderNumber = address.pathname.split("/").pop();
+            ordersFound += 1;
+            if (knownOrders.includes(orderNumber)) continue;
+            unseen += 1;
+            const summary = card.textContent.replace(/\s+/g, " ");
+            const placed = (summary.match(/Placed On\s*(\d{2}\/\d{2}\/\d{4})/) ?? [])[1] ?? "";
+            const status = (summary.match(/Status\s*([A-Za-z ]+?)\s*(\(|Shipped To)/) ?? [])[1] ?? "";
+            const order = await parse(address.href);
+            for (const section of order.document.querySelectorAll('[class*="orderDetail_vendorSection"]')) {
+              const vendor = (section.querySelector('[class*="ordersList_fulfilledByName"] strong')?.textContent ?? "").trim();
+              for (const item of section.querySelectorAll('[class*="ordersList_lineItem"]')) {
+                lines.push({
+                  date: placed,
+                  vendor,
+                  suborderNumber: orderNumber,
+                  name: text(item, "ordersList_itemName"),
+                  manuCode: "",
+                  quantity: text(item, "ordersList_itemQty"),
+                  unitPrice: text(item, "ordersList_itemPrice"),
+                  status,
+                });
+              }
+            }
+          }
+          if (unseen === 0) break;
+        }
+        return JSON.stringify({ ordersFound, lines });
+        """#
+    )
 }
 
 nonisolated enum SupplierSettings {

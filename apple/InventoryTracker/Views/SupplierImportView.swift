@@ -345,6 +345,14 @@ struct SupplierImportView: View {
             if summary.skipped > 0 {
                 Text("\(summary.skipped) cancelled, returned, or incomplete (skipped)")
             }
+            if summary.imported > 0 {
+                Text("These orders were added to your stock. Count your shelves next so the numbers match what you really have.")
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
+                Button("Count Stock Now") { router.sheet = .countAll }
+                    .buttonStyle(.themedSecondary)
+            }
         }
         .font(.system(size: 14))
         .foregroundStyle(Theme.text)
