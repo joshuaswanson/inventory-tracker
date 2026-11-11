@@ -151,6 +151,9 @@ final class CoreFlowUITests: XCTestCase {
         tapButton("+ Add a Supplier")
         tapButton("SupplyClinic")
         expectText("Not imported yet")
+        tapButton("+ Add a Supplier")
+        tapButton("Benco Dental")
+        expectText("Benco Dental")
         tapButton("Done")
         expectText("Welcome to Inventory Tracker")
     }

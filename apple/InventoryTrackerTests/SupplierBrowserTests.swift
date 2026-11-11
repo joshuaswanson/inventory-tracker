@@ -116,4 +116,57 @@ private let orderPage = """
         try await browser.loadHTML("<html><body>No orders</body></html>")
         #expect(try await browser.extractLines().isEmpty)
     }
+
+    @Test func bencoOrderListNamesPurchasesAndSkipsCredits() async throws {
+        let page = """
+        <html><body><div class="order-history">
+          <div class="order-container"><h3 class="panel-title pull-left"><span>9/2/2026</span><span>-</span><span> Order #AA100 - Merchandise </span></h3>
+            <h3 class="panel-title pull-right"><a href="https://example.com/PurchaseHistory/NewOrderDetail/AA100">View Details</a></h3></div>
+          <div class="order-container"><h3 class="panel-title pull-left"><span>8/12/2026</span><span>-</span><span> Order #CR200 - Credit </span></h3>
+            <h3 class="panel-title pull-right"><a href="https://example.com/PurchaseHistory/NewOrderDetail/CR200">View Details</a></h3></div>
+        </div></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .benco)
+        try await browser.loadHTML(page)
+        let links = try await browser.orderLinks(try #require(Supplier.benco.orderLinksScript))
+        #expect(links == [
+            OrderLink(id: "AA100", url: "https://example.com/PurchaseHistory/NewOrderDetail/AA100", isPurchase: true),
+            OrderLink(id: "CR200", url: "https://example.com/PurchaseHistory/NewOrderDetail/CR200", isPurchase: false),
+        ])
+    }
+
+    @Test func bencoOrderPageReadsEachLine() async throws {
+        let page = """
+        <html><body>
+        <h2>Your Orders &gt; Order Details</h2>
+        <div>Ordered on September 02, 2026 | Order # AA100 | Purchase Order # 123</div>
+        <div class="row product-detail-area"><div class="col-sm-9 product-details">
+          <strong><a>Universal Adhesive Vial Refill 5ml </a></strong>
+          <p>Product #: 4394-863</p><p>Quantity: 1</p><p>Net Price: $1,185.47</p><p>Ext Price: $1,185.47</p></div></div>
+        <div class="row product-detail-area"><div class="col-sm-9 product-details">
+          <strong><a>C-Fold Towel White Case of 2376</a></strong>
+          <p>Product #: 6492-128</p><p>Quantity: 0</p><p>Net Price: $30.90</p><p>Ext Price: $0.00</p></div></div>
+        </body></html>
+        """
+        let browser = SupplierBrowser(supplier: .benco)
+        try await browser.loadHTML(page)
+        let lines = try await browser.extractLines()
+        #expect(lines.count == 2)
+        let first = try #require(lines.first)
+        #expect(first.date == "2026-09-02")
+        #expect(first.vendor == "Benco Dental")
+        #expect(first.suborderNumber == "AA100")
+        #expect(first.name == "Universal Adhesive Vial Refill 5ml")
+        #expect(first.manuCode == "4394-863")
+        #expect(first.quantity == 1)
+        #expect(first.unitPrice == 1185.47)
+        #expect(first.isImportable)
+        #expect(first.sourceID(for: .benco) == "benco:AA100:4394-863")
+        #expect(!lines[1].isImportable)
+    }
+
+    @Test func bencoListAddressCoversThreeYearsAndCountsPagesFromZero() {
+        let address = Supplier.benco.ordersURL(page: 2, today: "2026-11-11").absoluteString
+        #expect(address == "https://shop.benco.com/PurchaseHistory/NewIndex?DateRangeOption=CustomRange&OrderStatus=all&PageNumber=1&StartDate=2023-11-12&EndDate=2026-11-11")
+    }
 }

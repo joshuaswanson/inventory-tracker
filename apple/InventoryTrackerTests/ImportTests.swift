@@ -99,6 +99,20 @@ private func sampleBackup() -> Backup {
         #expect(summary.duplicates == 1)
     }
 
+    @Test func sameProductTwiceInOneOrderKeepsBothLinesAcrossReimports() throws {
+        let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
+        let lines = [OrderLine(raw: rawLine(price: "$0.00")), OrderLine(raw: rawLine()), OrderLine(raw: rawLine())]
+        let first = try OrderMerge.merge(lines, from: .supplyClinic, into: context)
+        #expect(first.imported == 3)
+        let sources = try context.fetch(FetchDescriptor<Purchase>()).compactMap(\.sourceId).sorted()
+        #expect(sources == ["supplyclinic:S-100:GZ-22", "supplyclinic:S-100:GZ-22#2", "supplyclinic:S-100:GZ-22#3"])
+
+        let second = try OrderMerge.merge(lines, from: .supplyClinic, into: context)
+        #expect(second.imported == 0)
+        #expect(second.duplicates == 3)
+        #expect(ImportWarning.knownOrders(from: .supplyClinic, in: context) == ["S-100"])
+    }
+
     @Test func lineWithoutADateIsSkipped() throws {
         let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
         let summary = try OrderMerge.merge([OrderLine(raw: rawLine(date: "soon"))], from: .supplyClinic, into: context)
@@ -140,6 +154,7 @@ private func sampleBackup() -> Backup {
         #expect(ImportWarning.previouslyImported(from: .supplyClinic, in: context) == 1)
         let other = Supplier(id: "other", name: "Other", cookieDomain: "other", ordersURL: Supplier.supplyClinic.ordersURL, signInURL: Supplier.supplyClinic.signInURL, signInPath: "/x", passwordFieldMarkup: "x", signInScript: "", submittedFormResetScript: "", extractionScript: "")
         #expect(ImportWarning.previouslyImported(from: other, in: context) == 0)
+        #expect(ImportWarning.knownOrders(from: .supplyClinic, in: context) == ["S-100"])
     }
 }
 

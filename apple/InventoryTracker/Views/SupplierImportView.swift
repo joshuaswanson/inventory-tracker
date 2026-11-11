@@ -380,10 +380,12 @@ struct SupplierImportView: View {
                     password = ""
                     isSigningIn = false
                 }
-                let lines = try await browser.collectOrders()
+                let knownOrders = ImportWarning.knownOrders(from: supplier, in: modelContext)
+                let lines = try await browser.collectOrders(knownOrders: knownOrders)
                 let previouslyImported = ImportWarning.previouslyImported(from: supplier, in: modelContext)
                 let imported = try OrderMerge.merge(lines, from: supplier, into: modelContext)
-                warning = ImportWarning.message(linesRead: lines.count, summary: imported, previouslyImported: previouslyImported, supplierName: supplier.name)
+                let foundNothingNew = lines.isEmpty && supplier.orderLinksScript != nil && browser.pagesRead > 0
+                warning = foundNothingNew ? nil : ImportWarning.message(linesRead: lines.count, summary: imported, previouslyImported: previouslyImported, supplierName: supplier.name)
                 if warning == nil {
                     SupplierSettings.setLastImport(Date(), for: supplier)
                 }

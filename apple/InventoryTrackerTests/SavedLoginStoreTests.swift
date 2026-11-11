@@ -19,6 +19,7 @@ import Testing
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
         #expect(SupplierSettings.added(in: defaults) == [.supplyClinic])
+        #expect(Supplier.all.contains(.benco))
         SupplierSettings.setAdded([], in: defaults)
         #expect(SupplierSettings.added(in: defaults).isEmpty)
 

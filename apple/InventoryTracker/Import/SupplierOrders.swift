@@ -12,6 +12,12 @@ nonisolated struct RawOrderLine: Decodable {
     var status: String
 }
 
+nonisolated struct OrderLink: Decodable, Equatable {
+    var id: String
+    var url: String
+    var isPurchase: Bool
+}
+
 nonisolated struct OrderLine: Equatable {
     var date: String?
     var vendor: String
@@ -106,8 +112,17 @@ nonisolated enum ImportWarning {
     }
 
     static func previouslyImported(from supplier: Supplier, in context: ModelContext) -> Int {
+        knownOrders(from: supplier, in: context).count
+    }
+
+    /// Order numbers already imported from this supplier, read from the middle of each source ID.
+    static func knownOrders(from supplier: Supplier, in context: ModelContext) -> Set<String> {
         let purchases = (try? context.fetch(FetchDescriptor<Purchase>())) ?? []
-        return purchases.filter { $0.sourceId?.hasPrefix("\(supplier.id):") == true }.count
+        let prefix = "\(supplier.id):"
+        return Set(purchases.compactMap { purchase in
+            guard let source = purchase.sourceId, source.hasPrefix(prefix) else { return nil }
+            return source.dropFirst(prefix.count).split(separator: ":").first.map(String.init)
+        })
     }
 }
 
@@ -118,6 +133,7 @@ enum OrderMerge {
     static func merge(_ lines: [OrderLine], from supplier: Supplier, into context: ModelContext, today: String = Day.today) throws -> OrderImportSummary {
         var summary = OrderImportSummary()
         let importNote = "Imported from \(supplier.name)"
+        var occurrences: [String: Int] = [:]
         var itemsByName = Dictionary(try context.fetch(FetchDescriptor<Item>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
         var vendorsByName = Dictionary(try context.fetch(FetchDescriptor<Vendor>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
         var seenSources = Set(try context.fetch(FetchDescriptor<Purchase>()).compactMap(\.sourceId))
@@ -127,7 +143,10 @@ enum OrderMerge {
                 summary.skipped += 1
                 continue
             }
-            let sourceID = line.sourceID(for: supplier)
+            let baseID = line.sourceID(for: supplier)
+            let occurrence = occurrences[baseID, default: 0] + 1
+            occurrences[baseID] = occurrence
+            let sourceID = occurrence == 1 ? baseID : "\(baseID)#\(occurrence)"
             guard !seenSources.contains(sourceID) else {
                 summary.duplicates += 1
                 continue

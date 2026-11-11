@@ -14,8 +14,13 @@ nonisolated struct Supplier: Identifiable, Hashable {
     let submittedFormResetScript: String
     let extractionScript: String
     var maxOrderPages = 50
+    /// Placeholders: `{page0}` is the zero-based page, `{start}` and `{today}` are ISO days.
+    var ordersPageTemplate: String?
+    /// Set when the list only names orders and each order's lines are on its own page.
+    var orderLinksScript: String?
 
-    static let all = [supplyClinic]
+    static let all = [supplyClinic, benco]
+    static let historyDays = 3 * 365
 
     static func withID(_ id: String) -> Supplier? {
         all.first { $0.id == id }
@@ -25,7 +30,14 @@ nonisolated struct Supplier: Identifiable, Hashable {
         url.contains(signInPath) || markup.contains(passwordFieldMarkup)
     }
 
-    func ordersURL(page: Int) -> URL {
+    func ordersURL(page: Int, today: String = Day.today) -> URL {
+        if let ordersPageTemplate {
+            let address = ordersPageTemplate
+                .replacingOccurrences(of: "{page0}", with: "\(page - 1)")
+                .replacingOccurrences(of: "{start}", with: Day.offset(today, by: -Self.historyDays))
+                .replacingOccurrences(of: "{today}", with: today)
+            return URL(string: address) ?? ordersURL
+        }
         guard page > 1 else { return ordersURL }
         return ordersURL.appending(queryItems: [URLQueryItem(name: "page", value: "\(page)")])
     }
@@ -102,6 +114,95 @@ nonisolated extension Supplier {
       return JSON.stringify(lines);
     })()
 """#
+    )
+}
+
+nonisolated extension Supplier {
+    static let benco = Supplier(
+        id: "benco",
+        name: "Benco Dental",
+        cookieDomain: "benco",
+        ordersURL: URL(string: "https://shop.benco.com/PurchaseHistory/NewIndex")!,
+        signInURL: URL(string: "https://shop.benco.com/PurchaseHistory/NewIndex")!,
+        signInPath: "identity.benco.com",
+        passwordFieldMarkup: "id=\"login-form\"",
+        signInScript: #"""
+        const waitFor = async (selector) => {
+          for (let attempt = 0; attempt < 40; attempt++) {
+            const element = document.querySelector(selector);
+            if (element) return element;
+            await new Promise((resolve) => setTimeout(resolve, 250));
+          }
+          return null;
+        };
+        const form = await waitFor("#login-form");
+        if (!form) return false;
+        const fill = (selector, value) => {
+          const field = form.querySelector(selector);
+          if (!field) return false;
+          field.value = value;
+          field.dispatchEvent(new Event("input", { bubbles: true }));
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        };
+        if (!fill("#username", email) || !fill("#password", password)) return false;
+        const remember = form.querySelector("#rememberMe");
+        if (remember && !remember.checked) remember.click();
+        form.dataset.inventorySubmitted = "true";
+        setTimeout(() => form.requestSubmit(), 0);
+        return true;
+        """#,
+        submittedFormResetScript: #"""
+        (() => {
+          const form = document.querySelector("form[data-inventory-submitted]");
+          if (!form) return true;
+          if (form.querySelector("#password")?.value === "") return true;
+          return [...document.querySelectorAll(".alert, .error, .validation-summary-errors, [class*='error']")]
+            .some((element) => element.offsetParent !== null && element.textContent.trim() !== "");
+        })()
+        """#,
+        extractionScript: #"""
+        (() => {
+          const heading = document.body.innerText.match(/Ordered on ([A-Za-z]+ \d{1,2}, \d{4})\s*\|\s*Order #\s*(\w+)/);
+          if (!heading) return JSON.stringify([]);
+          const ordered = new Date(heading[1]);
+          const pad = (number) => String(number).padStart(2, "0");
+          const date = `${pad(ordered.getMonth() + 1)}/${pad(ordered.getDate())}/${ordered.getFullYear()}`;
+          const lines = [];
+          for (const details of document.querySelectorAll(".product-detail-area .product-details")) {
+            const value = (label) => {
+              const row = [...details.querySelectorAll("p")].find((p) => p.textContent.trim().startsWith(label));
+              return row ? row.textContent.replace(label, "").trim() : "";
+            };
+            lines.push({
+              date,
+              vendor: "Benco Dental",
+              suborderNumber: heading[2],
+              name: (details.querySelector("strong a, strong")?.textContent ?? "").trim(),
+              manuCode: value("Product #:"),
+              quantity: value("Quantity:"),
+              unitPrice: value("Net Price:"),
+              status: "",
+            });
+          }
+          return JSON.stringify(lines);
+        })()
+        """#,
+        maxOrderPages: 60,
+        ordersPageTemplate: "https://shop.benco.com/PurchaseHistory/NewIndex?DateRangeOption=CustomRange&OrderStatus=all&PageNumber={page0}&StartDate={start}&EndDate={today}",
+        orderLinksScript: #"""
+        (() => {
+          const links = [];
+          for (const order of document.querySelectorAll(".order-container")) {
+            const title = order.querySelector("h3.panel-title.pull-left")?.textContent ?? "";
+            const number = title.match(/Order #\s*(\w+)/);
+            const link = order.querySelector('a[href*="NewOrderDetail"]');
+            if (!number || !link) continue;
+            links.push({ id: number[1], url: link.href, isPurchase: /Merchandise/.test(title) });
+          }
+          return JSON.stringify(links);
+        })()
+        """#
     )
 }
 
