@@ -91,8 +91,9 @@ nonisolated enum OrderText {
         return .each
     }
 
+    /// Ordinary pages on Cloudflare sites also load a script from `/cdn-cgi/challenge-platform/`.
     static func isChallengePage(_ markup: String) -> Bool {
-        ["challenge-platform", "Just a moment", "cf-challenge", "Attention Required"].contains { markup.contains($0) }
+        ["_cf_chl_opt", "<title>Just a moment", "cf-challenge", "<title>Attention Required"].contains { markup.contains($0) }
     }
 }
 

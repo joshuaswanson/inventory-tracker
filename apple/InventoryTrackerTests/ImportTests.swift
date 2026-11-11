@@ -57,7 +57,9 @@ private func sampleBackup() -> Backup {
 
     @Test func pageDetection() {
         #expect(OrderText.isChallengePage("<title>Just a moment...</title>"))
+        #expect(OrderText.isChallengePage("<script>window._cf_chl_opt = {}</script>"))
         #expect(!OrderText.isChallengePage("<div class=\"order\"></div>"))
+        #expect(!OrderText.isChallengePage("<title>Sign in</title><script src=\"/cdn-cgi/challenge-platform/scripts/jsd/main.js\"></script>"))
         #expect(Supplier.supplyClinic.isSignInPage(url: "https://www.supplyclinic.com/users/sign_in", markup: ""))
         #expect(Supplier.supplyClinic.isSignInPage(url: "https://x", markup: "<input name=\"user[password]\">"))
     }
