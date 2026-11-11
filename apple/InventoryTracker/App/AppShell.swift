@@ -110,25 +110,9 @@ private struct SidebarLayout: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.background)
         }
-        #if os(macOS)
-        .overlay(alignment: .bottomTrailing) { UpdateNotice() }
-        #endif
         .ignoresSafeArea()
     }
 }
-
-#if os(macOS)
-private struct UpdateNotice: View {
-    @Environment(UpdateChecker.self) private var updateChecker
-
-    var body: some View {
-        if let release = updateChecker.available {
-            UpdateBanner(release: release, onDismiss: updateChecker.dismiss)
-                .padding(24)
-        }
-    }
-}
-#endif
 
 private struct Sidebar: View {
     @Environment(Router.self) private var router

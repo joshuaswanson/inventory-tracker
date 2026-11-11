@@ -33,7 +33,11 @@ nonisolated enum BackupFiles {
 
 enum AutoBackup {
     static var folder: URL {
+        #if os(macOS)
+        InventoryStore.dataFolder.appendingPathComponent("Backups")
+        #else
         URL.documentsDirectory.appendingPathComponent("Backups")
+        #endif
     }
 
     /// Rewrites today's file on every run, so the newest backup is at most one run old.

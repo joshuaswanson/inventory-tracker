@@ -13,6 +13,7 @@ xcodebuild -quiet \
     -configuration Release \
     -destination 'platform=macOS' \
     -derivedDataPath "$build_dir/derived" \
+    -clonedSourcePackagesDirPath "$repo_dir/.build/packages" \
     build
 
 app="$build_dir/derived/Build/Products/Release/Inventory Tracker.app"

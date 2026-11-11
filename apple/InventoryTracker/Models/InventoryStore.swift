@@ -12,12 +12,24 @@ enum InventoryStore {
         return environment["XCTestConfigurationFilePath"] != nil
     }
 
+    static var dataFolder: URL {
+        #if os(macOS)
+        URL.applicationSupportDirectory.appendingPathComponent("Inventory Tracker")
+        #else
+        URL.applicationSupportDirectory
+        #endif
+    }
+
     static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
-        let configuration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: inMemory || usesEphemeralStore,
-            cloudKitDatabase: .automatic
-        )
+        if inMemory || usesEphemeralStore {
+            return try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+        }
+        #if os(macOS)
+        try FileManager.default.createDirectory(at: dataFolder, withIntermediateDirectories: true)
+        let configuration = ModelConfiguration(schema: schema, url: dataFolder.appendingPathComponent("Inventory.store"))
+        #else
+        let configuration = ModelConfiguration(schema: schema)
+        #endif
         return try ModelContainer(for: schema, configurations: configuration)
     }
 }

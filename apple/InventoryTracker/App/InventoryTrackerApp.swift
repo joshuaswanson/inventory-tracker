@@ -1,11 +1,18 @@
 import SwiftData
 import SwiftUI
+#if os(macOS)
+import Sparkle
+#endif
 
 @main
 struct InventoryTrackerApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(LaunchWindowGuard.self) private var launchWindowGuard
-    @State private var updateChecker = UpdateChecker()
+    private let updater = SPUStandardUpdaterController(
+        startingUpdater: ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
     #endif
     @State private var router = Router()
     private let store = Result { try InventoryStore.makeContainer() }
@@ -27,10 +34,6 @@ struct InventoryTrackerApp: App {
                     .modelContainer(container)
                     .preferredColorScheme(.light)
                     .tint(Theme.primary)
-                    #if os(macOS)
-                    .environment(updateChecker)
-                    .task { await updateChecker.run() }
-                    #endif
                     .task { await Self.keepUp(container.mainContext) }
                     #if DEBUG
                     .task { DebugLaunch.apply(context: container.mainContext, router: router) }
@@ -50,6 +53,9 @@ struct InventoryTrackerApp: App {
         .defaultSize(width: 1440, height: 900)
         .windowResizability(.contentMinSize)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") { updater.checkForUpdates(nil) }
+            }
             CommandGroup(replacing: .newItem) {
                 Button("New Item") { router.sheet = .item(nil) }
                     .keyboardShortcut("n")
