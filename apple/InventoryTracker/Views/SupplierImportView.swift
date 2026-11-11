@@ -329,7 +329,7 @@ struct SupplierImportView: View {
 
     @ViewBuilder
     private func review(_ items: [Item]) -> some View {
-        intro("Tick any of these new items that expire. You can add the date printed on the box, or skip it.")
+        intro("Do any of these new items have an expiration date? Tick the ones that do. You can also add the date printed on the box.")
         ForEach(items) { item in
             VStack(alignment: .leading, spacing: 8) {
                 CheckboxField(title: item.name, isOn: Binding(
