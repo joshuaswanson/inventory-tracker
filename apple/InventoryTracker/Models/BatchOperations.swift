@@ -31,6 +31,17 @@ enum BatchOperations {
         try context.save()
     }
 
+    /// For items counted as one number: records the gap between the records and the shelf.
+    static func applyShelfCount(_ counted: Int, to item: Item, in context: ModelContext, today: String = Day.today) throws {
+        let difference = item.metrics(today: today).currentInventory - counted
+        guard difference != 0 else { return }
+        let adjustment = UsageRecord(date: today, item: nil, quantity: difference, notes: countNote)
+        context.insert(adjustment)
+        adjustment.item = item
+        adjustment.isAdjustment = true
+        try context.save()
+    }
+
     private static func settleUnlinkedUsage(of item: Item, in context: ModelContext) {
         let records = item.usageRecords ?? []
         let purchases = item.purchases ?? []

@@ -6,7 +6,10 @@ enum InventoryStore {
 
     private static var usesEphemeralStore: Bool {
         let environment = ProcessInfo.processInfo.environment
-        return environment["XCTestConfigurationFilePath"] != nil || environment["INVENTORY_EPHEMERAL"] != nil
+        #if DEBUG
+        if environment["INVENTORY_EPHEMERAL"] != nil { return true }
+        #endif
+        return environment["XCTestConfigurationFilePath"] != nil
     }
 
     static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {

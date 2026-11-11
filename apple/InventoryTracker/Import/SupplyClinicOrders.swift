@@ -91,6 +91,7 @@ nonisolated struct OrderImportSummary: Equatable {
     var skipped = 0
     var newItems = 0
     var newVendors = 0
+    var newItemIDs: [String] = []
 }
 
 enum SupplyClinicMerge {
@@ -137,6 +138,7 @@ enum SupplyClinicMerge {
                 context.insert(item)
                 itemsByName[line.name.lowercased()] = item
                 summary.newItems += 1
+                summary.newItemIDs.append(item.id)
             }
 
             let purchase = Purchase(date: date, item: nil, quantity: quantity, pricePerUnit: unitPrice)

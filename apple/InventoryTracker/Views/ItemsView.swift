@@ -61,6 +61,16 @@ struct ItemsView: View {
         let visible = visibleRows(from: all)
 
         Screen(title: "Items", searchPrompt: "Search items...", search: $search) {
+            if isWide {
+                Button("Count Stock") { router.sheet = .countAll }
+                    .buttonStyle(.themedSecondary)
+            } else {
+                Button {
+                    router.sheet = .countAll
+                } label: {
+                    Label("Count Stock", systemImage: "checklist")
+                }
+            }
             HeaderButton(title: "+ Add Item", compactImage: "plus") { router.sheet = .item(nil) }
         } content: {
             FilterChips(

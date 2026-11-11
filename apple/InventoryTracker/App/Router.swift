@@ -28,6 +28,9 @@ enum ActiveSheet: Identifiable {
     case purchase(Purchase?, itemID: String?)
     case usage(UsageRecord?, itemID: String?)
     case count(Item)
+    case countAll
+    case reorder
+    case spending
     case data
     case supplyClinic
 
@@ -38,6 +41,9 @@ enum ActiveSheet: Identifiable {
         case .purchase(let purchase, let itemID): "purchase-\(purchase?.id ?? "new")-\(itemID ?? "")"
         case .usage(let record, let itemID): "usage-\(record?.id ?? "new")-\(itemID ?? "")"
         case .count(let item): "count-\(item.id)"
+        case .countAll: "count-all"
+        case .reorder: "reorder"
+        case .spending: "spending"
         case .data: "data"
         case .supplyClinic: "supply-clinic"
         }

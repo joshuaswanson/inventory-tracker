@@ -226,7 +226,7 @@ enum BackupMerge {
 }
 
 nonisolated struct BackupDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json] }
+    static var readableContentTypes: [UTType] { [.json, .commaSeparatedText] }
 
     var data: Data
 

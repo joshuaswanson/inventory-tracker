@@ -51,6 +51,10 @@ struct ItemDetailView: View {
             if isWide {
                 Button("Edit") { router.sheet = .item(item) }
                     .buttonStyle(.themedSecondary)
+                if !item.isPerishable {
+                    Button("Count Stock") { router.sheet = .count(item) }
+                        .buttonStyle(.themedSecondary)
+                }
                 Button("+ Purchase") { router.sheet = .purchase(nil, itemID: item.id) }
                     .buttonStyle(.themedPrimary)
                 Button("+ Usage") { router.sheet = .usage(nil, itemID: item.id) }
@@ -59,9 +63,7 @@ struct ItemDetailView: View {
                 Menu {
                     Button("Add Purchase", systemImage: "cart.badge.plus") { router.sheet = .purchase(nil, itemID: item.id) }
                     Button("Record Usage", systemImage: "minus.circle") { router.sheet = .usage(nil, itemID: item.id) }
-                    if item.isPerishable {
-                        Button("Count Stock", systemImage: "number") { router.sheet = .count(item) }
-                    }
+                    Button("Count Stock", systemImage: "number") { router.sheet = .count(item) }
                     Button("Edit", systemImage: "pencil") { router.sheet = .item(item) }
                 } label: {
                     Label("Actions", systemImage: "plus")

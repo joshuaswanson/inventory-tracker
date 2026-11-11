@@ -14,6 +14,9 @@ nonisolated struct UsageFact {
     var quantity: Int
     var batchID: String?
     var isAdjustment = false
+
+    /// A shelf count on an item without batches that found less than expected. Those units were used.
+    var countsAsConsumption: Bool { isAdjustment && batchID == nil && quantity > 0 }
 }
 
 nonisolated func roundedToCents(_ value: Double) -> Double {
@@ -41,7 +44,7 @@ nonisolated struct ItemMetrics: Equatable {
     }
 
     init(reorderLevel: Int, isPerishable: Bool, purchases: [PurchaseFact], usage: [UsageFact], today: String) {
-        let consumption = usage.filter { !$0.isAdjustment }
+        let consumption = usage.filter { !$0.isAdjustment || $0.countsAsConsumption }
         let totalUsed = consumption.reduce(0) { $0 + $1.quantity }
         let stock = purchases.reduce(0) { $0 + $1.quantity } - usage.reduce(0) { $0 + $1.quantity }
         currentInventory = stock

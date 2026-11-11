@@ -55,6 +55,9 @@ private struct SheetContent: View {
         case .purchase(let purchase, let itemID): PurchaseFormView(purchase: purchase, preselectedItemID: itemID)
         case .usage(let record, let itemID): UsageFormView(record: record, preselectedItemID: itemID)
         case .count(let item): CountStockView(item: item)
+        case .countAll: StockCountView()
+        case .reorder: ReorderListView()
+        case .spending: SpendingView()
         case .data: DataView()
         case .supplyClinic: SupplyClinicImportView()
         }
@@ -163,7 +166,7 @@ private struct Sidebar: View {
 
             Spacer()
 
-            SidebarButton(title: "Data", systemImage: "externaldrive.fill", isActive: false) {
+            SidebarButton(title: "Settings", systemImage: "gearshape.fill", isActive: false) {
                 router.sheet = .data
             }
             .padding(.horizontal, 8)

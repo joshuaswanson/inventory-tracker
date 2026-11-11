@@ -63,8 +63,15 @@ struct PurchasesView: View {
 
         Screen(title: "Purchases", searchPrompt: "Search by item or vendor...", search: $search) {
             if isWide {
+                Button("Spending") { router.sheet = .spending }
+                    .buttonStyle(.themedSecondary)
                 importMenu.buttonStyle(.themedSecondary)
             } else {
+                Button {
+                    router.sheet = .spending
+                } label: {
+                    Label("Spending", systemImage: "chart.pie")
+                }
                 importMenu
             }
             HeaderButton(title: "+ Add Purchase", compactImage: "plus") { router.sheet = .purchase(nil, itemID: nil) }

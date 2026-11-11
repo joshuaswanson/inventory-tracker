@@ -10,6 +10,14 @@ struct InventoryTrackerApp: App {
     @State private var router = Router()
     private let store = Result { try InventoryStore.makeContainer() }
 
+    private static func keepUp(_ context: ModelContext) async {
+        while !Task.isCancelled {
+            AutoBackup.run(context: context)
+            await Reminders.reschedule(context: context)
+            try? await Task.sleep(for: .seconds(60 * 60))
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             switch store {
@@ -23,6 +31,7 @@ struct InventoryTrackerApp: App {
                     .environment(updateChecker)
                     .task { await updateChecker.run() }
                     #endif
+                    .task { await Self.keepUp(container.mainContext) }
                     #if DEBUG
                     .task { DebugLaunch.apply(context: container.mainContext, router: router) }
                     #endif

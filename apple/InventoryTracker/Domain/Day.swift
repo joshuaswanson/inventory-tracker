@@ -28,6 +28,11 @@ nonisolated enum Day {
         return utcCalendar.dateComponents([.day], from: startDate, to: endDate).day
     }
 
+    static func offset(_ iso: String, by days: Int) -> String {
+        guard let date = utcDate(from: iso), let moved = utcCalendar.date(byAdding: .day, value: days, to: date) else { return iso }
+        return string(from: moved, calendar: utcCalendar)
+    }
+
     static func isValid(_ iso: String) -> Bool {
         guard let date = utcDate(from: iso) else { return false }
         return string(from: date, calendar: utcCalendar) == iso

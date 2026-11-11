@@ -3,62 +3,87 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct DataView: View {
+    private enum FilePicker {
+        case backup, folder
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(Router.self) private var router
     @Query private var items: [Item]
-    @Query private var vendors: [Vendor]
-    @Query private var purchases: [Purchase]
-    @Query private var usage: [UsageRecord]
-    @State private var isImporting = false
+    @AppStorage(Reminders.enabledKey) private var remindersEnabled = false
+    @State private var picker = FilePicker.backup
+    @State private var isPicking = false
     @State private var isExporting = false
     @State private var exportDocument: BackupDocument?
+    @State private var lastBackup = BackupFiles.latestDate(in: AutoBackup.folder)
+    @State private var extraFolderName: String?
     @State private var message: String?
     @State private var messageIsError = false
 
+    private var backupDetail: String {
+        guard let lastBackup else {
+            return "Your inventory is backed up automatically every day once you add items."
+        }
+        return "Your inventory is backed up automatically every day. Last backup: \(lastBackup.formatted(date: .abbreviated, time: .shortened))."
+    }
+
     var body: some View {
-        FormSheet(title: "Data", saveTitle: "Done", showsCancel: false, fitsContentOnMac: true, onSave: { dismiss() }) {
-            VStack(spacing: 0) {
-                InfoRow("Items", value: "\(items.count)")
-                InfoRow("Vendors", value: "\(vendors.count)")
-                InfoRow("Purchases", value: "\(purchases.count)")
-                InfoRow("Usage records", value: "\(usage.count)", showsDivider: false)
+        FormSheet(title: "Settings", saveTitle: "Done", showsCancel: false, fitsContentOnMac: true, onSave: { dismiss() }) {
+            section("Backups", detail: backupDetail) {
+                Button("Save a Copy", action: export)
+                    .buttonStyle(.themedSecondary)
+                #if os(macOS)
+                Button("Show Backups") {
+                    try? FileManager.default.createDirectory(at: AutoBackup.folder, withIntermediateDirectories: true)
+                    NSWorkspace.shared.activateFileViewerSelecting([AutoBackup.folder])
+                }
+                .buttonStyle(.themedSecondary)
+                #endif
+            }
+            #if os(macOS)
+            extraFolder
+            #endif
+
+            section("Restore", detail: "Bring records back from a backup file. Nothing you have now is deleted.") {
+                Button("Choose Backup File") { pick(.backup) }
+                    .buttonStyle(.themedSecondary)
             }
 
-            action(
-                title: "Import",
-                detail: "Choose a backup file or an older data folder. Matching records are updated, so importing twice is safe.",
-                button: "Choose Files"
-            ) {
-                isImporting = true
+            section("SupplyClinic", detail: "Bring in your order history. Only new orders are added.") {
+                Button("Import Orders") { router.sheet = .supplyClinic }
+                    .buttonStyle(.themedSecondary)
             }
 
-            action(
-                title: "Back Up",
-                detail: "Save everything to one JSON file. Import that file on another device to copy your data there. Deletions do not carry over.",
-                button: "Export Backup",
-                action: export
-            )
+            VStack(alignment: .leading, spacing: 8) {
+                FieldLabel(title: "Reminders")
+                CheckboxField(title: "Remind me before items expire or run low", isOn: reminders)
+            }
 
-            action(
-                title: "SupplyClinic",
-                detail: "Sign in to SupplyClinic and bring in your order history. Only new orders are added.",
-                button: "Import Orders"
-            ) {
-                router.sheet = .supplyClinic
+            if SampleData.hasSamples(in: items) {
+                section("Sample Data", detail: "Remove the practice items when you're ready to add your own.") {
+                    Button("Remove Sample Data", action: removeSamples)
+                        .buttonStyle(.themedSecondary)
+                }
             }
 
             if let message {
                 Text(message)
                     .font(.system(size: 13))
                     .foregroundStyle(messageIsError ? Theme.red : Theme.green)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .task {
+            #if os(macOS)
+            extraFolderName = ExtraBackupFolder.name
+            #endif
+        }
         .fileImporter(
-            isPresented: $isImporting,
-            allowedContentTypes: [.json, .folder],
-            allowsMultipleSelection: true,
-            onCompletion: importFiles
+            isPresented: $isPicking,
+            allowedContentTypes: picker == .folder ? [.folder] : [.json, .folder],
+            allowsMultipleSelection: picker == .backup,
+            onCompletion: picked
         )
         .fileExporter(
             isPresented: $isExporting,
@@ -74,16 +99,58 @@ struct DataView: View {
         }
     }
 
-    private func action(title: String, detail: String, button: String, action: @escaping () -> Void) -> some View {
+    #if os(macOS)
+    @ViewBuilder
+    private var extraFolder: some View {
+        if let extraFolderName {
+            section(nil, detail: "A second copy is also saved to the \"\(extraFolderName)\" folder.") {
+                Button("Stop Saving There") {
+                    ExtraBackupFolder.clear()
+                    self.extraFolderName = nil
+                }
+                .buttonStyle(.themedSecondary)
+            }
+        } else {
+            section(nil, detail: "For protection if this Mac is lost or breaks, keep a second copy in iCloud Drive or on another drive.") {
+                Button("Choose a Second Folder") { pick(.folder) }
+                    .buttonStyle(.themedSecondary)
+            }
+        }
+    }
+    #endif
+
+    private var reminders: Binding<Bool> {
+        Binding(
+            get: { remindersEnabled },
+            set: { isOn in
+                Task {
+                    let allowed = isOn ? await Reminders.requestPermission() : false
+                    remindersEnabled = allowed
+                    if isOn, !allowed {
+                        show("Allow notifications for Inventory Tracker in System Settings, then try again.", isError: true)
+                    }
+                    await Reminders.reschedule(context: modelContext)
+                }
+            }
+        )
+    }
+
+    private func section<Buttons: View>(_ title: String?, detail: String, @ViewBuilder buttons: () -> Buttons) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            FieldLabel(title: title)
+            if let title {
+                FieldLabel(title: title)
+            }
             Text(detail)
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Button(button, action: action)
-                .buttonStyle(.themedSecondary)
+            HStack(spacing: 8) { buttons() }
         }
+    }
+
+    private func pick(_ kind: FilePicker) {
+        picker = kind
+        isPicking = true
     }
 
     private func export() {
@@ -95,12 +162,31 @@ struct DataView: View {
         }
     }
 
-    private func importFiles(_ result: Result<[URL], Error>) {
+    private func picked(_ result: Result<[URL], Error>) {
         do {
-            let backup = try Backup.load(from: try result.get())
-            let summary = try BackupMerge.merge(backup, into: modelContext)
-            let skipped = summary.skipped > 0 ? ", \(summary.skipped) skipped" : ""
-            show("Imported. \(summary.added) added, \(summary.updated) updated\(skipped).", isError: false)
+            let urls = try result.get()
+            switch picker {
+            case .backup:
+                let summary = try BackupMerge.merge(try Backup.load(from: urls), into: modelContext)
+                show("Restored. \(summary.added) added, \(summary.updated) updated.", isError: false)
+            case .folder:
+                #if os(macOS)
+                guard let folder = urls.first else { return }
+                try ExtraBackupFolder.choose(folder)
+                extraFolderName = ExtraBackupFolder.name
+                AutoBackup.run(context: modelContext)
+                lastBackup = BackupFiles.latestDate(in: AutoBackup.folder)
+                #endif
+            }
+        } catch {
+            show(error.localizedDescription, isError: true)
+        }
+    }
+
+    private func removeSamples() {
+        do {
+            try SampleData.remove(from: modelContext)
+            show("Sample data removed.", isError: false)
         } catch {
             show(error.localizedDescription, isError: true)
         }

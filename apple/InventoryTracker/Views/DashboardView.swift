@@ -6,6 +6,7 @@ struct DashboardView: View {
     @Query private var vendors: [Vendor]
     @Environment(Router.self) private var router
     @Environment(\.isWideLayout) private var isWide
+    @Environment(\.modelContext) private var modelContext
 
     private var rows: [ItemRow] {
         ItemRow.rows(for: items).sorted { orderedText($0.item.name, $1.item.name, ascending: true) }
@@ -22,7 +23,7 @@ struct DashboardView: View {
                 Button {
                     router.sheet = .data
                 } label: {
-                    Label("Data", systemImage: "externaldrive")
+                    Label("Settings", systemImage: "gearshape")
                 }
             }
         } content: {
@@ -36,23 +37,45 @@ struct DashboardView: View {
     }
 
     private var welcome: some View {
-        VStack(spacing: 0) {
-            EmptyState(
-                systemImage: "archivebox",
-                title: "Welcome to Inventory Tracker",
-                message: "Import a backup, or add your first supply item."
-            )
-            .padding(.bottom, -40)
-            HStack(spacing: 8) {
-                Button("Import Data") { router.sheet = .data }
-                    .buttonStyle(.themedPrimary)
-                Button("Add Item") { router.sheet = .item(nil) }
-                    .buttonStyle(.themedSecondary)
+        VStack(spacing: 20) {
+            VStack(spacing: 6) {
+                Image(systemName: "archivebox")
+                    .font(.system(size: 40))
+                    .foregroundStyle(Theme.textTertiary.opacity(0.5))
+                    .padding(.bottom, 8)
+                Text("Welcome to Inventory Tracker")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Theme.text)
+                Text("Keep track of your supplies, see what is running low, and know what to reorder.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
             }
-            .padding(.bottom, 48)
+            ViewThatFits {
+                HStack(spacing: 8) { welcomeButtons }
+                VStack(spacing: 8) { welcomeButtons }
+            }
+            Button("Have a backup file? Restore it") { router.sheet = .data }
+                .buttonStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.primary)
         }
+        .padding(.vertical, 48)
+        .padding(.horizontal, 20)
         .frame(maxWidth: .infinity)
         .card()
+    }
+
+    @ViewBuilder
+    private var welcomeButtons: some View {
+        Button("Add Item") { router.sheet = .item(nil) }
+            .buttonStyle(.themedPrimary)
+        Button("Import from SupplyClinic") { router.sheet = .supplyClinic }
+            .buttonStyle(.themedSecondary)
+        Button("Try Sample Data") {
+            try? BackupMerge.merge(SampleData.backup(), into: modelContext)
+        }
+        .buttonStyle(.themedSecondary)
     }
 
     private func stats(rows: [ItemRow], lowStock: Int, expiring: Int) -> some View {
@@ -99,7 +122,9 @@ struct DashboardView: View {
             systemImage: "exclamationmark.triangle.fill",
             iconColor: Theme.amber,
             rows: lowStock,
-            emptyMessage: "All items are well-stocked."
+            emptyMessage: "All items are well-stocked.",
+            actionTitle: "Reorder List",
+            action: { router.sheet = .reorder }
         ) { row in
             Text("\(row.metrics.currentInventory) / \(row.item.reorderLevel) \(row.item.unitAbbreviation)")
                 .foregroundStyle(Theme.textSecondary)
@@ -136,6 +161,8 @@ struct DashboardView: View {
         iconColor: Color,
         rows: [ItemRow],
         emptyMessage: String,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil,
         @ViewBuilder trailing: @escaping (ItemRow) -> Trailing
     ) -> some View {
         DetailSection(title: title, systemImage: systemImage, iconColor: iconColor) {
@@ -158,6 +185,10 @@ struct DashboardView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+                if let actionTitle, let action {
+                    Button(actionTitle, action: action)
+                        .buttonStyle(.themedSecondary)
                 }
             }
         }

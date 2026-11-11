@@ -63,12 +63,18 @@ struct SupplyClinicImportView: View {
         case email, password
     }
 
-    private static let formHeight: CGFloat = 560
+    private static let formHeight: CGFloat = 520
     private static let verificationHeaderHeight: CGFloat = 76
+    #if os(macOS)
+    private static let ownerCheck = "Touch ID or your Mac password"
+    #else
+    private static let ownerCheck = "Face ID or your passcode"
+    #endif
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @AppStorage("supplyClinicEmail") private var savedEmail = ""
+    @Query private var allItems: [Item]
     @State private var browser = SupplyClinicBrowser()
     @State private var email = ""
     @State private var password = ""
@@ -77,7 +83,9 @@ struct SupplyClinicImportView: View {
     @State private var summary: OrderImportSummary?
     @State private var errorMessage: String?
     @State private var errorPage: SupplyClinicPage?
-    @State private var keychainHint: String?
+    @State private var isReviewing = false
+    @State private var perishableIDs: Set<String> = []
+    @State private var expirations: [String: String] = [:]
     @State private var savedLoginEmail: String?
     @State private var savesLogin = true
     @State private var activeField = Field.email
@@ -157,7 +165,11 @@ struct SupplyClinicImportView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let summary {
+        if let summary, isReviewing {
+            FormSheet(title: "New Items", saveTitle: "Continue", showsCancel: false, macHeight: Self.formHeight, onSave: finishReview) {
+                review(newItems(in: summary))
+            }
+        } else if let summary {
             FormSheet(title: "Import from SupplyClinic", saveTitle: "Done", showsCancel: false, macHeight: Self.formHeight, onSave: { dismiss() }) {
                 result(summary)
             }
@@ -210,10 +222,9 @@ struct SupplyClinicImportView: View {
             }
             suggestion(under: .password)
         }
-        keychainOption
         CheckboxField(title: "Save this login on this device", isOn: $savesLogin)
         Text(savesLogin
-            ? "Saved only in this device's Keychain after you sign in. Touch ID is required to use it."
+            ? "Saved only on this device after you sign in. \(Self.ownerCheck) is needed to use it."
             : "Your password is only used to sign in to SupplyClinic. It is not saved.")
             .font(.system(size: 12))
             .foregroundStyle(Theme.textSecondary)
@@ -247,35 +258,6 @@ struct SupplyClinicImportView: View {
     }
 
     @ViewBuilder
-    private var keychainOption: some View {
-        #if os(macOS)
-        Button("Use iCloud Keychain", systemImage: "key.fill", action: openPasswordPicker)
-            .buttonStyle(.themedSecondary)
-        if let keychainHint {
-            Text(keychainHint)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.textSecondary)
-        }
-        #else
-        Text("To use iCloud Keychain, tap the email field, then choose Passwords above the keyboard.")
-            .font(.system(size: 12))
-            .foregroundStyle(Theme.textSecondary)
-        #endif
-    }
-
-    #if os(macOS)
-    /// macOS has no public call for this picker, so this sends what Edit > AutoFill > Passwords sends.
-    private func openPasswordPicker() {
-        emailFocusRequest += 1
-        Task {
-            try? await Task.sleep(for: .milliseconds(200))
-            let opened = NSApp.sendAction(Selector(("_handleInsertFromPasswordsCommand:")), to: nil, from: nil)
-            keychainHint = opened ? nil : "Click the email field, then choose Edit > AutoFill > Passwords."
-        }
-    }
-    #endif
-
-    @ViewBuilder
     private var signedIn: some View {
         intro(isWorking
             ? "Reading your order history, \(browser.pagesRead) pages so far..."
@@ -289,6 +271,47 @@ struct SupplyClinicImportView: View {
         .foregroundStyle(Theme.primary)
         .underline()
         .disabled(isWorking)
+    }
+
+    private func newItems(in summary: OrderImportSummary) -> [Item] {
+        allItems.filter { summary.newItemIDs.contains($0.id) }
+            .sorted { orderedText($0.name, $1.name, ascending: true) }
+    }
+
+    @ViewBuilder
+    private func review(_ items: [Item]) -> some View {
+        intro("Tick any of these new items that expire. You can add the date printed on the box, or skip it.")
+        ForEach(items) { item in
+            VStack(alignment: .leading, spacing: 8) {
+                CheckboxField(title: item.name, isOn: Binding(
+                    get: { perishableIDs.contains(item.id) },
+                    set: { isOn in
+                        if isOn { perishableIDs.insert(item.id) } else { perishableIDs.remove(item.id) }
+                    }
+                ))
+                if perishableIDs.contains(item.id) {
+                    HStack(spacing: 8) {
+                        Text("Expires")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Theme.textSecondary)
+                        OptionalDayField(day: Binding(get: { expirations[item.id] }, set: { expirations[item.id] = $0 }))
+                    }
+                    .padding(.leading, 26)
+                }
+            }
+        }
+    }
+
+    private func finishReview() {
+        for item in allItems where perishableIDs.contains(item.id) {
+            item.isPerishable = true
+            guard let expiration = expirations[item.id] else { continue }
+            for purchase in item.purchases ?? [] where purchase.expirationDate == nil {
+                purchase.expirationDate = expiration
+            }
+        }
+        try? modelContext.save()
+        isReviewing = false
     }
 
     private func result(_ summary: OrderImportSummary) -> some View {
@@ -337,7 +360,9 @@ struct SupplyClinicImportView: View {
                     isSigningIn = false
                 }
                 let lines = try await browser.collectOrders()
-                summary = try SupplyClinicMerge.merge(lines, into: modelContext)
+                let imported = try SupplyClinicMerge.merge(lines, into: modelContext)
+                isReviewing = !imported.newItemIDs.isEmpty
+                summary = imported
             } catch {
                 isSigningIn = false
                 if needsSignIn { password = "" }

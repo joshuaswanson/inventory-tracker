@@ -16,6 +16,10 @@ nonisolated enum Format {
         formatted(iso, pattern: "MMM d")
     }
 
+    static func month(_ yearMonth: String) -> String {
+        formatted("\(yearMonth)-01", pattern: "MMMM yyyy")
+    }
+
     static func digits(_ phone: String) -> String {
         phone.filter(\.isNumber)
     }
