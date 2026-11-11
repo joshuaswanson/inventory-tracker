@@ -423,4 +423,54 @@ private let orderPage = """
             try await browser.collectFromService(knownOrders: [])
         }
     }
+
+    @Test func frontierFillsOnlyTheRealLoginFieldsAndTicksRememberMe() async throws {
+        let page = """
+        <html><body>
+        <form onsubmit="event.preventDefault(); document.title = JSON.stringify({
+            email: this.querySelector('#email').value, password: this.querySelector('#password').value,
+            remember: this.querySelector('#remember').checked, trap: this.querySelector('[name^=my_name]').value })">
+          <input name="my_name_trap" type="text"><input name="valid_from" type="text">
+          <input id="email" name="email" type="email"><input id="password" name="password" type="password">
+          <input id="remember" name="remember" type="checkbox"><button type="submit">Login</button>
+        </form>
+        <form style="display:none"><input id="regemail" type="email"><input id="new_password" name="password" type="password"></form>
+        </body></html>
+        """
+        let browser = SupplierBrowser(supplier: .frontier)
+        try await browser.loadHTML(page)
+        try await browser.submitCredentials(email: "office@example.com", password: "secret")
+        var captured = ""
+        for _ in 0..<40 where captured.isEmpty || !captured.hasPrefix("{") {
+            try await Task.sleep(for: .milliseconds(50))
+            captured = try await browser.webView.evaluateJavaScript("document.title") as? String ?? ""
+        }
+        let fields = try #require(JSONSerialization.jsonObject(with: Data(captured.utf8)) as? [String: Any])
+        #expect(fields["email"] as? String == "office@example.com")
+        #expect(fields["password"] as? String == "secret")
+        #expect(fields["remember"] as? Bool == true)
+        #expect(fields["trap"] as? String == "")
+    }
+
+    @Test func elevateFillsTheLoginFormAndNotTheRegisterForm() async throws {
+        let page = """
+        <html><body>
+        <form class="login-register-login-form" onsubmit="event.preventDefault(); document.title = 'login:' + this.querySelector('#login-email').value">
+          <input id="login-email" name="email" type="email"><input id="login-password" name="password" type="password"><button type="submit">Log In</button>
+        </form>
+        <form class="login-register-register-form"><input id="register-email" name="email" type="email"><input id="register-password" name="password" type="password"></form>
+        </body></html>
+        """
+        let browser = SupplierBrowser(supplier: .elevate)
+        try await browser.loadHTML(page)
+        try await browser.submitCredentials(email: "office@example.com", password: "secret")
+        var title = ""
+        for _ in 0..<40 where !title.hasPrefix("login:") {
+            try await Task.sleep(for: .milliseconds(50))
+            title = try await browser.webView.evaluateJavaScript("document.title") as? String ?? ""
+        }
+        #expect(title == "login:office@example.com")
+        let registerEmail = try await browser.webView.evaluateJavaScript("document.querySelector('#register-email').value") as? String
+        #expect(registerEmail == "")
+    }
 }

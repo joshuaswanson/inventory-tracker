@@ -218,28 +218,7 @@ nonisolated extension Supplier {
         signInURL: URL(string: "https://www.elevateoralcare.com/sca-dev-2023-1-0/my_account.ssp")!,
         signInPath: "is=login",
         passwordFieldMarkup: "login-register-login-form",
-        signInScript: #"""
-        const waitFor = async (selector) => {
-          for (let attempt = 0; attempt < 60; attempt++) {
-            const element = document.querySelector(selector);
-            if (element) return element;
-            await new Promise((resolve) => setTimeout(resolve, 250));
-          }
-          return null;
-        };
-        const passwordField = await waitFor('form input[type="password"]');
-        const form = passwordField?.form;
-        const emailField = form?.querySelector('input[name="email"], input[type="email"]');
-        if (!form || !emailField) return false;
-        for (const [field, value] of [[emailField, email], [passwordField, password]]) {
-          field.value = value;
-          field.dispatchEvent(new Event("input", { bubbles: true }));
-          field.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        form.dataset.inventorySubmitted = "true";
-        setTimeout(() => (form.querySelector('[type="submit"]') ?? form).click?.() ?? form.requestSubmit(), 0);
-        return true;
-        """#,
+        signInScript: signInScript(email: "#login-email", password: "#login-password"),
         submittedFormResetScript: #"""
         (() => {
           const form = document.querySelector("form[data-inventory-submitted]");
@@ -412,6 +391,8 @@ nonisolated extension Supplier {
       field.dispatchEvent(new Event("input", { bubbles: true }));
       field.dispatchEvent(new Event("change", { bubbles: true }));
     }
+    const remember = form.querySelector("input[type='checkbox'][name*='remember' i], input[type='checkbox'][id*='remember' i]");
+    if (remember && !remember.checked) remember.click();
     form.dataset.inventorySubmitted = "true";
     setTimeout(() => {
       const button = form.querySelector('[type="submit"]');
@@ -570,10 +551,7 @@ nonisolated extension Supplier {
         signInURL: URL(string: "https://www.frontierdental.com/us/en/login")!,
         signInPath: "/login",
         passwordFieldMarkup: "type=\"password\"",
-        signInScript: signInScript(
-            email: "input[type='email'], input[name*='email' i], input[name*='user' i]",
-            password: "input[type='password']"
-        ),
+        signInScript: signInScript(email: "#email", password: "#password"),
         submittedFormResetScript: passwordClearedScript,
         extractionScript: "",
         collectScript: #"""
