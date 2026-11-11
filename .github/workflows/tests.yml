@@ -1,0 +1,19 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run unit tests
+        run: |
+          xcodebuild test \
+            -project apple/InventoryTracker.xcodeproj \
+            -scheme InventoryTracker \
+            -destination 'platform=macOS' \
+            -only-testing:InventoryTrackerTests \
+            CODE_SIGNING_ALLOWED=NO
