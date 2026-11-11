@@ -169,4 +169,50 @@ private let orderPage = """
         let address = Supplier.benco.ordersURL(page: 2, today: "2026-11-11").absoluteString
         #expect(address == "https://shop.benco.com/PurchaseHistory/NewIndex?DateRangeOption=CustomRange&OrderStatus=all&PageNumber=1&StartDate=2023-11-12&EndDate=2026-11-11")
     }
+
+    @Test func elevateReadsNewOrdersFromItsDataServiceAndSkipsKnownOnes() async throws {
+        let page = """
+        <html><body><script>
+        window.requests = [];
+        window.fetch = async (address) => {
+          window.requests.push(address);
+          const body = address.includes("internalid=")
+            ? { tranid: "SO2", trandate: "2/5/2026", status: { name: "Billed" }, lines: [
+                { quantity: 2, rate_formatted: "$1,230.00", item: { itemid: "raw id", displayname: "635000100 - Arrest Blue", storedisplayname2: "Advantage Arrest 8ml" } },
+                { quantity: 1, rate_formatted: "$0.00", item: { itemid: "SAMPLE" } } ] }
+            : { totalRecordsFound: 2, records: [
+                { internalid: "11", recordtype: "salesorder", tranid: "SO1" },
+                { internalid: "22", recordtype: "salesorder", tranid: "SO2" } ] };
+          return { ok: true, status: 200, json: async () => body };
+        };
+        </script></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .elevate)
+        try await browser.loadHTML(page)
+        let lines = try await browser.collectFromService(knownOrders: ["SO1"])
+
+        #expect(browser.ordersFound == 2)
+        #expect(lines.count == 2)
+        let first = try #require(lines.first)
+        #expect(first.date == "2026-02-05")
+        #expect(first.vendor == "Elevate Oral Care")
+        #expect(first.suborderNumber == "SO2")
+        #expect(first.name == "Advantage Arrest 8ml")
+        #expect(first.manuCode == "635000100")
+        #expect(first.quantity == 2)
+        #expect(first.unitPrice == 1230)
+        #expect(lines[1].manuCode == "SAMPLE")
+        let requests = try await browser.webView.evaluateJavaScript("window.requests.length") as? Int
+        #expect(requests == 2)
+    }
+
+    @Test func elevateReportsAnExpiredSession() async throws {
+        let page = "<html><body><script>window.fetch = async () => ({ ok: false, status: 401, json: async () => ({}) });</script></body></html>"
+        let browser = SupplierBrowser(supplier: .elevate)
+        try await browser.loadHTML(page)
+        await #expect(throws: ImportFailure.self) {
+            try await browser.collectFromService(knownOrders: [])
+        }
+        #expect(browser.page == .signIn)
+    }
 }

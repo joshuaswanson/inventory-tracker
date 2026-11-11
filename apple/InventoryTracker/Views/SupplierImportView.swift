@@ -384,7 +384,7 @@ struct SupplierImportView: View {
                 let lines = try await browser.collectOrders(knownOrders: knownOrders)
                 let previouslyImported = ImportWarning.previouslyImported(from: supplier, in: modelContext)
                 let imported = try OrderMerge.merge(lines, from: supplier, into: modelContext)
-                let foundNothingNew = lines.isEmpty && supplier.orderLinksScript != nil && browser.pagesRead > 0
+                let foundNothingNew = lines.isEmpty && browser.ordersFound > 0
                 warning = foundNothingNew ? nil : ImportWarning.message(linesRead: lines.count, summary: imported, previouslyImported: previouslyImported, supplierName: supplier.name)
                 if warning == nil {
                     SupplierSettings.setLastImport(Date(), for: supplier)

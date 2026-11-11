@@ -18,6 +18,12 @@ nonisolated struct OrderLink: Decodable, Equatable {
     var isPurchase: Bool
 }
 
+nonisolated struct CollectedOrders: Decodable {
+    var signedOut: Bool?
+    var ordersFound: Int
+    var lines: [RawOrderLine]
+}
+
 nonisolated struct OrderLine: Equatable {
     var date: String?
     var vendor: String

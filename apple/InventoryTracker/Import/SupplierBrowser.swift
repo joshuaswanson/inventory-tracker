@@ -39,6 +39,7 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
     @ObservationIgnored let webView: WKWebView
     private(set) var page = SupplierPage.loading
     private(set) var pagesRead = 0
+    private(set) var ordersFound = 0
     @ObservationIgnored private var pendingLoad: CheckedContinuation<Void, Error>?
     @ObservationIgnored private var finishedLoads = 0
 
@@ -128,6 +129,12 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
     }
 
     func collectOrders(knownOrders: Set<String> = []) async throws -> [OrderLine] {
+        ordersFound = 0
+        if supplier.collectScript != nil {
+            try await waitForLoad { webView.load(URLRequest(url: supplier.ordersURL)) }
+            try await failIfBlocked(isFirstPage: true)
+            return try await collectFromService(knownOrders: knownOrders)
+        }
         if let linksScript = supplier.orderLinksScript {
             return try await collectOrdersOneByOne(linksScript: linksScript, knownOrders: knownOrders)
         }
@@ -144,6 +151,21 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
         return lines
     }
 
+    func collectFromService(knownOrders: Set<String>) async throws -> [OrderLine] {
+        guard let script = supplier.collectScript,
+              let json = try await webView.callAsyncJavaScript(script, arguments: ["knownOrders": Array(knownOrders)], contentWorld: .page) as? String else {
+            throw ImportFailure.unreadablePage
+        }
+        let collected = try JSONDecoder().decode(CollectedOrders.self, from: Data(json.utf8))
+        if collected.signedOut == true {
+            page = .signIn
+            throw ImportFailure.signInRequired
+        }
+        ordersFound = collected.ordersFound
+        pagesRead = collected.ordersFound
+        return collected.lines.map(OrderLine.init(raw:))
+    }
+
     /// The list is newest first, so a page where every order is already known ends the search.
     private func collectOrdersOneByOne(linksScript: String, knownOrders: Set<String>) async throws -> [OrderLine] {
         var newOrders: [OrderLink] = []
@@ -154,6 +176,7 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
             let links = try await orderLinks(linksScript)
             if links.isEmpty { break }
             pagesRead = pageNumber
+            ordersFound += links.count
             let unseen = links.filter { !knownOrders.contains($0.id) }
             newOrders += unseen.filter(\.isPurchase)
             if unseen.isEmpty { break }

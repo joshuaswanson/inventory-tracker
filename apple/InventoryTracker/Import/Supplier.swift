@@ -18,8 +18,11 @@ nonisolated struct Supplier: Identifiable, Hashable {
     var ordersPageTemplate: String?
     /// Set when the list only names orders and each order's lines are on its own page.
     var orderLinksScript: String?
+    /// Set when the site has its own order data service. The script runs on the orders page with
+    /// `knownOrders` and returns `{ ordersFound, lines }`, or `{ signedOut: true }`.
+    var collectScript: String?
 
-    static let all = [supplyClinic, benco]
+    static let all = [supplyClinic, benco, elevate]
     static let historyDays = 3 * 365
 
     static func withID(_ id: String) -> Supplier? {
@@ -202,6 +205,97 @@ nonisolated extension Supplier {
           }
           return JSON.stringify(links);
         })()
+        """#
+    )
+}
+
+nonisolated extension Supplier {
+    static let elevate = Supplier(
+        id: "elevate",
+        name: "Elevate Oral Care",
+        cookieDomain: "elevateoralcare",
+        ordersURL: URL(string: "https://www.elevateoralcare.com/sca-dev-2023-1-0/my_account.ssp")!,
+        signInURL: URL(string: "https://www.elevateoralcare.com/sca-dev-2023-1-0/my_account.ssp")!,
+        signInPath: "is=login",
+        passwordFieldMarkup: "login-register-login-form",
+        signInScript: #"""
+        const waitFor = async (selector) => {
+          for (let attempt = 0; attempt < 60; attempt++) {
+            const element = document.querySelector(selector);
+            if (element) return element;
+            await new Promise((resolve) => setTimeout(resolve, 250));
+          }
+          return null;
+        };
+        const passwordField = await waitFor('form input[type="password"]');
+        const form = passwordField?.form;
+        const emailField = form?.querySelector('input[name="email"], input[type="email"]');
+        if (!form || !emailField) return false;
+        for (const [field, value] of [[emailField, email], [passwordField, password]]) {
+          field.value = value;
+          field.dispatchEvent(new Event("input", { bubbles: true }));
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        form.dataset.inventorySubmitted = "true";
+        setTimeout(() => (form.querySelector('[type="submit"]') ?? form).click?.() ?? form.requestSubmit(), 0);
+        return true;
+        """#,
+        submittedFormResetScript: #"""
+        (() => {
+          const form = document.querySelector("form[data-inventory-submitted]");
+          if (!form) return true;
+          if (form.querySelector('input[type="password"]')?.value === "") return true;
+          return [...document.querySelectorAll(".global-views-message-error, [class*='error-message']")]
+            .some((element) => element.offsetParent !== null && element.textContent.trim() !== "");
+        })()
+        """#,
+        extractionScript: "",
+        collectScript: #"""
+        const base = location.pathname.replace(/my_account\.ssp.*/, "");
+        const pageSize = 20;
+        let signedOut = false;
+        const get = async (query) => {
+          const response = await fetch(`${base}services/OrderHistory.Service.ss?${query}`, {
+            credentials: "include",
+            headers: { "X-SC-Touchpoint": "customercenter" },
+          });
+          if (response.status === 401 || response.status === 403) signedOut = true;
+          if (!response.ok) throw new Error(`Order service answered ${response.status}`);
+          return response.json();
+        };
+        const lines = [];
+        let ordersFound = 0;
+        try {
+          for (let page = 1; page <= 25; page++) {
+            const list = await get(`page=${page}&results_per_page=${pageSize}`);
+            const records = list.records ?? [];
+            ordersFound += records.length;
+            for (const record of records) {
+              if (knownOrders.includes(record.tranid)) continue;
+              const order = await get(`internalid=${record.internalid}&recordtype=${record.recordtype}`);
+              const [month, day, year] = String(order.trandate).split("/");
+              for (const line of order.lines ?? []) {
+                const item = line.item ?? {};
+                const number = String(item.displayname ?? "").match(/^(\S+) - /);
+                lines.push({
+                  date: `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year}`,
+                  vendor: "Elevate Oral Care",
+                  suborderNumber: String(order.tranid),
+                  name: item.storedisplayname2 || item.displayname || item.itemid || "",
+                  manuCode: number ? number[1] : String(item.itemid ?? ""),
+                  quantity: String(line.quantity ?? ""),
+                  unitPrice: line.rate_formatted ?? "",
+                  status: order.status?.name ?? "",
+                });
+              }
+            }
+            if (records.length === 0 || page * pageSize >= Number(list.totalRecordsFound ?? 0)) break;
+          }
+        } catch (error) {
+          if (signedOut) return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
+          throw error;
+        }
+        return JSON.stringify({ ordersFound, lines });
         """#
     )
 }
