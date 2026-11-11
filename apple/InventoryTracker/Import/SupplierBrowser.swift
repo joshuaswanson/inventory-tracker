@@ -22,6 +22,11 @@ enum ImportFailure: LocalizedError {
     }
 }
 
+enum ImportProgress: Equatable {
+    case starting
+    case scanning(page: Int)
+}
+
 enum SupplierPage {
     case loading, signIn, challenge, ready, unreachable
 }
@@ -32,7 +37,6 @@ enum SupplierPage {
 @Observable
 final class SupplierBrowser: NSObject, WKNavigationDelegate {
     private static let signInPolls = 80
-    private static let detailPolls = 12
 
     @ObservationIgnored let supplier: Supplier
 
@@ -40,6 +44,7 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
     private(set) var page = SupplierPage.loading
     private(set) var pagesRead = 0
     private(set) var ordersFound = 0
+    private(set) var progress = ImportProgress.starting
     @ObservationIgnored private var pendingLoad: CheckedContinuation<Void, Error>?
     @ObservationIgnored private var finishedLoads = 0
 
@@ -130,21 +135,21 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
 
     func collectOrders(knownOrders: Set<String> = []) async throws -> [OrderLine] {
         ordersFound = 0
+        progress = .starting
         if supplier.collectScript != nil {
             try await waitForLoad { webView.load(URLRequest(url: supplier.ordersURL)) }
             try await failIfBlocked(isFirstPage: true)
             return try await collectFromService(knownOrders: knownOrders)
         }
-        if let linksScript = supplier.orderLinksScript {
-            return try await collectOrdersOneByOne(linksScript: linksScript, knownOrders: knownOrders)
-        }
         var lines: [OrderLine] = []
+        var paging = OrderPaging()
         pagesRead = 0
         for pageNumber in 1...supplier.maxOrderPages {
+            progress = .scanning(page: pageNumber)
             try await waitForLoad { webView.load(URLRequest(url: supplier.ordersURL(page: pageNumber))) }
             try await failIfBlocked(isFirstPage: pageNumber == 1)
             let pageLines = try await extractLines()
-            if pageLines.isEmpty { break }
+            guard paging.isNewPage(pageLines) else { break }
             lines += pageLines
             pagesRead = pageNumber
         }
@@ -166,47 +171,6 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
         return collected.lines.map(OrderLine.init(raw:))
     }
 
-    /// The list is newest first, so a page where every order is already known ends the search.
-    private func collectOrdersOneByOne(linksScript: String, knownOrders: Set<String>) async throws -> [OrderLine] {
-        var newOrders: [OrderLink] = []
-        pagesRead = 0
-        for pageNumber in 1...supplier.maxOrderPages {
-            try await waitForLoad { webView.load(URLRequest(url: supplier.ordersURL(page: pageNumber))) }
-            try await failIfBlocked(isFirstPage: pageNumber == 1)
-            let links = try await orderLinks(linksScript)
-            if links.isEmpty { break }
-            pagesRead = pageNumber
-            ordersFound += links.count
-            let unseen = links.filter { !knownOrders.contains($0.id) }
-            newOrders += unseen.filter(\.isPurchase)
-            if unseen.isEmpty { break }
-        }
-
-        var lines: [OrderLine] = []
-        for order in newOrders {
-            guard let url = URL(string: order.url) else { continue }
-            try await waitForLoad { webView.load(URLRequest(url: url)) }
-            lines += try await extractLinesWhenReady()
-            pagesRead += 1
-        }
-        return lines
-    }
-
-    func orderLinks(_ script: String) async throws -> [OrderLink] {
-        guard let json = try await webView.evaluateJavaScript(script) as? String else {
-            throw ImportFailure.unreadablePage
-        }
-        return try JSONDecoder().decode([OrderLink].self, from: Data(json.utf8))
-    }
-
-    /// Some sites hop through a redirect or fill the page in after it loads.
-    private func extractLinesWhenReady() async throws -> [OrderLine] {
-        for _ in 0..<Self.detailPolls {
-            if let lines = try? await extractLines(), !lines.isEmpty { return lines }
-            try await Task.sleep(for: .milliseconds(500))
-        }
-        return []
-    }
 
     func extractLines() async throws -> [OrderLine] {
         guard let json = try await webView.evaluateJavaScript(supplier.extractionScript) as? String else {

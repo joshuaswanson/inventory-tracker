@@ -12,10 +12,13 @@ nonisolated struct RawOrderLine: Decodable {
     var status: String
 }
 
-nonisolated struct OrderLink: Decodable, Equatable {
-    var id: String
-    var url: String
-    var isPurchase: Bool
+/// Some sites answer a page number past the end with their last page again.
+nonisolated struct OrderPaging {
+    private var seenPages: Set<String> = []
+
+    mutating func isNewPage(_ lines: [OrderLine]) -> Bool {
+        !lines.isEmpty && seenPages.insert(String(describing: lines)).inserted
+    }
 }
 
 nonisolated struct CollectedOrders: Decodable {

@@ -63,6 +63,16 @@ private func sampleBackup() -> Backup {
     }
 }
 
+@Suite struct OrderPagingTests {
+    @Test func aRepeatedOrEmptyPageEndsTheSearch() {
+        var paging = OrderPaging()
+        let first = [OrderLine(raw: rawLine())]
+        let second = [OrderLine(raw: rawLine(name: "Cotton Rolls"))]
+        let answers = [first, second, second, []].map { paging.isNewPage($0) }
+        #expect(answers == [true, true, false, false])
+    }
+}
+
 @Suite struct OrderMergeTests {
     @Test func mergeCreatesRecordsAndSkipsReturns() throws {
         let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))

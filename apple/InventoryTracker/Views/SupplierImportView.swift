@@ -193,21 +193,61 @@ struct SupplierImportView: View {
                 errorMessage: visibleError,
                 onSave: submit
             ) {
-                switch page {
-                case .signIn:
-                    signInFields
-                case .ready:
-                    signedIn
-                case .unreachable:
-                    intro("Couldn't reach \(supplier.name). Check your internet connection and try again.")
-                case .loading, .challenge:
-                    HStack(spacing: 10) {
-                        ProgressView().controlSize(.small)
-                        intro("Connecting to \(supplier.name)...")
+                if isWorking && !isSigningIn {
+                    importing
+                } else {
+                    switch page {
+                    case .signIn:
+                        signInFields
+                    case .ready:
+                        signedIn
+                    case .unreachable:
+                        intro("Couldn't reach \(supplier.name). Check your internet connection and try again.")
+                    case .loading, .challenge:
+                        HStack(spacing: 10) {
+                            ProgressView().controlSize(.small)
+                            intro("Connecting to \(supplier.name)...")
+                        }
                     }
                 }
             }
         }
+    }
+
+    private var importingTitle: String {
+        "Bringing in your \(supplier.name) orders"
+    }
+
+    private var importingDetail: String {
+        switch browser.progress {
+        case .scanning(let page) where page > 1: "Checked \(page - 1) pages of orders so far."
+        default: "Looking through your order history."
+        }
+    }
+
+    private var importing: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                ProgressView().controlSize(.small)
+                Text(importingTitle)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.text)
+            }
+            ProgressView()
+                .progressViewStyle(.linear)
+                .tint(Theme.primary)
+            Text(importingDetail)
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .animation(.default, value: importingDetail)
+            Text("This can take a minute or two. You can keep using the rest of the app.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 8)
     }
 
     private func intro(_ text: String) -> some View {
@@ -270,9 +310,7 @@ struct SupplierImportView: View {
 
     @ViewBuilder
     private var signedIn: some View {
-        intro(isWorking
-            ? "Reading your order history, \(browser.pagesRead) pages so far..."
-            : "Signed in to \(supplier.name)\(savedEmail.isEmpty ? "" : " as \(savedEmail)"). Press Import to bring in any new orders.")
+        intro("Signed in to \(supplier.name)\(savedEmail.isEmpty ? "" : " as \(savedEmail)"). Press Import to bring in any new orders.")
         Button("Use a different account") {
             errorMessage = nil
             Task { await browser.signOut() }

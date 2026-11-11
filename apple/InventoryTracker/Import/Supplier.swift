@@ -14,10 +14,6 @@ nonisolated struct Supplier: Identifiable, Hashable {
     let submittedFormResetScript: String
     let extractionScript: String
     var maxOrderPages = 50
-    /// Placeholders: `{page0}` is the zero-based page, `{start}` and `{today}` are ISO days.
-    var ordersPageTemplate: String?
-    /// Set when the list only names orders and each order's lines are on its own page.
-    var orderLinksScript: String?
     /// Set when the site has its own order data service. The script runs on the orders page with
     /// `knownOrders` and returns `{ ordersFound, lines }`, or `{ signedOut: true }`.
     var collectScript: String?
@@ -33,14 +29,7 @@ nonisolated struct Supplier: Identifiable, Hashable {
         url.contains(signInPath) || markup.contains(passwordFieldMarkup)
     }
 
-    func ordersURL(page: Int, today: String = Day.today) -> URL {
-        if let ordersPageTemplate {
-            let address = ordersPageTemplate
-                .replacingOccurrences(of: "{page0}", with: "\(page - 1)")
-                .replacingOccurrences(of: "{start}", with: Day.offset(today, by: -Self.historyDays))
-                .replacingOccurrences(of: "{today}", with: today)
-            return URL(string: address) ?? ordersURL
-        }
+    func ordersURL(page: Int) -> URL {
         guard page > 1 else { return ordersURL }
         return ordersURL.appending(queryItems: [URLQueryItem(name: "page", value: "\(page)")])
     }
@@ -164,47 +153,66 @@ nonisolated extension Supplier {
             .some((element) => element.offsetParent !== null && element.textContent.trim() !== "");
         })()
         """#,
-        extractionScript: #"""
-        (() => {
-          const heading = document.body.innerText.match(/Ordered on ([A-Za-z]+ \d{1,2}, \d{4})\s*\|\s*Order #\s*(\w+)/);
-          if (!heading) return JSON.stringify([]);
+        extractionScript: "",
+        collectScript: #"""
+        const parse = async (address) => {
+          const response = await fetch(address, { credentials: "include" });
+          return { document: new DOMParser().parseFromString(await response.text(), "text/html"), address: response.url ?? "" };
+        };
+        const isSignIn = (page) => /identity\.benco\.com/.test(page.address) || page.document.querySelector("#login-form");
+        const day = (date) => date.toISOString().slice(0, 10);
+        const today = new Date();
+        const start = new Date(today.getTime() - \#(historyDays) * 86400000);
+        const pad = (number) => String(number).padStart(2, "0");
+        const readOrder = (document) => {
+          const heading = document.body.textContent.replace(/\s+/g, " ").match(/Ordered on ([A-Za-z]+ \d{1,2}, \d{4})\s*\|\s*Order #\s*(\w+)/);
+          if (!heading) return [];
           const ordered = new Date(heading[1]);
-          const pad = (number) => String(number).padStart(2, "0");
           const date = `${pad(ordered.getMonth() + 1)}/${pad(ordered.getDate())}/${ordered.getFullYear()}`;
-          const lines = [];
-          for (const details of document.querySelectorAll(".product-detail-area .product-details")) {
+          return [...document.querySelectorAll(".product-detail-area .product-details")].map((details) => {
             const value = (label) => {
               const row = [...details.querySelectorAll("p")].find((p) => p.textContent.trim().startsWith(label));
               return row ? row.textContent.replace(label, "").trim() : "";
             };
-            lines.push({
+            return {
               date,
               vendor: "Benco Dental",
               suborderNumber: heading[2],
-              name: (details.querySelector("strong a, strong")?.textContent ?? "").trim(),
+              name: (details.querySelector("strong a, strong")?.textContent ?? "").replace(/\s+/g, " ").trim(),
               manuCode: value("Product #:"),
               quantity: value("Quantity:"),
               unitPrice: value("Net Price:"),
               status: "",
-            });
-          }
-          return JSON.stringify(lines);
-        })()
-        """#,
-        maxOrderPages: 60,
-        ordersPageTemplate: "https://shop.benco.com/PurchaseHistory/NewIndex?DateRangeOption=CustomRange&OrderStatus=all&PageNumber={page0}&StartDate={start}&EndDate={today}",
-        orderLinksScript: #"""
-        (() => {
-          const links = [];
-          for (const order of document.querySelectorAll(".order-container")) {
+            };
+          });
+        };
+        const lines = [];
+        const seen = new Set();
+        for (let page = 0; page < 60; page++) {
+          const list = await parse(`${location.origin}/PurchaseHistory/NewIndex?DateRangeOption=CustomRange&OrderStatus=all&PageNumber=${page}&StartDate=${day(start)}&EndDate=${day(today)}`);
+          if (isSignIn(list)) return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
+          const orders = [...list.document.querySelectorAll(".order-container")].flatMap((order) => {
             const title = order.querySelector("h3.panel-title.pull-left")?.textContent ?? "";
-            const number = title.match(/Order #\s*(\w+)/);
-            const link = order.querySelector('a[href*="NewOrderDetail"]');
-            if (!number || !link) continue;
-            links.push({ id: number[1], url: link.href, isPurchase: /Merchandise/.test(title) });
+            const number = (title.match(/Order #\s*(\w+)/) ?? [])[1];
+            if (!number || seen.has(number)) return [];
+            seen.add(number);
+            return [{ number, isPurchase: /Merchandise/.test(title) }];
+          });
+          if (orders.length === 0) break;
+          let unseen = 0;
+          for (const order of orders) {
+            if (knownOrders.includes(order.number)) continue;
+            unseen += 1;
+            if (!order.isPurchase) continue;
+            let orderLines = [];
+            for (let attempt = 0; attempt < 2 && orderLines.length === 0; attempt++) {
+              orderLines = readOrder((await parse(`${location.origin}/PurchaseHistory/NewOrderDetail/${order.number}`)).document);
+            }
+            lines.push(...orderLines);
           }
-          return JSON.stringify(links);
-        })()
+          if (unseen === 0) break;
+        }
+        return JSON.stringify({ ordersFound: seen.size, lines });
         """#
     )
 }

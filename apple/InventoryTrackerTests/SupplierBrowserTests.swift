@@ -117,40 +117,34 @@ private let orderPage = """
         #expect(try await browser.extractLines().isEmpty)
     }
 
-    @Test func bencoOrderListNamesPurchasesAndSkipsCredits() async throws {
+    @Test func bencoReadsNewPurchasesAndStopsWhenTheSiteRepeatsItsLastPage() async throws {
         let page = """
-        <html><body><div class="order-history">
-          <div class="order-container"><h3 class="panel-title pull-left"><span>9/2/2026</span><span>-</span><span> Order #AA100 - Merchandise </span></h3>
-            <h3 class="panel-title pull-right"><a href="https://example.com/PurchaseHistory/NewOrderDetail/AA100">View Details</a></h3></div>
-          <div class="order-container"><h3 class="panel-title pull-left"><span>8/12/2026</span><span>-</span><span> Order #CR200 - Credit </span></h3>
-            <h3 class="panel-title pull-right"><a href="https://example.com/PurchaseHistory/NewOrderDetail/CR200">View Details</a></h3></div>
-        </div></body></html>
+        <html><body><script>
+        const list = `
+          <div class="order-container"><h3 class="panel-title pull-left"><span>9/2/2026</span><span>-</span><span> Order #AA100 - Merchandise </span></h3></div>
+          <div class="order-container"><h3 class="panel-title pull-left"><span>8/12/2026</span><span>-</span><span> Order #CR200 - Credit </span></h3></div>
+          <div class="order-container"><h3 class="panel-title pull-left"><span>8/1/2026</span><span>-</span><span> Order #AA050 - Merchandise </span></h3></div>`;
+        const detail = `<h2>Your Orders &gt; Order Details</h2>
+          <div>Ordered on September 02, 2026 | Order # AA100 | Purchase Order # 123</div>
+          <div class="row product-detail-area"><div class="col-sm-9 product-details">
+            <strong><a>Universal Adhesive Vial Refill 5ml </a></strong>
+            <p>Product #: 4394-863</p><p>Quantity: 1</p><p>Net Price: $1,185.47</p><p>Ext Price: $1,185.47</p></div></div>
+          <div class="row product-detail-area"><div class="col-sm-9 product-details">
+            <strong><a>C-Fold Towel White Case of 2376</a></strong>
+            <p>Product #: 6492-128</p><p>Quantity: 0</p><p>Net Price: $30.90</p><p>Ext Price: $0.00</p></div></div>`;
+        window.requests = [];
+        window.fetch = async (address) => {
+          window.requests.push(address);
+          const body = address.includes("NewOrderDetail/AA100") ? detail : address.includes("NewIndex") ? list : "";
+          return { ok: true, status: 200, url: address, text: async () => body };
+        };
+        </script></body></html>
         """
         let browser = SupplierBrowser(supplier: .benco)
-        try await browser.loadHTML(page)
-        let links = try await browser.orderLinks(try #require(Supplier.benco.orderLinksScript))
-        #expect(links == [
-            OrderLink(id: "AA100", url: "https://example.com/PurchaseHistory/NewOrderDetail/AA100", isPurchase: true),
-            OrderLink(id: "CR200", url: "https://example.com/PurchaseHistory/NewOrderDetail/CR200", isPurchase: false),
-        ])
-    }
+        try await browser.loadHTML(page, baseURL: URL(string: "https://store.example/"))
+        let lines = try await browser.collectFromService(knownOrders: ["AA050"])
 
-    @Test func bencoOrderPageReadsEachLine() async throws {
-        let page = """
-        <html><body>
-        <h2>Your Orders &gt; Order Details</h2>
-        <div>Ordered on September 02, 2026 | Order # AA100 | Purchase Order # 123</div>
-        <div class="row product-detail-area"><div class="col-sm-9 product-details">
-          <strong><a>Universal Adhesive Vial Refill 5ml </a></strong>
-          <p>Product #: 4394-863</p><p>Quantity: 1</p><p>Net Price: $1,185.47</p><p>Ext Price: $1,185.47</p></div></div>
-        <div class="row product-detail-area"><div class="col-sm-9 product-details">
-          <strong><a>C-Fold Towel White Case of 2376</a></strong>
-          <p>Product #: 6492-128</p><p>Quantity: 0</p><p>Net Price: $30.90</p><p>Ext Price: $0.00</p></div></div>
-        </body></html>
-        """
-        let browser = SupplierBrowser(supplier: .benco)
-        try await browser.loadHTML(page)
-        let lines = try await browser.extractLines()
+        #expect(browser.ordersFound == 3)
         #expect(lines.count == 2)
         let first = try #require(lines.first)
         #expect(first.date == "2026-09-02")
@@ -163,11 +157,22 @@ private let orderPage = """
         #expect(first.isImportable)
         #expect(first.sourceID(for: .benco) == "benco:AA100:4394-863")
         #expect(!lines[1].isImportable)
+        let requests = try #require(try await browser.webView.evaluateJavaScript("window.requests") as? [String])
+        #expect(requests.filter { $0.contains("NewIndex") }.count == 2)
+        #expect(requests.filter { $0.contains("NewOrderDetail") } == ["https://store.example/PurchaseHistory/NewOrderDetail/AA100"])
     }
 
-    @Test func bencoListAddressCoversThreeYearsAndCountsPagesFromZero() {
-        let address = Supplier.benco.ordersURL(page: 2, today: "2026-11-11").absoluteString
-        #expect(address == "https://shop.benco.com/PurchaseHistory/NewIndex?DateRangeOption=CustomRange&OrderStatus=all&PageNumber=1&StartDate=2023-11-12&EndDate=2026-11-11")
+    @Test func bencoReportsAnExpiredSession() async throws {
+        let page = """
+        <html><body><script>
+        window.fetch = async (address) => ({ ok: true, status: 200, url: "https://identity.benco.com/Account/Login", text: async () => "<form id='login-form'></form>" });
+        </script></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .benco)
+        try await browser.loadHTML(page, baseURL: URL(string: "https://store.example/"))
+        await #expect(throws: ImportFailure.signInRequired) {
+            try await browser.collectFromService(knownOrders: [])
+        }
     }
 
     @Test func elevateReadsNewOrdersFromItsDataServiceAndSkipsKnownOnes() async throws {
