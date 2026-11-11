@@ -42,6 +42,8 @@ enum DebugLaunch {
             router.sheet = .item(nil)
         case "data":
             router.sheet = .data
+        case "import-orders":
+            router.sheet = .importOrders
         case "count-stock":
             if let itemID = firstExpiredItemID(in: context),
                let item = try? context.fetch(FetchDescriptor<Item>(predicate: #Predicate { $0.id == itemID })).first {

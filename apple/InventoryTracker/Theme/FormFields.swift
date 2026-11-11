@@ -5,6 +5,7 @@ struct FormSheet<Content: View>: View {
     var saveTitle = "Save"
     var canSave = true
     var showsCancel = true
+    var macWidth: CGFloat = 480
     var macHeight: CGFloat = 600
     var fitsContentOnMac = false
     var errorMessage: String?
@@ -53,7 +54,7 @@ struct FormSheet<Content: View>: View {
         }
         .background(Theme.surface)
         #if os(macOS)
-        .frame(width: 480, height: fitsContentOnMac ? nil : macHeight)
+        .frame(width: macWidth, height: fitsContentOnMac ? nil : macHeight)
         #endif
     }
 
