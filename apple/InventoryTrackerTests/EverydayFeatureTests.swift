@@ -138,7 +138,7 @@ private func makeContext() throws -> ModelContext {
 
     @Test func textIsReadyToPaste() {
         let text = ReorderList.text(lines, day: "2026-11-11")
-        #expect(text.hasPrefix("Reorder list, Nov 11, 2026\n\nSchein\n- Angles: order 3 pk (have 1), best price $153.59\n"))
+        #expect(text.hasPrefix("Shopping list, Nov 11, 2026\n\nSchein\n- Angles: order 3 pk (have 1), best price $153.59\n"))
         #expect(text.hasSuffix("No vendor yet\n- Bibs: order 1 cs (have 0)"))
     }
 }

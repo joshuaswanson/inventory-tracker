@@ -33,7 +33,7 @@ nonisolated enum ReorderList {
     }
 
     static func text(_ lines: [ReorderLine], day: String) -> String {
-        var output = ["Reorder list, \(Format.longDate(day))"]
+        var output = ["Shopping list, \(Format.longDate(day))"]
         for group in groups(lines) {
             output.append("")
             output.append(group.vendor)

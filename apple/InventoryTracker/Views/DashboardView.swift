@@ -121,7 +121,7 @@ struct DashboardView: View {
             iconColor: Theme.amber,
             rows: lowStock,
             emptyMessage: "All items are well-stocked.",
-            actionTitle: "Reorder List",
+            actionTitle: "Shopping List",
             action: { router.sheet = .reorder }
         ) { row in
             Text("\(row.metrics.currentInventory) / \(row.item.reorderLevel) \(row.item.unitAbbreviation)")

@@ -24,11 +24,11 @@ struct ReorderListView: View {
         let lines = lines
         let text = ReorderList.text(lines, day: Day.today)
 
-        FormSheet(title: "Reorder List", saveTitle: "Done", showsCancel: false, onSave: { dismiss() }) {
+        FormSheet(title: "Shopping List", saveTitle: "Done", showsCancel: false, onSave: { dismiss() }) {
             if lines.isEmpty {
-                PlaceholderText("Nothing needs reordering right now.")
+                PlaceholderText("Nothing needs buying right now.")
             } else {
-                Text("Items at or below their reorder level, grouped by the vendor with the best past price.")
+                Text("Items that are running low, grouped by the vendor with the best past price.")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
