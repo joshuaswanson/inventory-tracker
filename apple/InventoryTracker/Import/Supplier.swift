@@ -22,7 +22,7 @@ nonisolated struct Supplier: Identifiable, Hashable {
     /// `knownOrders` and returns `{ ordersFound, lines }`, or `{ signedOut: true }`.
     var collectScript: String?
 
-    static let all = [supplyClinic, benco, elevate]
+    static let all = [supplyClinic, benco, elevate, dentalMarket]
     static let historyDays = 3 * 365
 
     static func withID(_ id: String) -> Supplier? {
@@ -298,6 +298,96 @@ nonisolated extension Supplier {
         return JSON.stringify({ ordersFound, lines });
         """#
     )
+}
+
+nonisolated extension Supplier {
+    static let dentalMarket = bigCommerce(id: "dentalmarket", name: "The Dental Market", host: "thedentalmarket.net")
+
+    /// Stores built on BigCommerce share the same account pages.
+    static func bigCommerce(id: String, name: String, host: String) -> Supplier {
+        Supplier(
+            id: id,
+            name: name,
+            cookieDomain: host,
+            ordersURL: URL(string: "https://\(host)/account.php?action=order_status")!,
+            signInURL: URL(string: "https://\(host)/login.php")!,
+            signInPath: "/login.php",
+            passwordFieldMarkup: "name=\"login_pass\"",
+            signInScript: #"""
+            const passwordField = document.querySelector('input[name="login_pass"]');
+            const form = passwordField?.form;
+            const emailField = form?.querySelector('input[name="login_email"]');
+            if (!form || !emailField) return false;
+            for (const [field, value] of [[emailField, email], [passwordField, password]]) {
+              field.value = value;
+              field.dispatchEvent(new Event("input", { bubbles: true }));
+              field.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            form.dataset.inventorySubmitted = "true";
+            setTimeout(() => form.requestSubmit(), 0);
+            return true;
+            """#,
+            submittedFormResetScript: #"""
+            (() => {
+              const form = document.querySelector("form[data-inventory-submitted]");
+              if (!form) return true;
+              return form.querySelector('input[name="login_pass"]')?.value === "";
+            })()
+            """#,
+            extractionScript: "",
+            collectScript: bigCommerceCollectScript.replacingOccurrences(of: "{vendor}", with: name)
+        )
+    }
+
+    private static let bigCommerceCollectScript = #"""
+    const parse = async (address) => {
+      const response = await fetch(address, { credentials: "include" });
+      return new DOMParser().parseFromString(await response.text(), "text/html");
+    };
+    const absolute = (link) => new URL(link.getAttribute("href"), location.origin);
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    const toDate = (text) => {
+      const parts = text.match(/(\d{1,2})\D*\s+([A-Za-z]{3})[a-z]*\s+(\d{4})/);
+      if (!parts) return "";
+      const month = months.indexOf(parts[2].toLowerCase()) + 1;
+      return `${String(month).padStart(2, "0")}/${parts[1].padStart(2, "0")}/${parts[3]}`;
+    };
+    const lines = [];
+    let ordersFound = 0;
+    let address = `${location.origin}/account.php?action=order_status`;
+    for (let page = 0; page < 25 && address; page++) {
+      const list = await parse(address);
+      if (list.querySelector('input[name="login_pass"]')) {
+        return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
+      }
+      for (const row of list.querySelectorAll(".account-listItem")) {
+        const link = row.querySelector('a[href*="order_id"]');
+        if (!link) continue;
+        const orderNumber = absolute(link).searchParams.get("order_id");
+        ordersFound += 1;
+        if (knownOrders.includes(orderNumber)) continue;
+        const placed = [...row.querySelectorAll(".account-product-detail")].find((detail) => /Order Placed/i.test(detail.textContent));
+        const order = await parse(absolute(link).href);
+        for (const item of order.querySelectorAll(".account-listItem")) {
+          const title = (item.querySelector(".account-product-title")?.textContent ?? "").replace(/\s+/g, " ").trim();
+          const counted = title.match(/^(\d+)\s*[×x]\s*(.+)$/);
+          lines.push({
+            date: toDate(placed?.querySelector("span")?.textContent ?? ""),
+            vendor: "{vendor}",
+            suborderNumber: orderNumber,
+            name: counted ? counted[2] : title,
+            manuCode: "",
+            quantity: counted ? counted[1] : "1",
+            unitPrice: (item.querySelector(".account-product-price")?.textContent ?? "").trim(),
+            status: (row.querySelector(".account-orderStatus-label")?.textContent ?? "").trim(),
+          });
+        }
+      }
+      const next = list.querySelector(".pagination-item--next a");
+      address = next ? absolute(next).href : null;
+    }
+    return JSON.stringify({ ordersFound, lines });
+    """#
 }
 
 nonisolated enum SupplierSettings {

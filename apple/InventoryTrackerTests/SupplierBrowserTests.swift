@@ -215,4 +215,62 @@ private let orderPage = """
         }
         #expect(browser.page == .signIn)
     }
+
+    @Test func bigCommerceStoreReadsOrdersAcrossPagesAndSkipsKnownOnes() async throws {
+        let page = """
+        <html><body><script>
+        const row = (id, status, placed) => `<li class="account-listItem"><h6 class="account-orderStatus-label">${status}</h6>
+          <h5 class="account-product-title"><a href="/account.php?action=view_order&order_id=${id}">Order #${id}</a></h5>
+          <div class="account-product-detail"><h6>Order Placed</h6><span>${placed}</span></div>
+          <div class="account-product-detail"><h6>Last Update</h6><span>1st Jan 2020</span></div></li>`;
+        const pages = {
+          "action=order_status": `<ul>${row(501, "Shipped", "7th Jun 2026")}${row(400, "Shipped", "1st May 2026")}</ul>
+            <li class="pagination-item pagination-item--next"><a href="/account.php?action=order_status&page=2">Next</a></li>`,
+          "page=2": `<ul>${row(300, "Refunded", "22nd Dec 2025")}</ul>`,
+          "order_id=501": `<li class="account-listItem"><span class="account-product-price">$27.95</span>
+            <h5 class="account-product-title">2 × CSR Wraps, 20' x 20' Blue</h5></li>
+            <li class="account-listItem"><span class="account-product-price">$1,114.95</span>
+            <h5 class="account-product-title">1 × Curing Light</h5></li>`,
+          "order_id=300": `<li class="account-listItem"><span class="account-product-price">$5.00</span>
+            <h5 class="account-product-title">3 × Refunded Thing</h5></li>`,
+        };
+        window.requests = [];
+        window.fetch = async (address) => {
+          window.requests.push(address);
+          const key = Object.keys(pages).reverse().find((candidate) => address.includes(candidate));
+          return { ok: true, status: 200, text: async () => pages[key] };
+        };
+        </script></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .dentalMarket)
+        try await browser.loadHTML(page, baseURL: URL(string: "https://store.example/"))
+        let lines = try await browser.collectFromService(knownOrders: ["400"])
+
+        #expect(browser.ordersFound == 3)
+        #expect(lines.count == 3)
+        let first = try #require(lines.first)
+        #expect(first.date == "2026-06-07")
+        #expect(first.vendor == "The Dental Market")
+        #expect(first.suborderNumber == "501")
+        #expect(first.name == "CSR Wraps, 20' x 20' Blue")
+        #expect(first.quantity == 2)
+        #expect(first.unitPrice == 27.95)
+        #expect(first.isImportable)
+        #expect(lines[1].unitPrice == 1114.95)
+        #expect(lines[2].date == "2025-12-22")
+        #expect(!lines[2].isImportable)
+    }
+
+    @Test func bigCommerceStoreReportsAnExpiredSession() async throws {
+        let page = """
+        <html><body><script>
+        window.fetch = async () => ({ ok: true, status: 200, text: async () => '<form><input name="login_pass" type="password"></form>' });
+        </script></body></html>
+        """
+        let browser = SupplierBrowser(supplier: .dentalMarket)
+        try await browser.loadHTML(page)
+        await #expect(throws: ImportFailure.self) {
+            try await browser.collectFromService(knownOrders: [])
+        }
+    }
 }

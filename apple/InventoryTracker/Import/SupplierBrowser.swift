@@ -124,8 +124,8 @@ final class SupplierBrowser: NSObject, WKNavigationDelegate {
         try await webView.evaluateJavaScript(supplier.submittedFormResetScript) as? Bool ?? false
     }
 
-    func loadHTML(_ html: String) async throws {
-        try await waitForLoad { webView.loadHTMLString(html, baseURL: nil) }
+    func loadHTML(_ html: String, baseURL: URL? = nil) async throws {
+        try await waitForLoad { webView.loadHTMLString(html, baseURL: baseURL) }
     }
 
     func collectOrders(knownOrders: Set<String> = []) async throws -> [OrderLine] {

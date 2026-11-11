@@ -47,7 +47,7 @@ nonisolated struct OrderLine: Equatable {
 
     var isImportable: Bool {
         let lowered = status.lowercased()
-        if lowered.contains("cancel") || lowered.contains("return") { return false }
+        if ["cancel", "return", "refund", "declined"].contains(where: lowered.contains) { return false }
         return date != nil && !name.isEmpty && (quantity ?? 0) > 0 && unitPrice != nil
     }
 
