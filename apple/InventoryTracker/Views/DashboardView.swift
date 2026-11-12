@@ -1,68 +1,9 @@
 import SwiftData
 import SwiftUI
 
-private struct TileDropDelegate: DropDelegate {
-    let target: DashboardWidget
-    @Binding var layout: DashboardLayout
-    @Binding var dragging: DashboardWidget?
-
-    func dropEntered(info: DropInfo) {
-        guard let dragging, dragging != target else { return }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { layout.move(dragging, onto: target) }
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        dragging = nil
-        return true
-    }
-}
-
-private struct ResizeStart {
-    var widget: DashboardWidget
-    var size: DashboardTileSize
-    var tileSize: CGSize
-    var cellWidth: CGFloat
-    var translation = CGSize.zero
-
-    /// Follows the pointer, but never smaller than the smallest box or bigger than the biggest.
-    func draggedSize(spacing: CGFloat) -> CGSize {
-        let largest = DashboardTileSize.extraLarge
-        func length(_ cells: Int, _ cell: CGFloat) -> CGFloat { cell * CGFloat(cells) + spacing * CGFloat(cells - 1) }
-        return CGSize(
-            width: min(max(cellWidth, tileSize.width + translation.width), length(largest.columns, cellWidth)),
-            height: min(max(DashboardGrid.cellHeight, tileSize.height + translation.height), length(largest.rows, DashboardGrid.cellHeight))
-        )
-    }
-}
-
-/// A thick stroke that hugs the rounded bottom right corner of a box.
-nonisolated private struct CornerHandle: Shape {
-    var radius: CGFloat
-    var inset: CGFloat
-    var arm: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        let right = rect.maxX - inset
-        let bottom = rect.maxY - inset
-        var path = Path()
-        path.move(to: CGPoint(x: right, y: bottom - radius - arm))
-        path.addLine(to: CGPoint(x: right, y: bottom - radius))
-        path.addArc(center: CGPoint(x: right - radius, y: bottom - radius), radius: radius, startAngle: .zero, endAngle: .degrees(90), clockwise: false)
-        path.addLine(to: CGPoint(x: right - radius - arm, y: bottom))
-        return path
-    }
-}
-
 struct DashboardView: View {
     private static let rowLimit = 12
     private static let chartMonths = 12
-    private static let gridSpacing: CGFloat = 16
-    private static let layoutAnimation = Animation.spring(response: 0.5, dampingFraction: 0.82)
-
     @Query private var items: [Item]
     @Query private var vendors: [Vendor]
     @Query(sort: \Purchase.date, order: .reverse) private var purchases: [Purchase]
@@ -70,11 +11,7 @@ struct DashboardView: View {
     @Environment(Router.self) private var router
     @Environment(\.isWideLayout) private var isWide
     @Environment(\.modelContext) private var modelContext
-    @State private var layout = DashboardLayout.load()
-    @State private var isEditing = DashboardView.startsInEditMode
-    @State private var dragging: DashboardWidget?
-    @State private var hovered: DashboardWidget?
-    @State private var resizeStart: ResizeStart?
+    @State private var model = DashboardModel(isEditing: DashboardView.startsInEditMode)
 
     private static var startsInEditMode: Bool {
         #if DEBUG
@@ -86,7 +23,7 @@ struct DashboardView: View {
 
     var body: some View {
         Screen(title: "Dashboard") {
-            if !items.isEmpty { editActions }
+            if !items.isEmpty { DashboardEditActions(model: model) }
             if !isWide {
                 Button {
                     router.sheet = .data
@@ -98,57 +35,15 @@ struct DashboardView: View {
             if items.isEmpty {
                 welcome
             } else {
-                if isEditing { editHint }
-                let rows = ItemRow.rows(for: items).sorted { orderedText($0.item.name, $1.item.name, ascending: true) }
-                DashboardGrid(spacing: Self.gridSpacing) {
-                    ForEach(layout.tiles) { tile in
-                        editable(tile) {
-                            DashboardTileView(content: content(for: tile.widget, rows: rows), size: tile.size)
-                        }
-                        .layoutValue(key: DashboardTileSizeKey.self, value: tile.size)
-                    }
-                }
-                .animation(Self.layoutAnimation, value: layout)
-                if layout.tiles.isEmpty {
-                    PlaceholderText("Your dashboard is empty. Press Customize, then Add a Widget.")
-                }
+                if model.isEditing { editHint }
+                DashboardBoard(model: model, contents: contents)
             }
         }
-        .onChange(of: layout) { layout.save() }
     }
 
-    @ViewBuilder
-    private var editActions: some View {
-        if isEditing {
-            if !layout.hidden.isEmpty {
-                Menu("Add a Widget") {
-                    ForEach(layout.hidden) { widget in
-                        Button(widget.title) { withAnimation(Self.layoutAnimation) { layout.add(widget) } }
-                    }
-                }
-                .menuStyle(.button)
-                .buttonStyle(.themedSecondary)
-                .fixedSize()
-            }
-            if layout != .standard {
-                Button("Reset") { withAnimation(Self.layoutAnimation) { layout = .standard } }
-                    .buttonStyle(.themedSecondary)
-            }
-            Button("Done") {
-                dragging = nil
-                isEditing = false
-            }
-            .buttonStyle(.themedPrimary)
-        } else if isWide {
-            Button("Customize") { isEditing = true }
-                .buttonStyle(.themedSecondary)
-        } else {
-            Button {
-                isEditing = true
-            } label: {
-                Label("Customize", systemImage: "square.grid.2x2")
-            }
-        }
+    private var contents: [DashboardWidget: WidgetContent] {
+        let rows = ItemRow.rows(for: items).sorted { orderedText($0.item.name, $1.item.name, ascending: true) }
+        return Dictionary(uniqueKeysWithValues: DashboardWidget.allCases.map { ($0, content(for: $0, rows: rows)) })
     }
 
     private var editHint: some View {
@@ -159,117 +54,6 @@ struct DashboardView: View {
             .padding(12)
             .background(Theme.primaryBackground, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
             .padding(.bottom, 16)
-    }
-
-    /// The grid sizes an invisible placeholder. The box itself sits on top of it, so it can
-    /// follow the pointer while its corner is dragged without disturbing the other boxes.
-    private func editable<Content: View>(_ tile: DashboardTile, @ViewBuilder content: @escaping () -> Content) -> some View {
-        let dragged = resizeStart.flatMap { $0.widget == tile.widget ? $0.draggedSize(spacing: Self.gridSpacing) : nil }
-        return Color.clear
-            .overlay(alignment: .topLeading) {
-                GeometryReader { geometry in
-                    box(tile, slotSize: geometry.size, content: content)
-                        .frame(width: dragged?.width ?? geometry.size.width, height: dragged?.height ?? geometry.size.height)
-                        .shadow(color: .black.opacity(dragged == nil ? 0 : 0.16), radius: 14, y: 6)
-                }
-            }
-            .zIndex(dragged == nil ? 0 : 1)
-    }
-
-    private func box<Content: View>(_ tile: DashboardTile, slotSize: CGSize, content: () -> Content) -> some View {
-        content()
-            .allowsHitTesting(!isEditing)
-            .overlay {
-                if isEditing {
-                    RoundedRectangle(cornerRadius: Theme.radius)
-                        .strokeBorder(Theme.primary.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                }
-            }
-            .contentShape(Rectangle())
-            .onDrag {
-                dragging = tile.widget
-                return NSItemProvider(object: tile.widget.rawValue as NSString)
-            }
-            .onDrop(of: [.plainText], delegate: TileDropDelegate(target: tile.widget, layout: $layout, dragging: $dragging))
-            .overlay(alignment: .topTrailing) {
-                if isEditing { removeButton(tile) }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                resizeHandle(tile, tileSize: slotSize)
-            }
-            .onHover { isInside in
-                if isInside { hovered = tile.widget } else if hovered == tile.widget { hovered = nil }
-            }
-            .contextMenu {
-                Menu("Size") {
-                    ForEach(DashboardTileSize.allCases) { size in
-                        Button {
-                            withAnimation(Self.layoutAnimation) { layout.resize(tile.widget, to: size) }
-                        } label: {
-                            if size == tile.size {
-                                Label(size.title, systemImage: "checkmark")
-                            } else {
-                                Text(size.title)
-                            }
-                        }
-                    }
-                }
-                Button("Remove from Dashboard", role: .destructive) {
-                    withAnimation(Self.layoutAnimation) { layout.hide(tile.widget) }
-                }
-                if !isEditing {
-                    Button("Customize Dashboard") { isEditing = true }
-                }
-            }
-    }
-
-    private func removeButton(_ tile: DashboardTile) -> some View {
-        RowIconButton(systemImage: "xmark", isDestructive: true, label: "Remove \(tile.widget.title)") {
-            withAnimation(Self.layoutAnimation) { layout.hide(tile.widget) }
-        }
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border))
-        .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
-        .padding(8)
-    }
-
-    private func resizeHandle(_ tile: DashboardTile, tileSize: CGSize) -> some View {
-        let isActive = resizeStart?.widget == tile.widget
-        let isVisible = isEditing || isActive || hovered == tile.widget
-        return CornerHandle(radius: Theme.radius - 4, inset: 5, arm: 7)
-            .stroke(isActive ? Theme.primary : Theme.textTertiary, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-            .opacity(isVisible ? 1 : 0)
-            .animation(.easeOut(duration: 0.15), value: isVisible)
-            .frame(width: 34, height: 34)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 2, coordinateSpace: .global)
-                    .onChanged { drag in
-                        if resizeStart?.widget != tile.widget {
-                            let columns = CGFloat(tile.size.columns)
-                            resizeStart = ResizeStart(
-                                widget: tile.widget,
-                                size: tile.size,
-                                tileSize: tileSize,
-                                cellWidth: (tileSize.width - Self.gridSpacing * (columns - 1)) / columns
-                            )
-                        }
-                        guard var start = resizeStart else { return }
-                        start.translation = drag.translation
-                        resizeStart = start
-                        let columns = start.size.columns + Int((drag.translation.width / (start.cellWidth + Self.gridSpacing)).rounded())
-                        let rows = start.size.rows + Int((drag.translation.height / (DashboardGrid.cellHeight + Self.gridSpacing)).rounded())
-                        let size = DashboardTileSize.closest(columns: columns, rows: rows)
-                        if size != tile.size {
-                            withAnimation(Self.layoutAnimation) { layout.resize(tile.widget, to: size) }
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.spring(response: 0.42, dampingFraction: 0.58)) { resizeStart = nil }
-                    }
-            )
-            .help("Drag to resize")
-            .accessibilityLabel("Resize \(tile.widget.title)")
     }
 
     private func content(for widget: DashboardWidget, rows: [ItemRow]) -> WidgetContent {
