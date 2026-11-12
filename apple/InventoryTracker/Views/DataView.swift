@@ -24,59 +24,73 @@ struct DataView: View {
 
     private var backupDetail: String {
         guard let lastBackup else {
-            return "Your inventory is backed up automatically every day once you add items."
+            return "Saved automatically every day once you add items."
         }
-        return "Your inventory is backed up automatically every day. Last backup: \(lastBackup.formatted(date: .abbreviated, time: .shortened))."
+        return "Saved automatically every day. Last backup: \(lastBackup.formatted(date: .abbreviated, time: .shortened))."
+    }
+
+    private var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
     }
 
     var body: some View {
-        FormSheet(title: "Settings", saveTitle: "Done", showsCancel: false, fitsContentOnMac: true, onSave: { dismiss() }) {
-            section("Backups", detail: backupDetail) {
-                Button("Save a Copy", action: export)
+        FormSheet(title: "Settings", saveTitle: "Done", showsCancel: false, macWidth: 560, fitsContentOnMac: true, onSave: { dismiss() }) {
+            if let message {
+                Label(message, systemImage: messageIsError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(messageIsError ? Theme.redDark : Theme.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(messageIsError ? Theme.redLight : Theme.greenLight, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
+            }
+
+            card("Backups", systemImage: "externaldrive.fill", tone: .green, detail: backupDetail) {
+                HStack(spacing: 8) {
+                    Button("Save a Copy", action: export)
+                        .buttonStyle(.themedSecondary)
+                    #if os(macOS)
+                    Button("Show Backups") {
+                        try? FileManager.default.createDirectory(at: AutoBackup.folder, withIntermediateDirectories: true)
+                        NSWorkspace.shared.activateFileViewerSelecting([AutoBackup.folder])
+                    }
                     .buttonStyle(.themedSecondary)
-                #if os(macOS)
-                Button("Show Backups") {
-                    try? FileManager.default.createDirectory(at: AutoBackup.folder, withIntermediateDirectories: true)
-                    NSWorkspace.shared.activateFileViewerSelecting([AutoBackup.folder])
+                    #endif
                 }
-                .buttonStyle(.themedSecondary)
+                #if os(macOS)
+                Divider().overlay(Theme.borderLight)
+                extraFolder
                 #endif
-            }
-            #if os(macOS)
-            extraFolder
-            #endif
-
-            section("Restore", detail: "Bring records back from a backup file. Nothing you have now is deleted.") {
-                Button("Choose Backup File") { pick(.backup) }
-                    .buttonStyle(.themedSecondary)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                FieldLabel(title: "Reminders")
-                CheckboxField(title: "Remind me before items expire or run low", isOn: reminders)
-            }
-
-            section("Getting Started", detail: "See a quick tour of the app.") {
-                Button("Take the Tour") { Tour.start(router: router, context: modelContext) }
-                    .buttonStyle(.themedSecondary)
-                if SampleData.hasSamples(in: items) {
-                    Button("Remove Practice Items", action: removeSamples)
+                Divider().overlay(Theme.borderLight)
+                row("Restore from a backup", detail: "Brings records back from a backup file. Nothing you have now is deleted.") {
+                    Button("Choose Backup File") { pick(.backup) }
                         .buttonStyle(.themedSecondary)
                 }
             }
 
+            card("Reminders", systemImage: "bell.fill", tone: .amber, detail: "Get a notification before items expire or run low.") {
+                Toggle("Remind me", isOn: reminders)
+                    .toggleStyle(.switch)
+                    .tint(Theme.primary)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.text)
+            }
+
             if let checkForUpdates {
-                section("Updates", detail: "You have version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""). The app also checks by itself.") {
+                card("Updates", systemImage: "arrow.down.circle.fill", tone: .blue, detail: "You have version \(version). The app also checks for new versions by itself.") {
                     Button("Check for Updates", action: checkForUpdates)
                         .buttonStyle(.themedSecondary)
                 }
             }
 
-            if let message {
-                Text(message)
-                    .font(.system(size: 13))
-                    .foregroundStyle(messageIsError ? Theme.red : Theme.green)
-                    .fixedSize(horizontal: false, vertical: true)
+            card("Help", systemImage: "lightbulb.fill", tone: .purple, detail: "A short tour shows where everything is.") {
+                HStack(spacing: 8) {
+                    Button("Take the Tour") { Tour.start(router: router, context: modelContext) }
+                        .buttonStyle(.themedSecondary)
+                    if SampleData.hasSamples(in: items) {
+                        Button("Remove Practice Items", action: removeSamples)
+                            .buttonStyle(.themedSecondary)
+                    }
+                }
             }
         }
         .task {
@@ -108,7 +122,7 @@ struct DataView: View {
     @ViewBuilder
     private var extraFolder: some View {
         if let extraFolderName {
-            section(nil, detail: "A second copy is also saved to the \"\(extraFolderName)\" folder.") {
+            row("Second copy", detail: "Also saved to the \"\(extraFolderName)\" folder.") {
                 Button("Stop Saving There") {
                     ExtraBackupFolder.clear()
                     self.extraFolderName = nil
@@ -116,8 +130,8 @@ struct DataView: View {
                 .buttonStyle(.themedSecondary)
             }
         } else {
-            section(nil, detail: "For protection if this Mac is lost or breaks, keep a second copy in iCloud Drive or on another drive.") {
-                Button("Choose a Second Folder") { pick(.folder) }
+            row("Second copy", detail: "In case this Mac is lost or breaks, keep another copy in iCloud Drive or on another drive.") {
+                Button("Choose a Folder") { pick(.folder) }
                     .buttonStyle(.themedSecondary)
             }
         }
@@ -140,17 +154,57 @@ struct DataView: View {
         )
     }
 
-    private func section<Buttons: View>(_ title: String?, detail: String, @ViewBuilder buttons: () -> Buttons) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let title {
-                FieldLabel(title: title)
+    private func card<Content: View>(_ title: String, systemImage: String, tone: Tone, detail: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16))
+                .foregroundStyle(tone.icon)
+                .frame(width: 36, height: 36)
+                .background(tone.background, in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.text)
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                content()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.border))
+    }
+
+    private func row<Trailing: View>(_ title: String, detail: String, @ViewBuilder trailing: () -> Trailing) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 12) {
+                rowText(title, detail: detail)
+                trailing().fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                rowText(title, detail: detail)
+                trailing()
+            }
+        }
+    }
+
+    private func rowText(_ title: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Theme.text)
             Text(detail)
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) { buttons() }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func pick(_ kind: FilePicker) {
