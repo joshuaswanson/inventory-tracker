@@ -20,21 +20,33 @@ struct DuplicatesBanner: View {
     var body: some View {
         if count > 0 {
             HStack(spacing: 12) {
-                Image(systemName: "square.on.square")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.primaryDark)
+                Image(systemName: "square.on.square.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.amber)
+                    .frame(width: 32, height: 32)
+                    .background(Theme.amberLight, in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityHidden(true)
                 Text(count == 1
                     ? "You may have the same \(noun) listed more than once."
                     : "You may have \(count) \(noun)s listed more than once.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.primaryDarker)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.text)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Review", action: action)
-                    .buttonStyle(.themedSecondary)
+                    .buttonStyle(.themedPrimary)
             }
-            .padding(.horizontal, 14)
+            .padding(.leading, 16)
+            .padding(.trailing, 12)
             .padding(.vertical, 10)
-            .background(Theme.primaryBackground, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .overlay(alignment: .leading) {
+                UnevenRoundedRectangle(topLeadingRadius: Theme.radius, bottomLeadingRadius: Theme.radius)
+                    .fill(Theme.amber)
+                    .frame(width: 4)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.amber.opacity(0.45)))
+            .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
             .padding(.bottom, 16)
         }
     }
