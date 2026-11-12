@@ -455,6 +455,7 @@ struct SupplierImportView: View {
         }
         .font(.system(size: 14))
         .foregroundStyle(Theme.text)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func resultLine(count: Int, noun: String, suffix: String) -> some View {
