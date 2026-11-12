@@ -191,7 +191,7 @@ nonisolated extension Supplier {
         };
         const lines = [];
         const seen = new Set();
-        for (let page = 0; page < 60; page++) {
+        for (let page = 1; page <= 80; page++) {
           const list = await parse(`${location.origin}/PurchaseHistory/NewIndex?DateRangeOption=CustomRange&OrderStatus=all&PageNumber=${page}&StartDate=${day(start)}&EndDate=${day(today)}`);
           if (isSignIn(list)) return JSON.stringify({ signedOut: true, ordersFound: 0, lines: [] });
           const orders = [...list.document.querySelectorAll(".order-container")].flatMap((order) => {
@@ -202,18 +202,20 @@ nonisolated extension Supplier {
             return [{ number, isPurchase: /Merchandise/.test(title) }];
           });
           if (orders.length === 0) break;
-          let unseen = 0;
-          for (const order of orders) {
-            if (knownOrders.includes(order.number)) continue;
-            unseen += 1;
-            if (!order.isPurchase) continue;
+          const unseen = orders.filter((order) => !knownOrders.includes(order.number));
+          const purchases = unseen.filter((order) => order.isPurchase);
+          const readWithRetry = async (order) => {
             let orderLines = [];
             for (let attempt = 0; attempt < 2 && orderLines.length === 0; attempt++) {
               orderLines = readOrder((await parse(`${location.origin}/PurchaseHistory/NewOrderDetail/${order.number}`)).document);
             }
-            lines.push(...orderLines);
+            return orderLines;
+          };
+          for (let index = 0; index < purchases.length; index += 4) {
+            const batch = await Promise.all(purchases.slice(index, index + 4).map(readWithRetry));
+            lines.push(...batch.flat());
           }
-          if (unseen === 0) break;
+          if (unseen.length === 0) break;
         }
         return JSON.stringify({ ordersFound: seen.size, lines });
         """#

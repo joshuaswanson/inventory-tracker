@@ -117,7 +117,7 @@ private let orderPage = """
         #expect(try await browser.extractLines().isEmpty)
     }
 
-    @Test func bencoReadsNewPurchasesAndStopsWhenTheSiteRepeatsItsLastPage() async throws {
+    @Test func bencoReadsEveryPageStartingFromPageOne() async throws {
         let page = """
         <html><body><script>
         const list = `
@@ -135,7 +135,11 @@ private let orderPage = """
         window.requests = [];
         window.fetch = async (address) => {
           window.requests.push(address);
-          const body = address.includes("NewOrderDetail/AA100") ? detail : address.includes("NewIndex") ? list : "";
+          const older = `<div class="order-container"><h3 class="panel-title pull-left"><span>5/1/2026</span><span>-</span><span> Order #AA020 - Merchandise </span></h3></div>`;
+          const body = address.includes("NewOrderDetail/AA100") ? detail
+            : address.includes("NewOrderDetail/AA020") ? detail.replace("AA100", "AA020").replace("September 02", "May 01")
+            : address.includes("PageNumber=1&") ? list
+            : address.includes("PageNumber=2&") ? older : "";
           return { ok: true, status: 200, url: address, text: async () => body };
         };
         </script></body></html>
@@ -144,8 +148,10 @@ private let orderPage = """
         try await browser.loadHTML(page, baseURL: URL(string: "https://store.example/"))
         let lines = try await browser.collectFromService(knownOrders: ["AA050"])
 
-        #expect(browser.ordersFound == 3)
-        #expect(lines.count == 2)
+        #expect(browser.ordersFound == 4)
+        #expect(lines.count == 4)
+        #expect(lines[2].suborderNumber == "AA020")
+        #expect(lines[2].date == "2026-05-01")
         let first = try #require(lines.first)
         #expect(first.date == "2026-09-02")
         #expect(first.vendor == "Benco Dental")
@@ -158,8 +164,10 @@ private let orderPage = """
         #expect(first.sourceID(for: .benco) == "benco:AA100:4394-863")
         #expect(!lines[1].isImportable)
         let requests = try #require(try await browser.webView.evaluateJavaScript("window.requests") as? [String])
-        #expect(requests.filter { $0.contains("NewIndex") }.count == 2)
-        #expect(requests.filter { $0.contains("NewOrderDetail") } == ["https://store.example/PurchaseHistory/NewOrderDetail/AA100"])
+        let listRequests = requests.filter { $0.contains("NewIndex") }
+        #expect(listRequests.count == 3)
+        #expect(listRequests.first?.contains("PageNumber=1&") == true)
+        #expect(requests.filter { $0.contains("NewOrderDetail") }.map { String($0.suffix(5)) } == ["AA100", "AA020"])
     }
 
     @Test func bencoReportsAnExpiredSession() async throws {
