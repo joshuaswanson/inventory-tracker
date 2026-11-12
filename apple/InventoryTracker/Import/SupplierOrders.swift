@@ -148,7 +148,7 @@ nonisolated enum ImportWarning {
 }
 
 enum OrderMerge {
-    private static let importedReorderLevel = 2
+    private static let importedReorderLevel = 0
 
     @discardableResult
     static func merge(_ lines: [OrderLine], from supplier: Supplier, into context: ModelContext, today: String = Day.today) throws -> OrderImportSummary {

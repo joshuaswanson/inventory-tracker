@@ -154,7 +154,7 @@ private func sampleBackup() -> Backup {
         let item = try #require(try context.fetch(FetchDescriptor<Item>()).first)
         #expect(summary == OrderImportSummary(imported: 1, duplicates: 0, skipped: 1, newItems: 1, newVendors: 1, newItemIDs: [item.id]))
         #expect(item.unit == .pack)
-        #expect(item.reorderLevel == 2)
+        #expect(item.reorderLevel == 0)
         let purchase = try #require(item.purchases?.first)
         #expect(purchase.vendor?.name == "Acme Dental")
         #expect(purchase.productNumber == "GZ-22")
