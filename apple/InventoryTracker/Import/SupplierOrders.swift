@@ -48,10 +48,14 @@ nonisolated struct OrderLine: Equatable {
         status = OrderText.stripping(raw.status, labels: ["Status:"])
     }
 
+    var isReadable: Bool {
+        date != nil && !name.isEmpty && quantity != nil && unitPrice != nil
+    }
+
     var isImportable: Bool {
         let lowered = status.lowercased()
         if ["cancel", "return", "refund", "declined"].contains(where: lowered.contains) { return false }
-        return date != nil && !name.isEmpty && (quantity ?? 0) > 0 && unitPrice != nil
+        return isReadable && (quantity ?? 0) > 0
     }
 
     func sourceID(for supplier: Supplier) -> String {
@@ -112,6 +116,7 @@ nonisolated struct OrderImportSummary: Equatable {
     var imported = 0
     var duplicates = 0
     var skipped = 0
+    var unreadable = 0
     var newItems = 0
     var newVendors = 0
     var newItemIDs: [String] = []
@@ -126,7 +131,7 @@ nonisolated enum ImportWarning {
         if linesRead == 0 {
             return "No orders were found on \(supplierName). If you have ordered from it before, the site may have changed. Please tell the person who set up this app."
         }
-        if summary.skipped == linesRead {
+        if summary.unreadable == linesRead {
             return "\(linesRead) orders were found on \(supplierName), but none could be read. The site has probably changed. Please tell the person who set up this app."
         }
         return nil
@@ -137,13 +142,20 @@ nonisolated enum ImportWarning {
     }
 
     /// Order numbers already imported from this supplier, read from the middle of each source ID.
-    static func knownOrders(from supplier: Supplier, in context: ModelContext) -> Set<String> {
+    /// Orders placed on or after `recheckingSince` are left out, so they are read again and a
+    /// line that shipped late is still picked up.
+    static func knownOrders(from supplier: Supplier, in context: ModelContext, recheckingSince: String? = nil) -> Set<String> {
         let purchases = (try? context.fetch(FetchDescriptor<Purchase>())) ?? []
         let prefix = "\(supplier.id):"
-        return Set(purchases.compactMap { purchase in
-            guard let source = purchase.sourceId, source.hasPrefix(prefix) else { return nil }
-            return source.dropFirst(prefix.count).split(separator: ":").first.map(String.init)
-        })
+        var known: Set<String> = []
+        var recent: Set<String> = []
+        for purchase in purchases {
+            guard let source = purchase.sourceId, source.hasPrefix(prefix),
+                  let order = source.dropFirst(prefix.count).split(separator: ":").first.map(String.init) else { continue }
+            known.insert(order)
+            if let recheckingSince, purchase.date >= recheckingSince { recent.insert(order) }
+        }
+        return known.subtracting(recent)
     }
 }
 
@@ -161,6 +173,7 @@ enum OrderMerge {
         for line in lines {
             guard line.isImportable, let date = line.date, let quantity = line.quantity, let unitPrice = line.unitPrice else {
                 summary.skipped += 1
+                if !line.isReadable { summary.unreadable += 1 }
                 continue
             }
             let baseID = line.sourceID(for: supplier)

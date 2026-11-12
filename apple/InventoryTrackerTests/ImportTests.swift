@@ -279,8 +279,8 @@ private func sampleBackup() -> Backup {
 }
 
 @Suite struct ImportWarningTests {
-    private func message(read: Int, imported: Int = 0, duplicates: Int = 0, skipped: Int = 0, before: Int = 0) -> String? {
-        let summary = OrderImportSummary(imported: imported, duplicates: duplicates, skipped: skipped, newItems: 0, newVendors: 0)
+    private func message(read: Int, imported: Int = 0, duplicates: Int = 0, skipped: Int = 0, unreadable: Int = 0, before: Int = 0) -> String? {
+        let summary = OrderImportSummary(imported: imported, duplicates: duplicates, skipped: skipped, unreadable: unreadable, newItems: 0, newVendors: 0)
         return ImportWarning.message(linesRead: read, summary: summary, previouslyImported: before, supplierName: "Acme")
     }
 
@@ -301,8 +301,29 @@ private func sampleBackup() -> Backup {
     }
 
     @Test func ordersThatCannotBeReadAreFlagged() throws {
-        let text = try #require(message(read: 12, skipped: 12, before: 5))
+        let text = try #require(message(read: 12, skipped: 12, unreadable: 12, before: 5))
         #expect(text.contains("none could be read"))
+        #expect(message(read: 2, skipped: 2, before: 5) == nil)
+    }
+
+    @Test func recentOrdersAreReadAgainSoLateShipmentsArePickedUp() throws {
+        let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
+        var unshipped = rawLine(name: "Backordered Towels", manuCode: "Manu Code: TW-1")
+        unshipped.quantity = "Qty: 0"
+        let first = try OrderMerge.merge([OrderLine(raw: rawLine()), OrderLine(raw: unshipped)], from: .supplyClinic, into: context)
+        #expect(first.imported == 1)
+        #expect(first.skipped == 1)
+        #expect(first.unreadable == 0)
+
+        #expect(ImportWarning.knownOrders(from: .supplyClinic, in: context, recheckingSince: "2026-03-01").isEmpty)
+        #expect(ImportWarning.knownOrders(from: .supplyClinic, in: context, recheckingSince: "2026-04-01") == ["S-100"])
+
+        var shipped = unshipped
+        shipped.quantity = "Qty: 4"
+        let second = try OrderMerge.merge([OrderLine(raw: rawLine()), OrderLine(raw: shipped)], from: .supplyClinic, into: context)
+        #expect(second.imported == 1)
+        #expect(second.duplicates == 1)
+        #expect(try context.fetch(FetchDescriptor<Purchase>()).count == 2)
     }
 
     @Test func earlierImportsAreCountedPerSupplier() throws {

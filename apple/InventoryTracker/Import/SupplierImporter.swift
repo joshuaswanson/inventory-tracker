@@ -8,10 +8,12 @@ struct SupplierImportResult {
 }
 
 enum SupplierImporter {
+    private static let recheckDays = 60
+
     /// Reads new orders through a signed-in browser and adds them to the inventory.
     static func importOrders(using browser: SupplierBrowser, into context: ModelContext) async throws -> SupplierImportResult {
         let supplier = browser.supplier
-        let knownOrders = ImportWarning.knownOrders(from: supplier, in: context)
+        let knownOrders = ImportWarning.knownOrders(from: supplier, in: context, recheckingSince: Day.offset(Day.today, by: -recheckDays))
         let lines = try await browser.collectOrders(knownOrders: knownOrders)
         let previouslyImported = ImportWarning.previouslyImported(from: supplier, in: context)
         let summary = try OrderMerge.merge(lines, from: supplier, into: context)
