@@ -143,6 +143,48 @@ private func makeContext() throws -> ModelContext {
     }
 }
 
+@Suite struct DashboardLayoutTests {
+    @Test func boxesCanBeMovedResizedRemovedAndAddedBack() {
+        var layout = DashboardLayout.standard
+        layout.move(.inventoryValue, onto: .totalItems)
+        #expect(layout.tiles.prefix(2).map(\.widget) == [.inventoryValue, .totalItems])
+        layout.move(.inventoryValue, onto: .vendors)
+        #expect(layout.tiles.prefix(4).map(\.widget) == [.totalItems, .lowStockCount, .expiringCount, .vendors])
+        #expect(layout.tiles[4].widget == .inventoryValue)
+
+        layout.resize(.lowStockAlerts)
+        #expect(layout.tiles.first { $0.widget == .lowStockAlerts }?.size == .full)
+        layout.resize(.lowStockAlerts)
+        #expect(layout.tiles.first { $0.widget == .lowStockAlerts }?.size == .half)
+
+        layout.hide(.vendors)
+        #expect(layout.hidden == [.vendors, .spentThisMonth, .recentPurchases])
+        layout.add(.recentPurchases)
+        layout.add(.recentPurchases)
+        #expect(layout.tiles.last == DashboardTile(widget: .recentPurchases, size: .half))
+    }
+
+    @Test func layoutIsSavedAndUnreadableSavesFallBackToTheStandardOne() throws {
+        let defaults = try #require(UserDefaults(suiteName: "dashboard-layout-test"))
+        defaults.removePersistentDomain(forName: "dashboard-layout-test")
+        #expect(DashboardLayout.load(from: defaults) == .standard)
+        var layout = DashboardLayout.standard
+        layout.hide(.totalItems)
+        layout.save(to: defaults)
+        #expect(DashboardLayout.load(from: defaults) == layout)
+        defaults.set(Data("nonsense".utf8), forKey: DashboardLayout.storageKey)
+        #expect(DashboardLayout.load(from: defaults) == .standard)
+    }
+
+    @Test func tileWidthsFollowTheNumberOfColumns() {
+        #expect(DashboardTileSize.small.span(columns: 6) == 1)
+        #expect(DashboardTileSize.wide.span(columns: 6) == 2)
+        #expect(DashboardTileSize.half.span(columns: 6) == 3)
+        #expect(DashboardTileSize.half.span(columns: 2) == 2)
+        #expect(DashboardTileSize.full.span(columns: 4) == 4)
+    }
+}
+
 @Suite struct SpendingReportTests {
     private let entries = [
         SpendingEntry(day: "2026-03-02", item: "Gloves", vendor: "Schein", quantity: 10, pricePerUnit: 6.5),
