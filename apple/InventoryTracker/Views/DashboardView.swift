@@ -8,7 +8,7 @@ private struct TileDropDelegate: DropDelegate {
 
     func dropEntered(info: DropInfo) {
         guard let dragging, dragging != target else { return }
-        withAnimation(.snappy(duration: 0.3)) { layout.move(dragging, onto: target) }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { layout.move(dragging, onto: target) }
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
@@ -24,13 +24,37 @@ private struct TileDropDelegate: DropDelegate {
 private struct ResizeStart {
     var widget: DashboardWidget
     var size: DashboardTileSize
-    var cellWidth: CGFloat
+    var tileSize: CGSize
+    var translation = CGSize.zero
+
+    var draggedSize: CGSize {
+        CGSize(width: max(90, tileSize.width + translation.width), height: max(90, tileSize.height + translation.height))
+    }
+}
+
+/// A thick stroke that hugs the rounded bottom right corner of a box.
+nonisolated private struct CornerHandle: Shape {
+    var radius: CGFloat
+    var inset: CGFloat
+    var arm: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let right = rect.maxX - inset
+        let bottom = rect.maxY - inset
+        var path = Path()
+        path.move(to: CGPoint(x: right, y: bottom - radius - arm))
+        path.addLine(to: CGPoint(x: right, y: bottom - radius))
+        path.addArc(center: CGPoint(x: right - radius, y: bottom - radius), radius: radius, startAngle: .zero, endAngle: .degrees(90), clockwise: false)
+        path.addLine(to: CGPoint(x: right - radius - arm, y: bottom))
+        return path
+    }
 }
 
 struct DashboardView: View {
     private static let rowLimit = 12
     private static let chartMonths = 12
     private static let gridSpacing: CGFloat = 16
+    private static let layoutAnimation = Animation.spring(response: 0.5, dampingFraction: 0.82)
 
     @Query private var items: [Item]
     @Query private var vendors: [Vendor]
@@ -77,7 +101,7 @@ struct DashboardView: View {
                         .layoutValue(key: DashboardTileSizeKey.self, value: tile.size)
                     }
                 }
-                .animation(.snappy(duration: 0.3), value: layout)
+                .animation(Self.layoutAnimation, value: layout)
                 if layout.tiles.isEmpty {
                     PlaceholderText("Your dashboard is empty. Press Customize, then Add a Box.")
                 }
@@ -92,7 +116,7 @@ struct DashboardView: View {
             if !layout.hidden.isEmpty {
                 Menu("Add a Box") {
                     ForEach(layout.hidden) { widget in
-                        Button(widget.title) { withAnimation(.snappy) { layout.add(widget) } }
+                        Button(widget.title) { withAnimation(Self.layoutAnimation) { layout.add(widget) } }
                     }
                 }
                 .menuStyle(.button)
@@ -100,7 +124,7 @@ struct DashboardView: View {
                 .fixedSize()
             }
             if layout != .standard {
-                Button("Reset") { withAnimation(.snappy) { layout = .standard } }
+                Button("Reset") { withAnimation(Self.layoutAnimation) { layout = .standard } }
                     .buttonStyle(.themedSecondary)
             }
             Button("Done") {
@@ -148,14 +172,22 @@ struct DashboardView: View {
             .overlay(alignment: .topTrailing) {
                 if isEditing { removeButton(tile) }
             }
-            .overlay {
-                if isEditing || hovered == tile.widget || resizeStart?.widget == tile.widget {
-                    GeometryReader { geometry in
-                        resizeHandle(tile, tileWidth: geometry.size.width)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                    }
+            .overlay(alignment: .topLeading) {
+                if let start = resizeStart, start.widget == tile.widget {
+                    RoundedRectangle(cornerRadius: Theme.radius)
+                        .fill(Theme.primary.opacity(0.07))
+                        .strokeBorder(Theme.primary.opacity(0.7), lineWidth: 2)
+                        .frame(width: start.draggedSize.width, height: start.draggedSize.height)
+                        .allowsHitTesting(false)
                 }
             }
+            .overlay {
+                GeometryReader { geometry in
+                    resizeHandle(tile, tileSize: geometry.size)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                }
+            }
+            .zIndex(resizeStart?.widget == tile.widget ? 1 : 0)
             .onHover { isInside in
                 if isInside { hovered = tile.widget } else if hovered == tile.widget { hovered = nil }
             }
@@ -163,7 +195,7 @@ struct DashboardView: View {
                 Menu("Size") {
                     ForEach(DashboardTileSize.allCases) { size in
                         Button {
-                            withAnimation(.snappy(duration: 0.3)) { layout.resize(tile.widget, to: size) }
+                            withAnimation(Self.layoutAnimation) { layout.resize(tile.widget, to: size) }
                         } label: {
                             if size == tile.size {
                                 Label(size.title, systemImage: "checkmark")
@@ -174,7 +206,7 @@ struct DashboardView: View {
                     }
                 }
                 Button("Remove from Dashboard", role: .destructive) {
-                    withAnimation(.snappy(duration: 0.3)) { layout.hide(tile.widget) }
+                    withAnimation(Self.layoutAnimation) { layout.hide(tile.widget) }
                 }
                 if !isEditing {
                     Button("Customize Dashboard") { isEditing = true }
@@ -184,7 +216,7 @@ struct DashboardView: View {
 
     private func removeButton(_ tile: DashboardTile) -> some View {
         RowIconButton(systemImage: "xmark", isDestructive: true, label: "Remove \(tile.widget.title)") {
-            withAnimation(.snappy(duration: 0.3)) { layout.hide(tile.widget) }
+            withAnimation(Self.layoutAnimation) { layout.hide(tile.widget) }
         }
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border))
@@ -192,36 +224,36 @@ struct DashboardView: View {
         .padding(8)
     }
 
-    private func resizeHandle(_ tile: DashboardTile, tileWidth: CGFloat) -> some View {
-        Image(systemName: "arrow.up.left.and.arrow.down.right")
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(Theme.primaryDark)
-            .frame(width: 24, height: 24)
-            .background(Theme.surface, in: Circle())
-            .overlay(Circle().strokeBorder(Theme.border))
-            .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
-            .padding(6)
+    private func resizeHandle(_ tile: DashboardTile, tileSize: CGSize) -> some View {
+        let isActive = resizeStart?.widget == tile.widget
+        let isVisible = isEditing || isActive || hovered == tile.widget
+        return CornerHandle(radius: Theme.radius - 4, inset: 5, arm: 7)
+            .stroke(isActive ? Theme.primary : Theme.textTertiary, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+            .opacity(isVisible ? 1 : 0)
+            .animation(.easeOut(duration: 0.15), value: isVisible)
+            .frame(width: 34, height: 34)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 2, coordinateSpace: .global)
                     .onChanged { drag in
                         if resizeStart?.widget != tile.widget {
-                            let columns = CGFloat(tile.size.columns)
-                            resizeStart = ResizeStart(
-                                widget: tile.widget,
-                                size: tile.size,
-                                cellWidth: (tileWidth - Self.gridSpacing * (columns - 1)) / columns
-                            )
+                            resizeStart = ResizeStart(widget: tile.widget, size: tile.size, tileSize: tileSize)
                         }
-                        guard let start = resizeStart else { return }
-                        let columns = start.size.columns + Int((drag.translation.width / (start.cellWidth + Self.gridSpacing)).rounded())
+                        guard var start = resizeStart else { return }
+                        start.translation = drag.translation
+                        resizeStart = start
+                        let startColumns = CGFloat(start.size.columns)
+                        let cellWidth = (start.tileSize.width - Self.gridSpacing * (startColumns - 1)) / startColumns
+                        let columns = start.size.columns + Int((drag.translation.width / (cellWidth + Self.gridSpacing)).rounded())
                         let rows = start.size.rows + Int((drag.translation.height / (DashboardGrid.cellHeight + Self.gridSpacing)).rounded())
                         let size = DashboardTileSize.closest(columns: columns, rows: rows)
                         if size != tile.size {
-                            withAnimation(.snappy(duration: 0.25)) { layout.resize(tile.widget, to: size) }
+                            withAnimation(Self.layoutAnimation) { layout.resize(tile.widget, to: size) }
                         }
                     }
-                    .onEnded { _ in resizeStart = nil }
+                    .onEnded { _ in
+                        withAnimation(.easeOut(duration: 0.2)) { resizeStart = nil }
+                    }
             )
             .help("Drag to resize")
             .accessibilityLabel("Resize \(tile.widget.title)")
@@ -276,7 +308,7 @@ struct DashboardView: View {
         return WidgetContent(
             systemImage: "exclamationmark.triangle.fill", tone: .amber, title: "Low Stock", value: "\(low.count)",
             valueColor: low.isEmpty ? Theme.text : Theme.amber,
-            caption: low.isEmpty ? "All well stocked" : "to reorder",
+            caption: "",
             rows: low.prefix(Self.rowLimit).map { row in
                 WidgetRow(
                     id: row.id, label: row.item.name,
@@ -298,7 +330,7 @@ struct DashboardView: View {
         return WidgetContent(
             systemImage: "clock.fill", tone: .red, title: "Expiring Soon", value: "\(expiring.count)",
             valueColor: expiring.isEmpty ? Theme.text : Theme.red,
-            caption: expiring.isEmpty ? "Nothing in 30 days" : "in the next 30 days",
+            caption: "",
             rows: expiring.prefix(Self.rowLimit).map { row in
                 let days = row.metrics.daysUntilExpiration ?? 0
                 return WidgetRow(
@@ -338,7 +370,7 @@ struct DashboardView: View {
         return WidgetContent(
             systemImage: "dollarsign.circle.fill", tone: .green, title: "Inventory Value",
             value: Format.currency(ItemRow.totalValue(rows)), valueColor: Theme.green,
-            caption: "across \(plural(valued.count, "item"))",
+            caption: "",
             rows: valued.prefix(Self.rowLimit).map { row, value in
                 WidgetRow(id: row.id, label: row.item.name, trailing: Format.currency(value), action: openItem(row.item.id))
             },

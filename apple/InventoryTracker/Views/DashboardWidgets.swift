@@ -37,20 +37,23 @@ struct DashboardTileView: View {
     private static let columnRows = 6
     private static let largeChartMonths = 6
 
+    private static let sizeChange = AnyTransition.opacity.combined(with: .scale(scale: 0.97, anchor: .topLeading))
+
     let content: WidgetContent
     let size: DashboardTileSize
 
     var body: some View {
-        Group {
+        ZStack(alignment: .topLeading) {
             switch size {
-            case .small: headline
-            case .medium: medium
-            case .large: large
-            case .extraLarge: extraLarge
+            case .small: headline.transition(Self.sizeChange)
+            case .medium: medium.transition(Self.sizeChange)
+            case .large: large.transition(Self.sizeChange)
+            case .extraLarge: extraLarge.transition(Self.sizeChange)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
         .card()
         .contentShape(Rectangle())
         .onTapGesture { content.action?() }
@@ -79,11 +82,13 @@ struct DashboardTileView: View {
                 .foregroundStyle(content.valueColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
-            Text(content.caption)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.textTertiary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            if !content.caption.isEmpty {
+                Text(content.caption)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -102,10 +107,12 @@ struct DashboardTileView: View {
             icon(30)
             VStack(alignment: .leading, spacing: 0) {
                 Text(content.title).sectionLabel(size: 12)
-                Text(content.caption)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.textTertiary)
-                    .lineLimit(1)
+                if !content.caption.isEmpty {
+                    Text(content.caption)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textTertiary)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 8)
             Text(content.value)
