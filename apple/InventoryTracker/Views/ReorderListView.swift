@@ -26,7 +26,7 @@ struct ReorderListView: View {
 
         FormSheet(title: "Shopping List", saveTitle: "Done", showsCancel: false, onSave: { dismiss() }) {
             if lines.isEmpty {
-                PlaceholderText("Nothing needs buying right now.")
+                PlaceholderText("Nothing needs to be bought right now.")
             } else {
                 Text("Items that are running low, grouped by the vendor with the best past price.")
                     .font(.system(size: 13))

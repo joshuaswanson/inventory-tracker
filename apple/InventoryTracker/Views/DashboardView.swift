@@ -47,7 +47,7 @@ struct DashboardView: View {
     }
 
     private var editHint: some View {
-        Label("Drag a widget to move it. Drag its bottom right corner to make it bigger or smaller. Both also work any time, without Customize.", systemImage: "hand.draw")
+        Label("Drag a widget to move it. Drag its bottom right corner to make it bigger or smaller.", systemImage: "hand.draw")
             .font(.system(size: 13))
             .foregroundStyle(Theme.primaryDarker)
             .frame(maxWidth: .infinity, alignment: .leading)

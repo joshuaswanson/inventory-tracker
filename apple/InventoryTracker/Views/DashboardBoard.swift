@@ -202,11 +202,9 @@ private struct DashboardTileContainer: View {
                 }
             }
         }
-        Button("Remove from Dashboard", role: .destructive) {
+        Divider()
+        Button("Delete", role: .destructive) {
             withAnimation(DashboardMotion.layout) { model.layout.hide(tile.widget) }
-        }
-        if !model.isEditing {
-            Button("Customize Dashboard") { model.isEditing = true }
         }
     }
 
