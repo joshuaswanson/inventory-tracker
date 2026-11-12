@@ -59,6 +59,10 @@ struct InventoryTrackerApp: App {
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") { updater.checkForUpdates(nil) }
             }
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") { router.sheet = .data }
+                    .keyboardShortcut(",")
+            }
             CommandGroup(replacing: .newItem) {
                 Button("New Item") { router.sheet = .item(nil) }
                     .keyboardShortcut("n")
