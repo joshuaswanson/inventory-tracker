@@ -305,3 +305,190 @@ struct CheckboxField: View {
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
+
+nonisolated enum ItemSearch {
+    /// Every typed word has to appear in the name. Names that start with the text come first,
+    /// then names with a word that starts with it.
+    static func matches(_ query: String, in names: [(id: String, name: String)]) -> [String] {
+        let words = query.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !words.isEmpty else { return names.map(\.id) }
+        let lowered = query.lowercased().trimmingCharacters(in: .whitespaces)
+        func rank(_ name: String) -> Int {
+            let name = name.lowercased()
+            if name.hasPrefix(lowered) { return 0 }
+            let nameWords = name.split { !$0.isLetter && !$0.isNumber }
+            if nameWords.contains(where: { $0.hasPrefix(words[0]) }) { return 1 }
+            return 2
+        }
+        return names
+            .filter { entry in words.allSatisfy { entry.name.lowercased().contains($0) } }
+            .sorted { (rank($0.name), $0.name.lowercased()) < (rank($1.name), $1.name.lowercased()) }
+            .map(\.id)
+    }
+}
+
+/// A text field that suggests matching items as you type, with the list attached underneath.
+struct ItemSearchField: View {
+    private static let visibleRows = 7
+    private static let rowHeight: CGFloat = 36
+
+    let items: [Item]
+    @Binding var itemID: String
+    var detail: (Item) -> String = { _ in "" }
+
+    @State private var query = ""
+    @State private var isOpen = false
+    @State private var highlighted = 0
+    @FocusState private var isFocused: Bool
+
+    private var selectedName: String {
+        items.first { $0.id == itemID }?.name ?? ""
+    }
+
+    private var matches: [Item] {
+        let search = query == selectedName ? "" : query
+        let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        return ItemSearch.matches(search, in: items.map { (id: $0.id, name: $0.name) }).compactMap { byID[$0] }
+    }
+
+    var body: some View {
+        let matches = matches
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
+                TextField("", text: $query, prompt: Text("Type to find an item").foregroundStyle(Theme.textTertiary))
+                    .textFieldStyle(.plain)
+                    .focused($isFocused)
+                    .onSubmit { if matches.indices.contains(highlighted) { pick(matches[highlighted]) } }
+                    .onKeyPress(.downArrow) { move(1, count: matches.count) }
+                    .onKeyPress(.upArrow) { move(-1, count: matches.count) }
+                    .onKeyPress(.escape) {
+                        close()
+                        return .handled
+                    }
+                    .accessibilityIdentifier("Item search")
+                Button {
+                    if isOpen { close() } else { open() }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .rotationEffect(.degrees(isOpen ? 180 : 0))
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isOpen ? "Hide items" : "Show all items")
+            }
+            .modifier(FieldBox(isFocused: isFocused || isOpen))
+            .environment(\.fieldHasAttachedPanel, isOpen)
+
+            if isOpen { panel(matches) }
+        }
+        .onAppear { query = selectedName }
+        .onChange(of: itemID) { if !isFocused { query = selectedName } }
+        .onChange(of: query) {
+            guard isFocused, query != selectedName else { return }
+            highlighted = 0
+            isOpen = true
+        }
+        .onChange(of: isFocused) {
+            if isFocused {
+                open()
+            } else {
+                Task {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    if !isFocused { close() }
+                }
+            }
+        }
+    }
+
+    private func panel(_ matches: [Item]) -> some View {
+        let shape = UnevenRoundedRectangle(bottomLeadingRadius: Theme.radiusSmall, bottomTrailingRadius: Theme.radiusSmall)
+        return Group {
+            if matches.isEmpty {
+                Text("No items match \"\(query)\".")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .frame(height: Self.rowHeight)
+            } else {
+                ScrollViewReader { scroller in
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(matches.enumerated()), id: \.element.id) { index, item in
+                                row(item, isHighlighted: index == highlighted).id(item.id)
+                            }
+                        }
+                    }
+                    .frame(height: Self.rowHeight * CGFloat(min(matches.count, Self.visibleRows)))
+                    .onChange(of: highlighted) {
+                        if matches.indices.contains(highlighted) { scroller.scrollTo(matches[highlighted].id) }
+                    }
+                }
+            }
+        }
+        .background(Theme.surface, in: shape)
+        .overlay(shape.strokeBorder(Theme.primary))
+        .shadow(color: .black.opacity(0.08), radius: 6, y: 5)
+        .padding(.top, -1)
+    }
+
+    private func row(_ item: Item, isHighlighted: Bool) -> some View {
+        let extra = detail(item)
+        return Button { pick(item) } label: {
+            HStack(spacing: 8) {
+                Text(item.name)
+                    .font(.system(size: 13, weight: item.id == itemID ? .semibold : .regular))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !extra.isEmpty {
+                    Text(extra)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textSecondary)
+                        .monospacedDigit()
+                }
+                if item.id == itemID {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.primary)
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(height: Self.rowHeight)
+            .background(isHighlighted ? Theme.primaryBackground : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(extra.isEmpty ? item.name : "\(item.name) (\(extra))")
+    }
+
+    private func open() {
+        highlighted = max(0, matches.firstIndex { $0.id == itemID } ?? 0)
+        isOpen = true
+    }
+
+    private func close() {
+        isOpen = false
+        query = selectedName
+    }
+
+    private func move(_ step: Int, count: Int) -> KeyPress.Result {
+        guard count > 0 else { return .ignored }
+        if !isOpen { open() }
+        highlighted = min(max(0, highlighted + step), count - 1)
+        return .handled
+    }
+
+    private func pick(_ item: Item) {
+        itemID = item.id
+        query = item.name
+        isOpen = false
+        isFocused = false
+    }
+}

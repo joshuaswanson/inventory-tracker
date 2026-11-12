@@ -32,12 +32,10 @@ final class CoreFlowUITests: XCTestCase {
     }
 
     private func chooseItem(named name: String) {
-        let picker = app.buttons["Item"].firstMatch
-        if picker.exists {
-            picker.tap()
-        } else {
-            app.buttons["Select an item..."].firstMatch.tap()
-        }
+        let field = app.textFields["Item search"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 8), "Missing item search field")
+        field.tap()
+        field.typeText(String(name.prefix(4)))
         let option = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
         XCTAssertTrue(option.waitForExistence(timeout: 8), "Missing option \(name)")
         option.tap()

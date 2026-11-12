@@ -59,10 +59,7 @@ struct PurchaseFormView: View {
             onSave: save
         ) {
             LabeledField(title: "Item", isRequired: true) {
-                ThemedPicker(selection: $itemID) {
-                    Text("Select an item...").tag("")
-                    ForEach(sortedItems) { Text($0.name).tag($0.id) }
-                }
+                ItemSearchField(items: sortedItems, itemID: $itemID)
             }
             LabeledField(title: "Vendor") {
                 ThemedPicker(selection: $vendorID) {

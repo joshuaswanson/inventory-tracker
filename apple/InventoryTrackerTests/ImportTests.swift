@@ -210,6 +210,23 @@ private func sampleBackup() -> Backup {
     }
 }
 
+@Suite struct ItemSearchTests {
+    private let names = [
+        (id: "1", name: "Nitrile Gloves - Medium"),
+        (id: "2", name: "Gauze Sponges 2x2"),
+        (id: "3", name: "Level 3 Face Masks"),
+        (id: "4", name: "Glove Box Holder"),
+    ]
+
+    @Test func everyTypedWordMustMatchAndNameStartsComeFirst() {
+        #expect(ItemSearch.matches("glo", in: names) == ["4", "1"])
+        #expect(ItemSearch.matches("gloves med", in: names) == ["1"])
+        #expect(ItemSearch.matches("MASK", in: names) == ["3"])
+        #expect(ItemSearch.matches("syringe", in: names).isEmpty)
+        #expect(ItemSearch.matches("  ", in: names) == ["1", "2", "3", "4"])
+    }
+}
+
 @Suite struct OrderPagingTests {
     @Test func aRepeatedOrEmptyPageEndsTheSearch() {
         var paging = OrderPaging()

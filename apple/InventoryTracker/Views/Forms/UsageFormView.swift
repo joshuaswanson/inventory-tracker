@@ -65,11 +65,8 @@ struct UsageFormView: View {
             onSave: save
         ) {
             LabeledField(title: "Item", isRequired: true) {
-                ThemedPicker(selection: $itemID) {
-                    Text("Select an item...").tag("")
-                    ForEach(sortedItems) { item in
-                        Text("\(item.name) (\(item.metrics().currentInventory) \(item.unitAbbreviation))").tag(item.id)
-                    }
+                ItemSearchField(items: sortedItems, itemID: $itemID) { item in
+                    "\(item.metrics().currentInventory) \(item.unitAbbreviation)"
                 }
             }
             if !batches.isEmpty {
