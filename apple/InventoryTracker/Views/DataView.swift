@@ -34,7 +34,7 @@ struct DataView: View {
     }
 
     var body: some View {
-        FormSheet(title: "Settings", saveTitle: "Done", showsCancel: false, macWidth: 560, fitsContentOnMac: true, onSave: { dismiss() }) {
+        FormSheet(title: "Settings", saveTitle: "Done", showsCancel: false, macWidth: 860, fitsContentOnMac: true, onSave: { dismiss() }) {
             if let message {
                 Label(message, systemImage: messageIsError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                     .font(.system(size: 13, weight: .medium))
@@ -44,54 +44,17 @@ struct DataView: View {
                     .background(messageIsError ? Theme.redLight : Theme.greenLight, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
             }
 
-            card("Backups", systemImage: "externaldrive.fill", tone: .green, detail: backupDetail) {
-                HStack(spacing: 8) {
-                    Button("Save a Copy", action: export)
-                        .buttonStyle(.themedSecondary)
-                    #if os(macOS)
-                    Button("Show Backups") {
-                        try? FileManager.default.createDirectory(at: AutoBackup.folder, withIntermediateDirectories: true)
-                        NSWorkspace.shared.activateFileViewerSelecting([AutoBackup.folder])
-                    }
-                    .buttonStyle(.themedSecondary)
-                    #endif
-                }
-                #if os(macOS)
-                Divider().overlay(Theme.borderLight)
-                extraFolder
-                #endif
-                Divider().overlay(Theme.borderLight)
-                row("Restore from a backup", detail: "Brings records back from a backup file. Nothing you have now is deleted.") {
-                    Button("Choose Backup File") { pick(.backup) }
-                        .buttonStyle(.themedSecondary)
-                }
+            #if os(macOS)
+            HStack(alignment: .top, spacing: 16) {
+                backupsCard
+                    .frame(maxWidth: .infinity)
+                VStack(spacing: 16) { otherCards }
+                    .frame(maxWidth: .infinity)
             }
-
-            card("Reminders", systemImage: "bell.fill", tone: .amber, detail: "Get a notification before items expire or run low.") {
-                Toggle("Remind me", isOn: reminders)
-                    .toggleStyle(.switch)
-                    .tint(Theme.primary)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Theme.text)
-            }
-
-            if let checkForUpdates {
-                card("Updates", systemImage: "arrow.down.circle.fill", tone: .blue, detail: "You have version \(version). The app also checks for new versions by itself.") {
-                    Button("Check for Updates", action: checkForUpdates)
-                        .buttonStyle(.themedSecondary)
-                }
-            }
-
-            card("Help", systemImage: "lightbulb.fill", tone: .purple, detail: "A short tour shows where everything is.") {
-                HStack(spacing: 8) {
-                    Button("Take the Tour") { Tour.start(router: router, context: modelContext) }
-                        .buttonStyle(.themedSecondary)
-                    if SampleData.hasSamples(in: items) {
-                        Button("Remove Practice Items", action: removeSamples)
-                            .buttonStyle(.themedSecondary)
-                    }
-                }
-            }
+            #else
+            backupsCard
+            otherCards
+            #endif
         }
         .task {
             #if os(macOS)
@@ -114,6 +77,60 @@ struct DataView: View {
                 show(error.localizedDescription, isError: true)
             } else {
                 show("Backup saved.", isError: false)
+            }
+        }
+    }
+
+    private var backupsCard: some View {
+        card("Backups", systemImage: "externaldrive.fill", tone: .green, detail: backupDetail) {
+            HStack(spacing: 8) {
+                Button("Save a Copy", action: export)
+                    .buttonStyle(.themedSecondary)
+                #if os(macOS)
+                Button("Show Backups") {
+                    try? FileManager.default.createDirectory(at: AutoBackup.folder, withIntermediateDirectories: true)
+                    NSWorkspace.shared.activateFileViewerSelecting([AutoBackup.folder])
+                }
+                .buttonStyle(.themedSecondary)
+                #endif
+            }
+            #if os(macOS)
+            Divider().overlay(Theme.borderLight)
+            extraFolder
+            #endif
+            Divider().overlay(Theme.borderLight)
+            row("Restore from a backup", detail: "Brings records back from a backup file. Nothing you have now is deleted.") {
+                Button("Choose Backup File") { pick(.backup) }
+                    .buttonStyle(.themedSecondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var otherCards: some View {
+        card("Reminders", systemImage: "bell.fill", tone: .amber, detail: "Get a notification before items expire or run low.") {
+            Toggle("Remind me", isOn: reminders)
+                .toggleStyle(.switch)
+                .tint(Theme.primary)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.text)
+        }
+
+        if let checkForUpdates {
+            card("Updates", systemImage: "arrow.down.circle.fill", tone: .blue, detail: "You have version \(version). The app also checks for new versions by itself.") {
+                Button("Check for Updates", action: checkForUpdates)
+                    .buttonStyle(.themedSecondary)
+            }
+        }
+
+        card("Help", systemImage: "lightbulb.fill", tone: .purple, detail: "A short tour shows where everything is.") {
+            HStack(spacing: 8) {
+                Button("Take the Tour") { Tour.start(router: router, context: modelContext) }
+                    .buttonStyle(.themedSecondary)
+                if SampleData.hasSamples(in: items) {
+                    Button("Remove Practice Items", action: removeSamples)
+                        .buttonStyle(.themedSecondary)
+                }
             }
         }
     }
