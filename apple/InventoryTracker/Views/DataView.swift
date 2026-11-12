@@ -10,6 +10,7 @@ struct DataView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(Router.self) private var router
+    @Environment(\.checkForUpdates) private var checkForUpdates
     @Query private var items: [Item]
     @AppStorage(Reminders.enabledKey) private var remindersEnabled = false
     @State private var picker = FilePicker.backup
@@ -60,6 +61,13 @@ struct DataView: View {
                     .buttonStyle(.themedSecondary)
                 if SampleData.hasSamples(in: items) {
                     Button("Remove Practice Items", action: removeSamples)
+                        .buttonStyle(.themedSecondary)
+                }
+            }
+
+            if let checkForUpdates {
+                section("Updates", detail: "You have version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""). The app also checks by itself.") {
+                    Button("Check for Updates", action: checkForUpdates)
                         .buttonStyle(.themedSecondary)
                 }
             }

@@ -34,6 +34,9 @@ struct InventoryTrackerApp: App {
                     .modelContainer(container)
                     .preferredColorScheme(.light)
                     .tint(Theme.primary)
+                    #if os(macOS)
+                    .environment(\.checkForUpdates) { updater.checkForUpdates(nil) }
+                    #endif
                     .task { await Self.keepUp(container.mainContext) }
                     #if DEBUG
                     .task { DebugLaunch.apply(context: container.mainContext, router: router) }

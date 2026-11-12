@@ -119,6 +119,7 @@ struct FieldRow<Content: View>: View {
 extension EnvironmentValues {
     /// True while a suggestion panel hangs off the bottom edge of the field.
     @Entry var fieldHasAttachedPanel = false
+    @Entry var checkForUpdates: (() -> Void)?
 }
 
 private struct FieldBox: ViewModifier {
