@@ -375,3 +375,41 @@ struct PlaceholderText: View {
             .foregroundStyle(Theme.textTertiary)
     }
 }
+
+struct SegmentedSwitch<Option: Hashable & Identifiable>: View {
+    let options: [Option]
+    @Binding var selection: Option
+    let label: (Option) -> String
+    @Namespace private var highlight
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(options) { option in
+                let isSelected = option == selection
+                Button {
+                    withAnimation(.snappy(duration: 0.25)) { selection = option }
+                } label: {
+                    Text(label(option))
+                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+                        .foregroundStyle(isSelected ? Theme.primaryDark : Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 30)
+                        .background {
+                            if isSelected {
+                                RoundedRectangle(cornerRadius: 7)
+                                    .fill(Theme.surface)
+                                    .shadow(color: .black.opacity(0.1), radius: 2, y: 1)
+                                    .matchedGeometryEffect(id: "highlight", in: highlight)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(Theme.borderLight, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border))
+    }
+}

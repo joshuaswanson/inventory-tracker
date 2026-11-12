@@ -27,11 +27,7 @@ struct SpendingView: View {
         let report = SpendingReport(entries: entries)
 
         FormSheet(title: "Spending", saveTitle: "Done", showsCancel: false, macWidth: 640, macHeight: 720, errorMessage: errorMessage, onSave: { dismiss() }) {
-            Picker("", selection: $period) {
-                ForEach(SpendingPeriod.allCases) { Text($0.label).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            SegmentedSwitch(options: SpendingPeriod.allCases, selection: $period, label: \.label)
 
             if entries.isEmpty {
                 EmptyState(systemImage: "chart.bar", title: "No purchases in this period", message: "Pick another period above, or import your orders to see your spending here.")
