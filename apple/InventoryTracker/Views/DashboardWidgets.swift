@@ -16,6 +16,15 @@ struct WidgetLink: Identifiable {
     var id: String { title }
 }
 
+struct WidgetStat: Identifiable {
+    let id: String
+    var label: String
+    var value: Int
+    var tone: Tone
+    var isInBar = true
+    var action: (() -> Void)?
+}
+
 struct WidgetContent {
     var systemImage: String
     var tone: Tone
@@ -26,6 +35,12 @@ struct WidgetContent {
     var rows: [WidgetRow] = []
     var emptyMessage = ""
     var chart: [SpendingTotal] = []
+    /// Shown as tiles with a proportion bar when the widget is extra large.
+    var stats: [WidgetStat] = []
+    var statsFootnote = ""
+    var spotlightTitle = ""
+    var spotlight: [WidgetRow] = []
+    var spotlightEmpty = ""
     var links: [WidgetLink] = []
     var action: (() -> Void)?
 }
@@ -102,12 +117,12 @@ struct DashboardTileView: View {
         }
     }
 
-    private var header: some View {
+    private func header(showsCaption: Bool = true) -> some View {
         HStack(spacing: 10) {
             icon(30)
             VStack(alignment: .leading, spacing: 0) {
                 Text(content.title).sectionLabel(size: 12)
-                if !content.caption.isEmpty {
+                if showsCaption, !content.caption.isEmpty {
                     Text(content.caption)
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.textTertiary)
@@ -126,7 +141,7 @@ struct DashboardTileView: View {
 
     private var large: some View {
         VStack(alignment: .leading, spacing: 10) {
-            header
+            header()
             if content.chart.isEmpty {
                 rowList(Array(content.rows.prefix(Self.columnRows)), showsBadges: true)
             } else {
@@ -140,9 +155,12 @@ struct DashboardTileView: View {
 
     private var extraLarge: some View {
         VStack(alignment: .leading, spacing: 10) {
-            header
+            header(showsCaption: false)
             HStack(alignment: .top, spacing: 24) {
-                if content.chart.isEmpty {
+                if !content.stats.isEmpty {
+                    statPanel
+                    spotlightList
+                } else if content.chart.isEmpty {
                     rowList(Array(content.rows.prefix(Self.columnRows)), showsBadges: true)
                     rowList(Array(content.rows.dropFirst(Self.columnRows).prefix(Self.columnRows)), showsBadges: true, emptyMessage: "")
                 } else {
@@ -153,6 +171,69 @@ struct DashboardTileView: View {
             Spacer(minLength: 0)
             links
         }
+    }
+
+    private var statPanel: some View {
+        let barStats = content.stats.filter { $0.isInBar && $0.value > 0 }
+        let barTotal = barStats.reduce(0) { $0 + $1.value }
+        return VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                ForEach(content.stats) { stat in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Circle().fill(stat.tone.icon).frame(width: 7, height: 7)
+                            Text(stat.label)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.textSecondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        Text("\(stat.value)")
+                            .font(.system(size: 22, weight: .bold))
+                            .tracking(-0.5)
+                            .foregroundStyle(Theme.text)
+                            .monospacedDigit()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(stat.tone.background.opacity(0.55), in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
+                    .contentShape(Rectangle())
+                    .onTapGesture { (stat.action ?? content.action)?() }
+                }
+            }
+            if barTotal > 0 {
+                GeometryReader { geometry in
+                    HStack(spacing: 2) {
+                        ForEach(barStats) { stat in
+                            Rectangle()
+                                .fill(stat.tone.icon)
+                                .frame(width: max(4, (geometry.size.width - CGFloat(barStats.count - 1) * 2) * CGFloat(stat.value) / CGFloat(barTotal)))
+                        }
+                    }
+                    .clipShape(Capsule())
+                }
+                .frame(height: 8)
+                .accessibilityHidden(true)
+            }
+            if !content.statsFootnote.isEmpty {
+                Text(content.statsFootnote)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var spotlightList: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if !content.spotlightTitle.isEmpty {
+                Text(content.spotlightTitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            rowList(Array(content.spotlight.prefix(Self.columnRows - 1)), showsBadges: true, emptyMessage: content.spotlightEmpty)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private func rowList(_ rows: [WidgetRow], showsBadges: Bool, emptyMessage: String? = nil) -> some View {

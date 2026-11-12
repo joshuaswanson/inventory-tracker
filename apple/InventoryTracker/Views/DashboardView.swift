@@ -301,6 +301,8 @@ struct DashboardView: View {
         let low = rows.filter { $0.metrics.needsReorder && $0.metrics.currentInventory > 0 }.count
         let month = String(Day.today.prefix(7))
         func show(_ filter: ItemFilter) -> () -> Void { { router.show(.items, itemFilter: filter) } }
+        let attention = rows.filter(\.metrics.needsReorder)
+            .sorted { ($0.metrics.currentInventory, $0.item.name) < ($1.metrics.currentInventory, $1.item.name) }
         return WidgetContent(
             systemImage: "archivebox.fill", tone: .blue, title: "Items", value: "\(rows.count)",
             caption: "\(rows.count - out - low) well stocked",
@@ -311,6 +313,23 @@ struct DashboardView: View {
                 WidgetRow(id: "perishable", label: "Can expire", trailing: "\(rows.filter(\.item.isPerishable).count)", action: show(.perishable)),
                 WidgetRow(id: "new", label: "Added this month", trailing: "\(rows.filter { $0.item.createdAt.hasPrefix(month) }.count)", action: show(.all)),
             ],
+            stats: [
+                WidgetStat(id: "in", label: "Well stocked", value: rows.count - out - low, tone: .green, action: show(.all)),
+                WidgetStat(id: "low", label: "Running low", value: low, tone: .amber, action: show(.low)),
+                WidgetStat(id: "out", label: "Out of stock", value: out, tone: .red, action: show(.out)),
+                WidgetStat(id: "perishable", label: "Can expire", value: rows.filter(\.item.isPerishable).count, tone: .purple, isInBar: false, action: show(.perishable)),
+            ],
+            statsFootnote: { let added = rows.filter { $0.item.createdAt.hasPrefix(month) }.count; return added == 0 ? "" : "\(plural(added, "item")) added this month" }(),
+            spotlightTitle: "Needs attention",
+            spotlight: attention.map { row in
+                WidgetRow(
+                    id: row.id, label: row.item.name,
+                    trailing: "\(row.metrics.currentInventory) \(row.item.unitAbbreviation)",
+                    badge: row.metrics.currentInventory <= 0 ? Badge(text: "Out", tone: .red) : Badge(text: "Low", tone: .amber),
+                    action: openItem(row.item.id)
+                )
+            },
+            spotlightEmpty: "Everything is well stocked.",
             links: [WidgetLink(title: "All Items") { router.show(.items) }],
             action: { router.show(.items) }
         )
