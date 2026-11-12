@@ -75,7 +75,7 @@ struct ItemsView: View {
         } content: {
             DuplicatesBanner(
                 count: DuplicateDetector.itemGroups(DuplicatesView.itemCandidates(items), dismissed: DuplicateDetector.dismissed()).count,
-                noun: "items"
+                noun: "item"
             ) { router.sheet = .duplicates(.items) }
             FilterChips(
                 options: ItemFilter.allCases.map { filter in

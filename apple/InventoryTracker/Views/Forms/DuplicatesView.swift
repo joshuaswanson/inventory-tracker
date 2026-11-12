@@ -24,8 +24,8 @@ struct DuplicatesBanner: View {
                     .font(.system(size: 15))
                     .foregroundStyle(Theme.primaryDark)
                 Text(count == 1
-                    ? "Some \(noun) look like the same thing under different names."
-                    : "\(count) sets of \(noun) look like the same thing under different names.")
+                    ? "You may have the same \(noun) listed more than once."
+                    : "You may have \(count) \(noun)s listed more than once.")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.primaryDarker)
                     .frame(maxWidth: .infinity, alignment: .leading)

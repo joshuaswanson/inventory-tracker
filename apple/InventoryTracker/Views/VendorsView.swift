@@ -55,7 +55,7 @@ struct VendorsView: View {
         } content: {
             DuplicatesBanner(
                 count: DuplicateDetector.vendorGroups(DuplicatesView.vendorCandidates(vendors), dismissed: DuplicateDetector.dismissed()).count,
-                noun: "vendors"
+                noun: "vendor"
             ) { router.sheet = .duplicates(.vendors) }
             FilterChips(
                 options: VendorFilter.allCases.map { option in
