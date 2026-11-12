@@ -158,6 +158,24 @@ private func makeContext() throws -> ModelContext {
         #expect(Format.month("2026-03") == "March 2026")
     }
 
+    @Test func monthlySeriesRunsOldestFirstAndFillsQuietMonths() {
+        let report = SpendingReport(entries: entries)
+        #expect(report.monthlySeries.map(\.name) == ["2025-12", "2026-01", "2026-02", "2026-03"])
+        #expect(report.monthlySeries.map(\.total) == [200, 0, 0, 96.57])
+        #expect(report.averagePerMonth == 74.14)
+        #expect(report.purchaseCount == 3)
+        #expect(report.byItem.first == SpendingTotal(name: "Masks", total: 200))
+        #expect(SpendingReport(entries: []).monthlySeries.isEmpty)
+    }
+
+    @Test func smallRowsFoldIntoOther() {
+        let rows = (1...6).map { SpendingTotal(name: "V\($0)", total: Double(10 - $0)) }
+        let folded = SpendingReport.leading(rows, limit: 3) { "\($0) others" }
+        #expect(folded.map(\.name) == ["V1", "V2", "V3", "3 others"])
+        #expect(folded.last?.total == 15)
+        #expect(SpendingReport.leading(Array(rows.prefix(4)), limit: 3) { "\($0) others" }.count == 4)
+    }
+
     @Test func periodsFilterByYear() {
         #expect(SpendingPeriod.thisYear.includes(day: "2026-03-02", today: "2026-11-11"))
         #expect(!SpendingPeriod.thisYear.includes(day: "2025-12-01", today: "2026-11-11"))

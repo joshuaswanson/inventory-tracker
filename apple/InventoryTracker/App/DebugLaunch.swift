@@ -44,6 +44,8 @@ enum DebugLaunch {
             router.sheet = .data
         case "import-orders":
             router.sheet = .importOrders
+        case "spending":
+            router.sheet = .spending
         case "import-supplier":
             router.sheet = .supplier(.supplyClinic)
         case "count-stock":
