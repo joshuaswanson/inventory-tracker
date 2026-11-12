@@ -61,6 +61,7 @@ struct PurchaseFormView: View {
             LabeledField(title: "Item", isRequired: true) {
                 ItemSearchField(items: sortedItems, itemID: $itemID)
             }
+            .zIndex(1)
             LabeledField(title: "Vendor") {
                 ThemedPicker(selection: $vendorID) {
                     Text("None").tag("")

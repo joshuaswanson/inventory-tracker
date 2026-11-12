@@ -327,7 +327,9 @@ nonisolated enum ItemSearch {
     }
 }
 
-/// A text field that suggests matching items as you type, with the list attached underneath.
+/// A text field that suggests matching items as you type. The list hangs below the field on top
+/// of whatever comes next, so the form under it stays put. Give the field a higher `zIndex` than
+/// the fields after it so the list is drawn over them.
 struct ItemSearchField: View {
     private static let visibleRows = 7
     private static let rowHeight: CGFloat = 36
@@ -353,39 +355,40 @@ struct ItemSearchField: View {
 
     var body: some View {
         let matches = matches
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Theme.textTertiary)
-                TextField("", text: $query, prompt: Text("Type to find an item").foregroundStyle(Theme.textTertiary))
-                    .textFieldStyle(.plain)
-                    .focused($isFocused)
-                    .onSubmit { if matches.indices.contains(highlighted) { pick(matches[highlighted]) } }
-                    .onKeyPress(.downArrow) { move(1, count: matches.count) }
-                    .onKeyPress(.upArrow) { move(-1, count: matches.count) }
-                    .onKeyPress(.escape) {
-                        close()
-                        return .handled
-                    }
-                    .accessibilityIdentifier("Item search")
-                Button {
-                    if isOpen { close() } else { open() }
-                } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Theme.textSecondary)
-                        .rotationEffect(.degrees(isOpen ? 180 : 0))
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.textTertiary)
+            TextField("", text: $query, prompt: Text("Type to find an item").foregroundStyle(Theme.textTertiary))
+                .textFieldStyle(.plain)
+                .focused($isFocused)
+                .onSubmit { if matches.indices.contains(highlighted) { pick(matches[highlighted]) } }
+                .onKeyPress(.downArrow) { move(1, count: matches.count) }
+                .onKeyPress(.upArrow) { move(-1, count: matches.count) }
+                .onKeyPress(.escape) {
+                    close()
+                    return .handled
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isOpen ? "Hide items" : "Show all items")
+                .accessibilityIdentifier("Item search")
+            Button {
+                if isOpen { close() } else { open() }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .rotationEffect(.degrees(isOpen ? 180 : 0))
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
             }
-            .modifier(FieldBox(isFocused: isFocused || isOpen))
-            .environment(\.fieldHasAttachedPanel, isOpen)
-
-            if isOpen { panel(matches) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isOpen ? "Hide items" : "Show all items")
+        }
+        .modifier(FieldBox(isFocused: isFocused || isOpen))
+        .environment(\.fieldHasAttachedPanel, isOpen)
+        .overlay(alignment: .bottom) {
+            if isOpen {
+                panel(matches).alignmentGuide(.bottom) { $0[.top] }
+            }
         }
         .onAppear { query = selectedName }
         .onChange(of: itemID) { if !isFocused { query = selectedName } }

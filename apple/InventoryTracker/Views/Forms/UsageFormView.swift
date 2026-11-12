@@ -69,6 +69,7 @@ struct UsageFormView: View {
                     "\(item.metrics().currentInventory) \(item.unitAbbreviation)"
                 }
             }
+            .zIndex(1)
             if !batches.isEmpty {
                 LabeledField(title: "Batch") {
                     ThemedPicker(selection: $batchID) {
