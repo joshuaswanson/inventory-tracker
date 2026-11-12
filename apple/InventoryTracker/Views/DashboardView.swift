@@ -25,10 +25,17 @@ private struct ResizeStart {
     var widget: DashboardWidget
     var size: DashboardTileSize
     var tileSize: CGSize
+    var cellWidth: CGFloat
     var translation = CGSize.zero
 
-    var draggedSize: CGSize {
-        CGSize(width: max(90, tileSize.width + translation.width), height: max(90, tileSize.height + translation.height))
+    /// Follows the pointer, but never smaller than the smallest box or bigger than the biggest.
+    func draggedSize(spacing: CGFloat) -> CGSize {
+        let largest = DashboardTileSize.extraLarge
+        func length(_ cells: Int, _ cell: CGFloat) -> CGFloat { cell * CGFloat(cells) + spacing * CGFloat(cells - 1) }
+        return CGSize(
+            width: min(max(cellWidth, tileSize.width + translation.width), length(largest.columns, cellWidth)),
+            height: min(max(DashboardGrid.cellHeight, tileSize.height + translation.height), length(largest.rows, DashboardGrid.cellHeight))
+        )
     }
 }
 
@@ -154,7 +161,22 @@ struct DashboardView: View {
             .padding(.bottom, 16)
     }
 
-    private func editable<Content: View>(_ tile: DashboardTile, @ViewBuilder content: () -> Content) -> some View {
+    /// The grid sizes an invisible placeholder. The box itself sits on top of it, so it can
+    /// follow the pointer while its corner is dragged without disturbing the other boxes.
+    private func editable<Content: View>(_ tile: DashboardTile, @ViewBuilder content: @escaping () -> Content) -> some View {
+        let dragged = resizeStart.flatMap { $0.widget == tile.widget ? $0.draggedSize(spacing: Self.gridSpacing) : nil }
+        return Color.clear
+            .overlay(alignment: .topLeading) {
+                GeometryReader { geometry in
+                    box(tile, slotSize: geometry.size, content: content)
+                        .frame(width: dragged?.width ?? geometry.size.width, height: dragged?.height ?? geometry.size.height)
+                        .shadow(color: .black.opacity(dragged == nil ? 0 : 0.16), radius: 14, y: 6)
+                }
+            }
+            .zIndex(dragged == nil ? 0 : 1)
+    }
+
+    private func box<Content: View>(_ tile: DashboardTile, slotSize: CGSize, content: () -> Content) -> some View {
         content()
             .allowsHitTesting(!isEditing)
             .overlay {
@@ -172,22 +194,9 @@ struct DashboardView: View {
             .overlay(alignment: .topTrailing) {
                 if isEditing { removeButton(tile) }
             }
-            .overlay(alignment: .topLeading) {
-                if let start = resizeStart, start.widget == tile.widget {
-                    RoundedRectangle(cornerRadius: Theme.radius)
-                        .fill(Theme.primary.opacity(0.07))
-                        .strokeBorder(Theme.primary.opacity(0.7), lineWidth: 2)
-                        .frame(width: start.draggedSize.width, height: start.draggedSize.height)
-                        .allowsHitTesting(false)
-                }
+            .overlay(alignment: .bottomTrailing) {
+                resizeHandle(tile, tileSize: slotSize)
             }
-            .overlay {
-                GeometryReader { geometry in
-                    resizeHandle(tile, tileSize: geometry.size)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                }
-            }
-            .zIndex(resizeStart?.widget == tile.widget ? 1 : 0)
             .onHover { isInside in
                 if isInside { hovered = tile.widget } else if hovered == tile.widget { hovered = nil }
             }
@@ -237,14 +246,18 @@ struct DashboardView: View {
                 DragGesture(minimumDistance: 2, coordinateSpace: .global)
                     .onChanged { drag in
                         if resizeStart?.widget != tile.widget {
-                            resizeStart = ResizeStart(widget: tile.widget, size: tile.size, tileSize: tileSize)
+                            let columns = CGFloat(tile.size.columns)
+                            resizeStart = ResizeStart(
+                                widget: tile.widget,
+                                size: tile.size,
+                                tileSize: tileSize,
+                                cellWidth: (tileSize.width - Self.gridSpacing * (columns - 1)) / columns
+                            )
                         }
                         guard var start = resizeStart else { return }
                         start.translation = drag.translation
                         resizeStart = start
-                        let startColumns = CGFloat(start.size.columns)
-                        let cellWidth = (start.tileSize.width - Self.gridSpacing * (startColumns - 1)) / startColumns
-                        let columns = start.size.columns + Int((drag.translation.width / (cellWidth + Self.gridSpacing)).rounded())
+                        let columns = start.size.columns + Int((drag.translation.width / (start.cellWidth + Self.gridSpacing)).rounded())
                         let rows = start.size.rows + Int((drag.translation.height / (DashboardGrid.cellHeight + Self.gridSpacing)).rounded())
                         let size = DashboardTileSize.closest(columns: columns, rows: rows)
                         if size != tile.size {
@@ -252,7 +265,7 @@ struct DashboardView: View {
                         }
                     }
                     .onEnded { _ in
-                        withAnimation(.easeOut(duration: 0.2)) { resizeStart = nil }
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.58)) { resizeStart = nil }
                     }
             )
             .help("Drag to resize")
