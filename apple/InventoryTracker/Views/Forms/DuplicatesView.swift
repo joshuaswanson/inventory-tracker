@@ -35,16 +35,10 @@ struct DuplicatesBanner: View {
                 Button("Review", action: action)
                     .buttonStyle(.themedPrimary)
             }
-            .padding(.leading, 16)
+            .padding(.leading, 12)
             .padding(.trailing, 12)
             .padding(.vertical, 10)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
-            .overlay(alignment: .leading) {
-                UnevenRoundedRectangle(topLeadingRadius: Theme.radius, bottomLeadingRadius: Theme.radius)
-                    .fill(Theme.amber)
-                    .frame(width: 4)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
             .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.amber.opacity(0.45)))
             .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
             .padding(.bottom, 16)
