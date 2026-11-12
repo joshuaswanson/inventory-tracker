@@ -146,22 +146,20 @@ private func makeContext() throws -> ModelContext {
 @Suite struct DashboardLayoutTests {
     @Test func boxesCanBeMovedResizedRemovedAndAddedBack() {
         var layout = DashboardLayout.standard
-        layout.move(.inventoryValue, onto: .totalItems)
-        #expect(layout.tiles.prefix(2).map(\.widget) == [.inventoryValue, .totalItems])
-        layout.move(.inventoryValue, onto: .vendors)
-        #expect(layout.tiles.prefix(4).map(\.widget) == [.totalItems, .lowStockCount, .expiringCount, .vendors])
-        #expect(layout.tiles[4].widget == .inventoryValue)
+        layout.move(.spending, onto: .items)
+        #expect(layout.tiles.prefix(2).map(\.widget) == [.spending, .items])
+        layout.move(.spending, onto: .inventoryValue)
+        #expect(layout.tiles.prefix(4).map(\.widget) == [.items, .vendors, .inventoryValue, .spending])
 
-        layout.resize(.lowStockAlerts)
-        #expect(layout.tiles.first { $0.widget == .lowStockAlerts }?.size == .full)
-        layout.resize(.lowStockAlerts)
-        #expect(layout.tiles.first { $0.widget == .lowStockAlerts }?.size == .half)
+        layout.resize(.lowStock, to: .extraLarge)
+        #expect(layout.tiles.first { $0.widget == .lowStock }?.size == .extraLarge)
 
         layout.hide(.vendors)
-        #expect(layout.hidden == [.vendors, .spentThisMonth, .recentPurchases])
-        layout.add(.recentPurchases)
-        layout.add(.recentPurchases)
-        #expect(layout.tiles.last == DashboardTile(widget: .recentPurchases, size: .half))
+        #expect(layout.hidden == [.vendors, .usage])
+        layout.add(.usage)
+        layout.add(.usage)
+        #expect(layout.tiles.last == DashboardTile(widget: .usage, size: .small))
+        #expect(layout.hidden == [.vendors])
     }
 
     @Test func layoutIsSavedAndUnreadableSavesFallBackToTheStandardOne() throws {
@@ -169,19 +167,37 @@ private func makeContext() throws -> ModelContext {
         defaults.removePersistentDomain(forName: "dashboard-layout-test")
         #expect(DashboardLayout.load(from: defaults) == .standard)
         var layout = DashboardLayout.standard
-        layout.hide(.totalItems)
+        layout.hide(.items)
         layout.save(to: defaults)
         #expect(DashboardLayout.load(from: defaults) == layout)
         defaults.set(Data("nonsense".utf8), forKey: DashboardLayout.storageKey)
         #expect(DashboardLayout.load(from: defaults) == .standard)
     }
 
-    @Test func tileWidthsFollowTheNumberOfColumns() {
-        #expect(DashboardTileSize.small.span(columns: 6) == 1)
-        #expect(DashboardTileSize.wide.span(columns: 6) == 2)
-        #expect(DashboardTileSize.half.span(columns: 6) == 3)
-        #expect(DashboardTileSize.half.span(columns: 2) == 2)
-        #expect(DashboardTileSize.full.span(columns: 4) == 4)
+    @Test func sizesMatchHomeScreenWidgetShapes() {
+        #expect(DashboardTileSize.allCases.map { [$0.columns, $0.rows] } == [[1, 1], [2, 1], [2, 2], [4, 2]])
+        #expect(DashboardTileSize.closest(columns: 1, rows: 1) == .small)
+        #expect(DashboardTileSize.closest(columns: 2, rows: 1) == .medium)
+        #expect(DashboardTileSize.closest(columns: 1, rows: 2) == .large)
+        #expect(DashboardTileSize.closest(columns: 2, rows: 3) == .large)
+        #expect(DashboardTileSize.closest(columns: 3, rows: 1) == .extraLarge)
+        #expect(DashboardTileSize.closest(columns: 0, rows: 0) == .small)
+    }
+
+    @Test func tilesFillGapsBesideTallOnesAndNeverOverflowTheGrid() {
+        typealias Slot = DashboardPacking.Slot
+        let slots = DashboardPacking.slots(for: [.large, .small, .small, .small, .medium], columns: 4)
+        #expect(slots == [
+            Slot(column: 0, row: 0, columns: 2, rows: 2),
+            Slot(column: 2, row: 0, columns: 1, rows: 1),
+            Slot(column: 3, row: 0, columns: 1, rows: 1),
+            Slot(column: 2, row: 1, columns: 1, rows: 1),
+            Slot(column: 0, row: 2, columns: 2, rows: 1),
+        ])
+        #expect(DashboardPacking.slots(for: [.extraLarge, .small], columns: 2) == [
+            Slot(column: 0, row: 0, columns: 2, rows: 2),
+            Slot(column: 0, row: 2, columns: 1, rows: 1),
+        ])
     }
 }
 
