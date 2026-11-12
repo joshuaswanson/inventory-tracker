@@ -54,6 +54,7 @@ struct PurchaseFormView: View {
         FormSheet(
             title: purchase == nil ? "New Purchase" : "Edit Purchase",
             canSave: !itemID.isEmpty && parsedQuantity != nil && parsedPrice != nil && quantityError == nil,
+            fitsContentOnMac: true,
             errorMessage: quantityError ?? errorMessage,
             onSave: save
         ) {
