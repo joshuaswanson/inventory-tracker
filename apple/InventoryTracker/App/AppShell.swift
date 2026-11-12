@@ -71,6 +71,7 @@ private struct SheetContent: View {
         case .combineItem(let item): CombineItemsView(keeper: item)
         case .combineVendor(let vendor): CombineVendorsView(keeper: vendor)
         case .reviewNewItems(let itemIDs): ReviewImportedItemsView(itemIDs: itemIDs)
+        case .duplicates(let kind): DuplicatesView(kind: kind)
         }
     }
 }

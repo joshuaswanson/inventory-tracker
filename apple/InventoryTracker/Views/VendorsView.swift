@@ -53,6 +53,10 @@ struct VendorsView: View {
         Screen(title: "Vendors", searchPrompt: "Search vendors...", search: $search) {
             HeaderButton(title: "+ Add Vendor", compactImage: "plus") { router.sheet = .vendor(nil) }
         } content: {
+            DuplicatesBanner(
+                count: DuplicateDetector.vendorGroups(DuplicatesView.vendorCandidates(vendors), dismissed: DuplicateDetector.dismissed()).count,
+                noun: "vendors"
+            ) { router.sheet = .duplicates(.vendors) }
             FilterChips(
                 options: VendorFilter.allCases.map { option in
                     FilterOption(value: option, label: option.label, count: vendors.filter(option.includes).count)

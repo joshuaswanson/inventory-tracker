@@ -37,6 +37,7 @@ enum ActiveSheet: Identifiable {
     case combineItem(Item)
     case combineVendor(Vendor)
     case reviewNewItems([String])
+    case duplicates(DuplicateKind)
 
     var id: String {
         switch self {
@@ -54,6 +55,7 @@ enum ActiveSheet: Identifiable {
         case .combineItem(let item): "combine-item-\(item.id)"
         case .combineVendor(let vendor): "combine-vendor-\(vendor.id)"
         case .reviewNewItems: "review-new-items"
+        case .duplicates(let kind): "duplicates-\(kind.rawValue)"
         }
     }
 }

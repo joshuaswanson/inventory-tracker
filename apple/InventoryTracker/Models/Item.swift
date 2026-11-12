@@ -13,6 +13,8 @@ final class Item {
     var createdAt: String = ""
     /// Names this entry absorbed when duplicates were combined, one per line.
     var otherNamesText: String = ""
+    /// What each absorbed duplicate looked like, kept so it can be separated again.
+    var absorbedJSON: String = ""
 
     @Relationship(deleteRule: .cascade, inverse: \Purchase.item)
     var purchases: [Purchase]? = []
@@ -38,6 +40,11 @@ final class Item {
         self.storageLocation = storageLocation
         self.notes = notes
         self.createdAt = createdAt
+    }
+
+    var absorbed: [AbsorbedEntry] {
+        get { AbsorbedEntry.decode(absorbedJSON) }
+        set { absorbedJSON = AbsorbedEntry.encode(newValue) }
     }
 
     var otherNames: [String] {

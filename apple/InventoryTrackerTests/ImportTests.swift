@@ -125,6 +125,83 @@ private func sampleBackup() -> Backup {
         #expect(vendor.purchases?.count == 2)
     }
 
+    @Test func aCombinedItemCanBeSeparatedAgainWithItsOwnHistory() throws {
+        let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
+        let keeper = Item(name: "CaviWipes Large", unit: .each)
+        let duplicate = Item(name: "CaviWipes Case of 12", unit: .case, reorderLevel: 3, isPerishable: true, storageLocation: "Closet")
+        context.insert(keeper)
+        context.insert(duplicate)
+        context.insert(Purchase(date: "2026-08-01", item: keeper, quantity: 1, pricePerUnit: 9))
+        context.insert(Purchase(date: "2026-09-01", item: duplicate, quantity: 2, pricePerUnit: 100))
+        context.insert(UsageRecord(date: "2026-09-10", item: duplicate, quantity: 1))
+        try context.save()
+        try DuplicateCombiner.combine([duplicate], into: keeper, in: context)
+        #expect(keeper.absorbed.map(\.name) == ["CaviWipes Case of 12"])
+
+        let restored = try DuplicateCombiner.separate(try #require(keeper.absorbed.first), from: keeper, in: context)
+
+        #expect(try context.fetch(FetchDescriptor<Item>()).count == 2)
+        #expect(restored.name == "CaviWipes Case of 12")
+        #expect(restored.unit == .case)
+        #expect(restored.reorderLevel == 3)
+        #expect(restored.isPerishable)
+        #expect(restored.storageLocation == "Closet")
+        #expect((restored.purchases ?? []).map(\.quantity) == [2])
+        #expect(restored.usageRecords?.count == 1)
+        #expect((keeper.purchases ?? []).map(\.quantity) == [1])
+        #expect(keeper.usageRecords?.isEmpty == true)
+        #expect(keeper.otherNames.isEmpty)
+        #expect(keeper.absorbed.isEmpty)
+    }
+
+    @Test func aCombinedVendorCanBeSeparatedAgain() throws {
+        let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
+        let keeper = Vendor(name: "Frontier Dental")
+        let duplicate = Vendor(name: "Frontier Dental Supply Inc.", phone: "555-0100")
+        let item = Item(name: "Gauze")
+        context.insert(keeper)
+        context.insert(duplicate)
+        context.insert(item)
+        context.insert(Purchase(date: "2026-08-01", item: item, vendor: keeper, quantity: 1, pricePerUnit: 9))
+        context.insert(Purchase(date: "2026-09-01", item: item, vendor: duplicate, quantity: 2, pricePerUnit: 8))
+        try context.save()
+        try DuplicateCombiner.combine([duplicate], into: keeper, in: context)
+        #expect(keeper.purchases?.count == 2)
+
+        let restored = try DuplicateCombiner.separate(try #require(keeper.absorbed.first), from: keeper, in: context)
+
+        #expect(restored.name == "Frontier Dental Supply Inc.")
+        #expect(restored.phone == "555-0100")
+        #expect(restored.purchases?.count == 1)
+        #expect(keeper.purchases?.count == 1)
+        #expect(keeper.otherNames.isEmpty)
+    }
+
+    @Test func detectorGroupsLikelyDuplicatesAndLeavesDifferentSizesAlone() {
+        typealias Candidate = DuplicateDetector.Candidate
+        let items = [
+            Candidate(id: "a", name: "BluTab Waterline Maintenance Tablets", purchases: 1),
+            Candidate(id: "b", name: "BluTab Tablets, Waterline Cleaner, 50/Pk", purchases: 3),
+            Candidate(id: "c", name: "Two Striper Diamond Burs, FG, 767.7, 2015453"),
+            Candidate(id: "d", name: "Two Striper Diamond Burs, FG, 770.5, 2015456"),
+            Candidate(id: "e", name: "Nitrile Gloves Medium", productNumbers: ["gl-200"]),
+            Candidate(id: "f", name: "Exam Gloves M", productNumbers: ["gl-200"]),
+            Candidate(id: "g", name: "Prophy Paste"),
+        ]
+        let groups = DuplicateDetector.itemGroups(items)
+        #expect(groups.map(\.ids) == [["b", "a"], ["f", "e"]])
+        #expect(DuplicateDetector.itemGroups(items, dismissed: ["a|b"]).map(\.ids) == [["f", "e"]])
+
+        let vendors = [
+            Candidate(id: "1", name: "Frontier Dental", purchases: 27),
+            Candidate(id: "2", name: "Frontier Dental Supply"),
+            Candidate(id: "3", name: "Frontier Dental Supply Inc."),
+            Candidate(id: "4", name: "Benco Dental"),
+            Candidate(id: "5", name: "The Dental Market"),
+        ]
+        #expect(DuplicateDetector.vendorGroups(vendors).map(\.ids) == [["1", "2", "3"]])
+    }
+
     @Test func similarNamesAreSuggestedByBrandOrSharedWords() {
         #expect(NameSimilarity.score("BluTab Tablets, Waterline Cleaner", "BluTab® White Waterline Maintenance Tablets") > 0)
         #expect(NameSimilarity.score("Frontier Dental", "Frontier Dental Supply Inc.") > 0)

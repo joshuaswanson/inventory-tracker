@@ -14,6 +14,8 @@ private struct CombineSheet: View {
     let keeperName: String
     let movedThings: String
     let candidates: [CombineCandidate]
+    let absorbed: [AbsorbedEntry]
+    let onSeparate: (AbsorbedEntry) -> Void
     let onCombine: (Set<String>) -> Void
 
     @State private var selected: Set<String> = []
@@ -42,6 +44,30 @@ private struct CombineSheet: View {
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if !absorbed.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Combined Earlier").sectionLabel(tracking: 0.3)
+                    ForEach(absorbed) { entry in
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.name)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(Theme.text)
+                                Text("\(entry.purchaseIDs.count) purchase\(entry.purchaseIDs.count == 1 ? "" : "s") came with it")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Button("Separate") { onSeparate(entry) }
+                                .buttonStyle(.themedSecondary)
+                                .accessibilityLabel("Separate \(entry.name)")
+                        }
+                        .padding(10)
+                        .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
+                    }
+                }
+            }
+
             if !similar.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Look Similar").sectionLabel(tracking: 0.3)
@@ -60,7 +86,7 @@ private struct CombineSheet: View {
                 }
             }
 
-            Text("Combining can't be undone, so only tick entries you're sure about.")
+            Text("Changed your mind later? Come back here and press Separate next to the entry.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -125,7 +151,11 @@ struct CombineItemsView: View {
     }
 
     var body: some View {
-        CombineSheet(kind: "product", keeperName: keeper.name, movedThings: "Their purchases and usage", candidates: candidates) { chosen in
+        CombineSheet(
+            kind: "product", keeperName: keeper.name, movedThings: "Their purchases and usage", candidates: candidates,
+            absorbed: keeper.absorbed,
+            onSeparate: { entry in withAnimation(.snappy) { _ = try? DuplicateCombiner.separate(entry, from: keeper, in: modelContext) } }
+        ) { chosen in
             try? DuplicateCombiner.combine(items.filter { chosen.contains($0.id) }, into: keeper, in: modelContext)
             dismiss()
         }
@@ -150,7 +180,11 @@ struct CombineVendorsView: View {
     }
 
     var body: some View {
-        CombineSheet(kind: "vendor", keeperName: keeper.name, movedThings: "Their purchases", candidates: candidates) { chosen in
+        CombineSheet(
+            kind: "vendor", keeperName: keeper.name, movedThings: "Their purchases", candidates: candidates,
+            absorbed: keeper.absorbed,
+            onSeparate: { entry in withAnimation(.snappy) { _ = try? DuplicateCombiner.separate(entry, from: keeper, in: modelContext) } }
+        ) { chosen in
             try? DuplicateCombiner.combine(vendors.filter { chosen.contains($0.id) }, into: keeper, in: modelContext)
             dismiss()
         }

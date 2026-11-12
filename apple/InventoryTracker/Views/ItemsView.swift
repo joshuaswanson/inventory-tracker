@@ -73,6 +73,10 @@ struct ItemsView: View {
             }
             HeaderButton(title: "+ Add Item", compactImage: "plus") { router.sheet = .item(nil) }
         } content: {
+            DuplicatesBanner(
+                count: DuplicateDetector.itemGroups(DuplicatesView.itemCandidates(items), dismissed: DuplicateDetector.dismissed()).count,
+                noun: "items"
+            ) { router.sheet = .duplicates(.items) }
             FilterChips(
                 options: ItemFilter.allCases.map { filter in
                     FilterOption(value: filter, label: filter.label, count: all.filter(filter.includes).count)
