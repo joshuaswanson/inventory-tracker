@@ -65,6 +65,14 @@ private func sampleBackup() -> Backup {
     }
 }
 
+@Suite struct OrderNameTests {
+    @Test func escapedSymbolsInNamesAreDecoded() {
+        let line = OrderLine(raw: rawLine(name: "Adec Air &amp; Water Syringe Tip 3&quot; &#174;"))
+        #expect(line.name == "Adec Air & Water Syringe Tip 3\" ®")
+        #expect(OrderText.decodingEntities("Trimming & Finishing") == "Trimming & Finishing")
+    }
+}
+
 @Suite struct OrderPagingTests {
     @Test func aRepeatedOrEmptyPageEndsTheSearch() {
         var paging = OrderPaging()

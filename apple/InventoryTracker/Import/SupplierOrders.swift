@@ -39,9 +39,9 @@ nonisolated struct OrderLine: Equatable {
 
     init(raw: RawOrderLine) {
         date = OrderText.date(raw.date)
-        vendor = OrderText.stripping(raw.vendor, labels: ["Items from"])
+        vendor = OrderText.decodingEntities(OrderText.stripping(raw.vendor, labels: ["Items from"]))
         suborderNumber = OrderText.stripping(raw.suborderNumber, labels: ["#"])
-        name = raw.name
+        name = OrderText.decodingEntities(raw.name)
         manuCode = OrderText.stripping(raw.manuCode, labels: ["Manu Code:"])
         quantity = OrderText.quantity(raw.quantity)
         unitPrice = OrderText.money(raw.unitPrice)
@@ -64,6 +64,17 @@ nonisolated enum OrderText {
         labels.reduce(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
             $0.replacingOccurrences(of: $1, with: "")
         }.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Some sites escape product names twice, so "&amp;" survives into the page's text.
+    static func decodingEntities(_ text: String) -> String {
+        guard text.contains("&") else { return text }
+        let named = ["&amp;": "&", "&quot;": "\"", "&apos;": "'", "&lt;": "<", "&gt;": ">", "&nbsp;": " ", "&reg;": "®", "&trade;": "™"]
+        var decoded = named.reduce(text) { $0.replacingOccurrences(of: $1.key, with: $1.value, options: .caseInsensitive) }
+        decoded.replace(/&#(\d+);/) { match in
+            Int(match.1).flatMap(Unicode.Scalar.init).map { String(Character($0)) } ?? String(match.0)
+        }
+        return decoded
     }
 
     static func date(_ text: String) -> String? {
@@ -142,7 +153,6 @@ enum OrderMerge {
     @discardableResult
     static func merge(_ lines: [OrderLine], from supplier: Supplier, into context: ModelContext, today: String = Day.today) throws -> OrderImportSummary {
         var summary = OrderImportSummary()
-        let importNote = "Imported from \(supplier.name)"
         var occurrences: [String: Int] = [:]
         var itemsByName = Dictionary(try context.fetch(FetchDescriptor<Item>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
         var vendorsByName = Dictionary(try context.fetch(FetchDescriptor<Vendor>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
@@ -164,7 +174,7 @@ enum OrderMerge {
 
             var vendor = vendorsByName[line.vendor.lowercased()]
             if vendor == nil, !line.vendor.isEmpty {
-                let created = Vendor(name: line.vendor, notes: importNote, createdAt: today)
+                let created = Vendor(name: line.vendor, createdAt: today)
                 context.insert(created)
                 vendorsByName[line.vendor.lowercased()] = created
                 vendor = created
@@ -179,7 +189,6 @@ enum OrderMerge {
                     name: line.name,
                     unit: OrderText.unit(for: line.name),
                     reorderLevel: importedReorderLevel,
-                    notes: importNote,
                     createdAt: today
                 )
                 context.insert(item)
