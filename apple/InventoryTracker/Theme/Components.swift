@@ -133,9 +133,12 @@ struct StatCard: View {
 
     var body: some View {
         if let action {
-            Button(action: action) { content }
-                .buttonStyle(.plain)
+            // A tap gesture leaves the card free to be picked up and dragged, which a Button would swallow.
+            content
+                .onTapGesture(perform: action)
                 .onHover { isHovering = $0 }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
         } else {
             content
         }

@@ -129,7 +129,7 @@ struct DashboardView: View {
     }
 
     private var editHint: some View {
-        Label("Drag a box to move it. Use the buttons in its corner to change its size or remove it. Press Done when you're happy.", systemImage: "hand.draw")
+        Label("Drag a box to move it, which also works any time without Customize. Use the buttons in a box's corner to change its size or remove it.", systemImage: "hand.draw")
             .font(.system(size: 13))
             .foregroundStyle(Theme.primaryDarker)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -143,27 +143,24 @@ struct DashboardView: View {
         isEditing = false
     }
 
-    @ViewBuilder
     private func editable<Content: View>(_ tile: DashboardTile, @ViewBuilder content: () -> Content) -> some View {
-        if isEditing {
-            content()
-                .allowsHitTesting(false)
-                .overlay(
+        content()
+            .allowsHitTesting(!isEditing)
+            .overlay {
+                if isEditing {
                     RoundedRectangle(cornerRadius: Theme.radius)
                         .strokeBorder(Theme.primary.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                )
-                .overlay(alignment: .topTrailing) { tileControls(tile) }
-                .opacity(dragging == tile.widget ? 0.35 : 1)
-                .contentShape(Rectangle())
-                .onDrag {
-                    dragging = tile.widget
-                    return NSItemProvider(object: tile.widget.rawValue as NSString)
                 }
-                .onDrop(of: [.plainText], delegate: TileDropDelegate(target: tile.widget, layout: $layout, dragging: $dragging))
-                .accessibilityLabel("\(tile.widget.title) box")
-        } else {
-            content()
-        }
+            }
+            .overlay(alignment: .topTrailing) {
+                if isEditing { tileControls(tile) }
+            }
+            .contentShape(Rectangle())
+            .onDrag {
+                dragging = tile.widget
+                return NSItemProvider(object: tile.widget.rawValue as NSString)
+            }
+            .onDrop(of: [.plainText], delegate: TileDropDelegate(target: tile.widget, layout: $layout, dragging: $dragging))
     }
 
     private func tileControls(_ tile: DashboardTile) -> some View {
