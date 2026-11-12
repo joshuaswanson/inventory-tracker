@@ -70,6 +70,7 @@ private struct SheetContent: View {
         case .supplier(let supplier): SupplierImportView(supplier: supplier)
         case .combineItem(let item): CombineItemsView(keeper: item)
         case .combineVendor(let vendor): CombineVendorsView(keeper: vendor)
+        case .reviewNewItems(let itemIDs): ReviewImportedItemsView(itemIDs: itemIDs)
         }
     }
 }

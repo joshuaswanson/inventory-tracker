@@ -36,6 +36,7 @@ enum ActiveSheet: Identifiable {
     case supplier(Supplier)
     case combineItem(Item)
     case combineVendor(Vendor)
+    case reviewNewItems([String])
 
     var id: String {
         switch self {
@@ -52,6 +53,7 @@ enum ActiveSheet: Identifiable {
         case .supplier(let supplier): "supplier-\(supplier.id)"
         case .combineItem(let item): "combine-item-\(item.id)"
         case .combineVendor(let vendor): "combine-vendor-\(vendor.id)"
+        case .reviewNewItems: "review-new-items"
         }
     }
 }

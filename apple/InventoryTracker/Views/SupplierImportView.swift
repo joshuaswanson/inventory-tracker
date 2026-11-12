@@ -84,7 +84,6 @@ struct SupplierImportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(Router.self) private var router
     @State private var savedEmail: String
-    @Query private var allItems: [Item]
     @State private var browser: SupplierBrowser
     @State private var email = ""
     @State private var password = ""
@@ -95,8 +94,6 @@ struct SupplierImportView: View {
     @State private var errorPage: SupplierPage?
     @State private var isReviewing = false
     @State private var warning: String?
-    @State private var perishableIDs: Set<String> = []
-    @State private var expirations: [String: String] = [:]
     @State private var savedLoginEmail: String?
     @State private var savesLogin = true
     @State private var activeField = Field.email
@@ -225,9 +222,7 @@ struct SupplierImportView: View {
     @ViewBuilder
     private var content: some View {
         if let summary, isReviewing {
-            FormSheet(title: "New Items", saveTitle: "Continue", showsCancel: false, macHeight: Self.formHeight, onSave: finishReview) {
-                review(newItems(in: summary))
-            }
+            NewItemsReviewView(itemIDs: summary.newItemIDs, macHeight: Self.formHeight) { isReviewing = false }
         } else if let summary {
             FormSheet(title: "Import from \(supplier.name)", saveTitle: "Done", showsCancel: false, macHeight: Self.formHeight, onSave: { router.sheet = .importOrders }) {
                 result(summary)
@@ -376,54 +371,6 @@ struct SupplierImportView: View {
         .disabled(isWorking)
     }
 
-    private func newItems(in summary: OrderImportSummary) -> [Item] {
-        allItems.filter { summary.newItemIDs.contains($0.id) }
-            .sorted { orderedText($0.name, $1.name, ascending: true) }
-    }
-
-    @ViewBuilder
-    private func review(_ items: [Item]) -> some View {
-        intro("Which of these new items have an expiration date? Tick each one that does, then enter the date printed on the box.")
-        ForEach(items) { item in
-            VStack(alignment: .leading, spacing: 8) {
-                CheckboxField(title: item.name, isOn: Binding(
-                    get: { perishableIDs.contains(item.id) },
-                    set: { isOn in
-                        if isOn { perishableIDs.insert(item.id) } else { perishableIDs.remove(item.id) }
-                    }
-                ))
-                if perishableIDs.contains(item.id) {
-                    HStack(spacing: 8) {
-                        Text("Expires")
-                            .font(.system(size: 13))
-                            .foregroundStyle(Theme.textSecondary)
-                        OptionalDayField(day: Binding(get: { expirations[item.id] }, set: { expirations[item.id] = $0 }))
-                    }
-                    .padding(.leading, 26)
-                    if expirations[item.id] == nil {
-                        Text("Box not nearby? Leave the date empty for now. You can add it later by editing the purchase on the Purchases page.")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.textTertiary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.leading, 26)
-                    }
-                }
-            }
-        }
-    }
-
-    private func finishReview() {
-        for item in allItems where perishableIDs.contains(item.id) {
-            item.isPerishable = true
-            guard let expiration = expirations[item.id] else { continue }
-            for purchase in item.purchases ?? [] where purchase.expirationDate == nil {
-                purchase.expirationDate = expiration
-            }
-        }
-        try? modelContext.save()
-        isReviewing = false
-    }
-
     private func result(_ summary: OrderImportSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if let warning {
@@ -488,17 +435,10 @@ struct SupplierImportView: View {
                     password = ""
                     isSigningIn = false
                 }
-                let knownOrders = ImportWarning.knownOrders(from: supplier, in: modelContext)
-                let lines = try await browser.collectOrders(knownOrders: knownOrders)
-                let previouslyImported = ImportWarning.previouslyImported(from: supplier, in: modelContext)
-                let imported = try OrderMerge.merge(lines, from: supplier, into: modelContext)
-                let foundNothingNew = lines.isEmpty && browser.ordersFound > 0
-                warning = foundNothingNew ? nil : ImportWarning.message(linesRead: lines.count, summary: imported, previouslyImported: previouslyImported, supplierName: supplier.name)
-                if warning == nil {
-                    SupplierSettings.setLastImport(Date(), for: supplier)
-                }
-                isReviewing = !imported.newItemIDs.isEmpty
-                summary = imported
+                let result = try await SupplierImporter.importOrders(using: browser, into: modelContext)
+                warning = result.warning
+                isReviewing = !result.summary.newItemIDs.isEmpty
+                summary = result.summary
             } catch {
                 isSigningIn = false
                 if needsSignIn { password = "" }
