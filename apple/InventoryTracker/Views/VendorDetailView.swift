@@ -23,8 +23,15 @@ struct VendorDetailView: View {
             if isWide {
                 Button("Edit") { router.sheet = .vendor(vendor) }
                     .buttonStyle(.themedSecondary)
+                Button("Combine Duplicates") { router.sheet = .combineVendor(vendor) }
+                    .buttonStyle(.themedSecondary)
             } else {
-                Button("Edit") { router.sheet = .vendor(vendor) }
+                Menu {
+                    Button("Edit", systemImage: "pencil") { router.sheet = .vendor(vendor) }
+                    Button("Combine Duplicates", systemImage: "arrow.triangle.merge") { router.sheet = .combineVendor(vendor) }
+                } label: {
+                    Label("Actions", systemImage: "ellipsis.circle")
+                }
             }
         } content: {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: isWide ? 180 : 150), spacing: 16)], spacing: 16) {

@@ -51,6 +51,8 @@ struct ItemDetailView: View {
             if isWide {
                 Button("Edit") { router.sheet = .item(item) }
                     .buttonStyle(.themedSecondary)
+                Button("Combine Duplicates") { router.sheet = .combineItem(item) }
+                    .buttonStyle(.themedSecondary)
                 if !item.isPerishable {
                     Button("Count Stock") { router.sheet = .count(item) }
                         .buttonStyle(.themedSecondary)
@@ -65,6 +67,7 @@ struct ItemDetailView: View {
                     Button("Record Usage", systemImage: "minus.circle") { router.sheet = .usage(nil, itemID: item.id) }
                     Button("Count Stock", systemImage: "number") { router.sheet = .count(item) }
                     Button("Edit", systemImage: "pencil") { router.sheet = .item(item) }
+                    Button("Combine Duplicates", systemImage: "arrow.triangle.merge") { router.sheet = .combineItem(item) }
                 } label: {
                     Label("Actions", systemImage: "plus")
                 }

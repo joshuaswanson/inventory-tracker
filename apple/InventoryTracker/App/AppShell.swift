@@ -68,6 +68,8 @@ private struct SheetContent: View {
         case .data: DataView()
         case .importOrders: ImportOrdersView()
         case .supplier(let supplier): SupplierImportView(supplier: supplier)
+        case .combineItem(let item): CombineItemsView(keeper: item)
+        case .combineVendor(let vendor): CombineVendorsView(keeper: vendor)
         }
     }
 }

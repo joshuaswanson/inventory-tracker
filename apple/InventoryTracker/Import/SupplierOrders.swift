@@ -154,8 +154,8 @@ enum OrderMerge {
     static func merge(_ lines: [OrderLine], from supplier: Supplier, into context: ModelContext, today: String = Day.today) throws -> OrderImportSummary {
         var summary = OrderImportSummary()
         var occurrences: [String: Int] = [:]
-        var itemsByName = Dictionary(try context.fetch(FetchDescriptor<Item>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
-        var vendorsByName = Dictionary(try context.fetch(FetchDescriptor<Vendor>()).map { ($0.name.lowercased(), $0) }) { first, _ in first }
+        var itemsByName = Dictionary(try context.fetch(FetchDescriptor<Item>()).flatMap { item in ([item.name] + item.otherNames).map { ($0.lowercased(), item) } }) { first, _ in first }
+        var vendorsByName = Dictionary(try context.fetch(FetchDescriptor<Vendor>()).flatMap { vendor in ([vendor.name] + vendor.otherNames).map { ($0.lowercased(), vendor) } }) { first, _ in first }
         var seenSources = Set(try context.fetch(FetchDescriptor<Purchase>()).compactMap(\.sourceId))
 
         for line in lines {

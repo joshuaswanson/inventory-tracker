@@ -73,6 +73,66 @@ private func sampleBackup() -> Backup {
     }
 }
 
+@Suite struct DuplicateCombinerTests {
+    @Test func combiningItemsMovesTheirHistoryAndRemembersTheirNames() throws {
+        let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
+        let keeper = Item(name: "BluTab Tablets")
+        let duplicate = Item(name: "BluTab Waterline Maintenance Tablets", isPerishable: true, storageLocation: "Cabinet B")
+        context.insert(keeper)
+        context.insert(duplicate)
+        let kept = Purchase(date: "2026-08-01", item: keeper, quantity: 1, pricePerUnit: 20)
+        let moved = Purchase(date: "2026-09-01", item: duplicate, quantity: 3, pricePerUnit: 18)
+        context.insert(kept)
+        context.insert(moved)
+        context.insert(UsageRecord(date: "2026-09-10", item: duplicate, quantity: 1))
+        try context.save()
+
+        try DuplicateCombiner.combine([duplicate], into: keeper, in: context)
+
+        let items = try context.fetch(FetchDescriptor<Item>())
+        #expect(items.map(\.name) == ["BluTab Tablets"])
+        #expect(try context.fetch(FetchDescriptor<Purchase>()).count == 2)
+        #expect(Set((keeper.purchases ?? []).map(\.quantity)) == [1, 3])
+        #expect(keeper.usageRecords?.count == 1)
+        #expect(keeper.metrics(today: "2026-10-01").currentInventory == 3)
+        #expect(keeper.isPerishable)
+        #expect(keeper.storageLocation == "Cabinet B")
+        #expect(keeper.otherNames == ["BluTab Waterline Maintenance Tablets"])
+    }
+
+    @Test func laterImportsOfACombinedNameGoToTheKeptItemAndVendor() throws {
+        let context = ModelContext(try InventoryStore.makeContainer(inMemory: true))
+        try OrderMerge.merge([OrderLine(raw: rawLine())], from: .supplyClinic, into: context)
+        let duplicateItem = try #require(try context.fetch(FetchDescriptor<Item>()).first)
+        let duplicateVendor = try #require(try context.fetch(FetchDescriptor<Vendor>()).first)
+        let item = Item(name: "Gauze")
+        let vendor = Vendor(name: "Frontier Dental")
+        context.insert(item)
+        context.insert(vendor)
+        try DuplicateCombiner.combine([duplicateItem], into: item, in: context)
+        try DuplicateCombiner.combine([duplicateVendor], into: vendor, in: context)
+
+        var later = rawLine()
+        later.suborderNumber = "#LATER-1"
+        let summary = try OrderMerge.merge([OrderLine(raw: later)], from: .supplyClinic, into: context)
+
+        #expect(summary.imported == 1)
+        #expect(summary.newItems == 0)
+        #expect(summary.newVendors == 0)
+        #expect(try context.fetch(FetchDescriptor<Item>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<Vendor>()).count == 1)
+        #expect(item.purchases?.count == 2)
+        #expect(vendor.purchases?.count == 2)
+    }
+
+    @Test func similarNamesAreSuggestedByBrandOrSharedWords() {
+        #expect(NameSimilarity.score("BluTab Tablets, Waterline Cleaner", "BluTab® White Waterline Maintenance Tablets") > 0)
+        #expect(NameSimilarity.score("Frontier Dental", "Frontier Dental Supply Inc.") > 0)
+        #expect(NameSimilarity.score("CaviWipes Large 160/Can", "Nupro Prophy Angles") == 0)
+        #expect(NameSimilarity.score("Benco Dental", "The Dental Market") == 0)
+    }
+}
+
 @Suite struct OrderPagingTests {
     @Test func aRepeatedOrEmptyPageEndsTheSearch() {
         var paging = OrderPaging()

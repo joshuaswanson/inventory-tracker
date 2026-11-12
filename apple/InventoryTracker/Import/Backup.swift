@@ -12,6 +12,7 @@ nonisolated struct BackupItem: Codable {
     var storageLocation: String
     var notes: String
     var createdAt: String
+    var otherNames: String?
 }
 
 nonisolated struct BackupVendor: Codable {
@@ -23,6 +24,7 @@ nonisolated struct BackupVendor: Codable {
     var address: String
     var notes: String
     var createdAt: String
+    var otherNames: String?
 }
 
 nonisolated struct BackupPurchase: Codable {
@@ -144,6 +146,7 @@ enum BackupMerge {
             target.storageLocation = source.storageLocation
             target.notes = source.notes
             target.createdAt = source.createdAt
+            target.otherNamesText = source.otherNames ?? target.otherNamesText
             if items[source.id] == nil { context.insert(target) }
             items[source.id] = target
         }
@@ -158,6 +161,7 @@ enum BackupMerge {
             target.address = source.address
             target.notes = source.notes
             target.createdAt = source.createdAt
+            target.otherNamesText = source.otherNames ?? target.otherNamesText
             if vendors[source.id] == nil { context.insert(target) }
             vendors[source.id] = target
         }
@@ -208,10 +212,10 @@ enum BackupMerge {
     static func export(from context: ModelContext) throws -> Backup {
         Backup(
             items: try context.fetch(FetchDescriptor<Item>(sortBy: [SortDescriptor(\.id)])).map {
-                BackupItem(id: $0.id, name: $0.name, unit: $0.unitRaw, reorderLevel: $0.reorderLevel, isPerishable: $0.isPerishable, storageLocation: $0.storageLocation, notes: $0.notes, createdAt: $0.createdAt)
+                BackupItem(id: $0.id, name: $0.name, unit: $0.unitRaw, reorderLevel: $0.reorderLevel, isPerishable: $0.isPerishable, storageLocation: $0.storageLocation, notes: $0.notes, createdAt: $0.createdAt, otherNames: $0.otherNamesText.isEmpty ? nil : $0.otherNamesText)
             },
             vendors: try context.fetch(FetchDescriptor<Vendor>(sortBy: [SortDescriptor(\.id)])).map {
-                BackupVendor(id: $0.id, name: $0.name, contactName: $0.contactName, phone: $0.phone, email: $0.email, address: $0.address, notes: $0.notes, createdAt: $0.createdAt)
+                BackupVendor(id: $0.id, name: $0.name, contactName: $0.contactName, phone: $0.phone, email: $0.email, address: $0.address, notes: $0.notes, createdAt: $0.createdAt, otherNames: $0.otherNamesText.isEmpty ? nil : $0.otherNamesText)
             },
             purchases: try context.fetch(FetchDescriptor<Purchase>(sortBy: [SortDescriptor(\.id)])).compactMap { purchase in
                 guard let itemID = purchase.item?.id else { return nil }

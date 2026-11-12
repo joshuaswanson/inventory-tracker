@@ -11,6 +11,8 @@ final class Vendor {
     var address: String = ""
     var notes: String = ""
     var createdAt: String = ""
+    /// Names this entry absorbed when duplicates were combined, one per line.
+    var otherNamesText: String = ""
 
     @Relationship(deleteRule: .nullify, inverse: \Purchase.vendor)
     var purchases: [Purchase]? = []
@@ -33,6 +35,11 @@ final class Vendor {
         self.address = address
         self.notes = notes
         self.createdAt = createdAt
+    }
+
+    var otherNames: [String] {
+        get { otherNamesText.split(separator: "\n").map(String.init) }
+        set { otherNamesText = newValue.joined(separator: "\n") }
     }
 
     var orderCount: Int { purchases?.count ?? 0 }

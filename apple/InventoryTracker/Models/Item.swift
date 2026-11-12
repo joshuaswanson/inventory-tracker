@@ -11,6 +11,8 @@ final class Item {
     var storageLocation: String = ""
     var notes: String = ""
     var createdAt: String = ""
+    /// Names this entry absorbed when duplicates were combined, one per line.
+    var otherNamesText: String = ""
 
     @Relationship(deleteRule: .cascade, inverse: \Purchase.item)
     var purchases: [Purchase]? = []
@@ -36,6 +38,11 @@ final class Item {
         self.storageLocation = storageLocation
         self.notes = notes
         self.createdAt = createdAt
+    }
+
+    var otherNames: [String] {
+        get { otherNamesText.split(separator: "\n").map(String.init) }
+        set { otherNamesText = newValue.joined(separator: "\n") }
     }
 
     var unit: UnitOfMeasure {
