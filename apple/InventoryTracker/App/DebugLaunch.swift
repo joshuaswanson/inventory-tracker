@@ -34,6 +34,8 @@ enum DebugLaunch {
                 router.show(.vendors)
                 router.open(.vendor(vendorID))
             }
+        case "record-usage":
+            router.sheet = .usage(nil, itemID: nil)
         case "new-purchase":
             router.show(.purchases)
             router.sheet = .purchase(nil, itemID: nil)

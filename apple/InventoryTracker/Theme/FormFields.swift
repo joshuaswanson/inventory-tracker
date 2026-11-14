@@ -341,6 +341,7 @@ struct ItemSearchField: View {
     @State private var query = ""
     @State private var isOpen = false
     @State private var highlighted = 0
+    @State private var fieldHeight: CGFloat = 38
     @FocusState private var isFocused: Bool
 
     private var selectedName: String {
@@ -385,12 +386,18 @@ struct ItemSearchField: View {
         }
         .modifier(FieldBox(isFocused: isFocused || isOpen))
         .environment(\.fieldHasAttachedPanel, isOpen)
-        .overlay(alignment: .bottom) {
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fieldHeight = $0 }
+        .overlay(alignment: .top) {
             if isOpen {
-                panel(matches).alignmentGuide(.bottom) { $0[.top] }
+                panel(matches).offset(y: fieldHeight)
             }
         }
-        .onAppear { query = selectedName }
+        .onAppear {
+            query = selectedName
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["INVENTORY_OPEN_ITEM_SEARCH"] != nil { isOpen = true }
+            #endif
+        }
         .onChange(of: itemID) { if !isFocused { query = selectedName } }
         .onChange(of: query) {
             guard isFocused, query != selectedName else { return }
